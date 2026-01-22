@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #ec4899;
+  /* pink-500 */
+}
+
+/* Custom globals */
+body {
+  @apply bg-gray-50 text-gray-900;
+}

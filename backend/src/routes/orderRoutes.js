@@ -1,0 +1,13 @@
+const express = require('express');
+const router = express.Router();
+const orderController = require('../controllers/orderController');
+const authMiddleware = require('../middlewares/authMiddleware');
+
+router.use(authMiddleware);
+
+router.get('/', orderController.getAllOrders);
+router.put('/:id/status', orderController.updateOrderStatus);
+router.delete('/:id', orderController.deleteOrder);
+router.post('/:id/invoice/send', orderController.sendInvoice);
+
+module.exports = router;

@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("ADMIN")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Customer {
+  id            String   @id @default(uuid())
+  displayId     String   @unique // C001, C002
+  name          String
+  email         String   @unique
+  password      String
+  phone         String?
+  address       String?
+  loyaltyPoints Int      @default(0)
+  isActive      Boolean  @default(true)
+  orders        Order[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  feedbacks     Feedback[]
+}
+
+model Order {
+  id          Int      @id @default(autoincrement()) // Using Int for #1082 format
+  total       Decimal
+  status      String   @default("NEW") // NEW, CONFIRMED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
+  paymentStatus String @default("PENDING") // PENDING, PAID, REFUNDED
+  paymentMethod String @default("COD") // COD, CARD, BANK_TRANSFER
+  address     String   @default("")
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  items       Json?    // Array of objects: { name, quantity, price }
+  deliveryDate DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  feedback    Feedback?
+}
+
+model Feedback {
+  id         Int      @id @default(autoincrement())
+  rating     Int
+  title      String?
+  comment    String   @db.Text
+  status     String   @default("PENDING") // PENDING, APPROVED, HIDDEN
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  orderId    Int      @unique
+  order      Order    @relation(fields: [orderId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  title     String
+  message   String
+  type      String   @default("SYSTEM") // SYSTEM, ORDER, PAYMENT, DELIVERY
+  isRead    Boolean  @default(false)
+  metadata  Json?    // { orderId: 1, slipUrl: '...' }
+  createdAt DateTime @default(now())
+}
+
+model NotificationTemplate {
+  id        Int      @id @default(autoincrement())
+  title     String
+  category  String   // Order, Payment, Promotion, Customer
+  body      String   @db.Text
+  lastUsed  DateTime @default(now())
+}
+
+// --- Master Data ---
+
+model CakeSize {
+  id       Int           @id @default(autoincrement())
+  label    String        @unique // e.g. "1kg"
+  price    Decimal       @default(0) // Extra cost
+  variants CakeVariant[]
+}
+
+model CakeShape {
+  id       Int           @id @default(autoincrement())
+  label    String        @unique // e.g. "Round"
+  price    Decimal       @default(0)
+  variants CakeVariant[]
+}
+
+model CakeFlavor {
+  id       Int           @id @default(autoincrement())
+  label    String        @unique // e.g. "Chocolate"
+  price    Decimal       @default(0)
+  variants CakeVariant[]
+}
+
+model CakeCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique // e.g. "Wedding Cakes", "Birthday Cakes"
+  basePrice Decimal  @default(0)
+  cakes     Cake[]
+}
+
+// --- Product Catalog ---
+
+model Cake {
+  id           Int           @id @default(autoincrement())
+  name         String
+  description  String?       @db.Text
+  // basePrice removed - now inherited from CakeCategory
+  availability Boolean       @default(true)
+  ingredients  String?       @db.Text
+  imageUrl     String?
+  
+  categoryId   Int
+  category     CakeCategory  @relation(fields: [categoryId], references: [id])
+  
+  variants     CakeVariant[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model CakeVariant {
+  id        Int         @id @default(autoincrement())
+  price     Decimal     // This might be redundant if basePrice is in category, but maybe keeps total variant price? 
+                      // actually user said "store base price there [category]", so variant price might be modifier?
+                      // The original schema had price in CakeVariant AND basePrice in Product.
+                      // Let's keep 'price' here but maybe it represents the final price or just modifier?
+                      // The previous logic was base + modifiers. 
+                      // If user wants base price in category, then CakeVariant might just link 
+                      // attributes.
+                      // However, let's keep 'price' as the "Calculated Price" or "Specific Price" for safety,
+                      // or just use modifiers.
+                      // Wait, the previous schema had `price Decimal` in ProductVariant.
+                      // Let's keep it for now to avoid breaking too much logic, but keys change.
+  
+  cakeId    Int
+  cake      Cake        @relation(fields: [cakeId], references: [id], onDelete: Cascade)
+  
+  sizeId    Int?
+  size      CakeSize?   @relation(fields: [sizeId], references: [id])
+  shapeId   Int?
+  shape     CakeShape?  @relation(fields: [shapeId], references: [id])
+  flavorId  Int?
+  flavor    CakeFlavor? @relation(fields: [flavorId], references: [id])
+  
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  type        String   // INCOME, EXPENSE
+  category    String   // Rent, Salary, Utilities, Other, Manual_Income
+  amount      Decimal
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime?
+  type        String   // MANUAL, PRODUCTION, ORDER_DELIVERY (virtual)
+  category    String?  // Delivery, Restock, Meeting, Production
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

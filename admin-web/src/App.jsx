@@ -1,0 +1,49 @@
+import React from 'react';
+import { Layout, Menu, Avatar, Button, Typography, Space } from 'antd';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useAuth, AuthProvider } from './context/AuthContext';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import MainLayout from './layouts/MainLayout';
+import Orders from './pages/Orders';
+import Cakes from './pages/Cakes';
+import Customers from './pages/Customers';
+import Notifications from './pages/Notifications';
+import Cashbook from './pages/Cashbook';
+import Schedule from './pages/Schedule';
+import Settings from './pages/Settings';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+
+const PrivateRoute = () => {
+  const { user, loading } = useAuth();
+  if (loading) return <div>Loading...</div>;
+  return user ? <MainLayout /> : <Navigate to="/login" />;
+};
+
+const App = () => {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
+        <Route element={<PrivateRoute />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/cakes" element={<Cakes />} />
+          <Route path="/customers" element={<Customers />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/cashbook" element={<Cashbook />} />
+          <Route path="/schedule" element={<Schedule />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="*" element={<Dashboard />} /> {/* Added catch-all route */}
+        </Route>
+      </Routes>
+    </AuthProvider>
+  );
+};
+
+export default App;

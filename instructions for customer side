@@ -1,0 +1,450 @@
+Got it 👍
+Below is your **clean, refined, FINAL phase-wise implementation plan** using **exactly the same structure**, but polished to **SDP / viva / documentation standard**.
+You can **directly paste this** into your **Methodology / System Implementation** chapter.
+
+---
+
+# 🧁 KaviCakes – Customer Website
+
+## Phase-Wise Implementation Plan
+
+---
+
+## 🟢 PHASE 0 – CUSTOMER WEB BASE SETUP
+
+### 🎯 Goal
+
+Prepare the customer-facing web application to consume existing backend APIs.
+
+### Tasks
+
+* Create React web application
+* Configure:
+
+  * Client-side routing
+  * Global layout (Navbar, Footer)
+  * Authentication context (JWT handling)
+  * API service layer (Axios / Fetch)
+  * Environment variables for backend base URL
+
+### Deliverables
+
+* React project skeleton
+* Public routes:
+
+  * Home
+  * Login
+  * Register
+* Protected routes:
+
+  * Cart
+  * Orders
+  * Profile
+
+📌 *No business logic is implemented in this phase, as all rules are handled by the backend.*
+
+---
+
+## 🟢 PHASE 1 – AUTHENTICATION & CUSTOMER PROFILE
+
+### 🎯 Goal
+
+Allow customers to create accounts and manage personal profiles.
+
+### Tasks
+
+* Customer registration
+* Customer login using JWT authentication
+* Secure token storage
+* Logout functionality
+* Profile view:
+
+  * Name
+  * Email
+  * Phone number
+
+### Backend Interaction
+
+* `/auth/register`
+* `/auth/login`
+* `/customers/profile`
+
+📌 *Uses the same authentication system as admin, with role = CUSTOMER.*
+
+---
+
+## 🟢 PHASE 2 – HOME PAGE & CAKE BROWSING
+
+### 🎯 Goal
+
+Enable customers to discover and explore available cakes.
+
+### Home Page Features
+
+* Search cakes by name or category
+* Browse by category
+* Featured cakes (newly added)
+* Best sellers (based on ratings and order count)
+* Recent approved feedback
+* Navigation to:
+
+  * Custom orders
+  * Bulk orders
+
+### Tasks
+
+* Fetch cakes and related data
+* Implement filters and search
+* Render cake cards
+* Implement “Order Now” call-to-action
+
+### Backend Interaction
+
+* `/cakes`
+* `/cakes/featured`
+* `/cakes/best-sellers`
+* `/feedback/recent`
+
+📌 *Customers can only view data; no product modification is allowed.*
+
+---
+
+## 🟢 PHASE 3 – CATEGORY PAGES
+
+(Birthday, Wedding, Cupcakes)
+
+### 🎯 Goal
+
+Display category-based cake listings.
+
+### Tasks
+
+* Birthday cakes page
+* Wedding cakes page
+* Filtering options:
+
+  * Price
+  * Featured status
+* Navigation to cake details page
+
+### Backend Interaction
+
+* `/cakes?category=birthday`
+* `/cakes?category=wedding`
+
+📌 *Same API endpoints are reused with different filters.*
+
+---
+
+## 🟢 PHASE 4 – CAKE DETAILS & VARIANT SELECTION
+
+(Normal Orders)
+
+### 🎯 Goal
+
+Allow customers to configure predefined cake designs.
+
+### Features
+
+* Cake images and description
+* Size selection
+* Flavor selection
+* Shape selection
+* Quantity input
+* Special instructions
+
+### Key Logic
+
+* Selected options map to an existing Cake Variant
+* Variant price is fetched dynamically
+* Variant ID is sent to backend
+
+### Backend Interaction
+
+* `/variants/by-selection`
+* `/variants/{id}`
+
+📌 *Customers never calculate prices; pricing is fully controlled by the backend.*
+
+---
+
+## 🟢 PHASE 5 – CART MANAGEMENT
+
+### 🎯 Goal
+
+Allow customers to manage items before checkout.
+
+### Tasks
+
+* Add cake variants to cart
+* Update quantities
+* Remove items
+* View cart summary
+
+### Backend Interaction
+
+* `/cart`
+* `/cart/items`
+
+📌 *Cart stores only variant IDs and quantities; prices are always retrieved from variants.*
+
+---
+
+## 🟢 PHASE 6 – CHECKOUT & DELIVERY DETAILS
+
+### 🎯 Goal
+
+Collect delivery and recipient information.
+
+### Checkout Features
+
+* Delivery method:
+
+  * Pickup
+  * Delivery
+* Delivery date selection
+* Address and recipient details
+* Delivery instructions
+* Approximate distance input (km)
+
+### Business Rules
+
+* Minimum 5 days ahead → allowed
+* 2–4 days ahead → loyalty points required
+* Less than 2 days → blocked
+
+### Backend Interaction
+
+* `/delivery/validate`
+* `/orders/preview`
+
+📌 *Validation is performed on both UI and backend.*
+
+---
+
+## 🟢 PHASE 7 – PAYMENT METHOD SELECTION
+
+(No Payment Gateway)
+
+### 🎯 Goal
+
+Allow customers to select payment method without making immediate payment.
+
+### Payment Options
+
+* Online bank payment (Advance / Full)
+* Cash on Delivery (COD)
+
+### Important Rule
+
+❌ No payment is collected during checkout.
+
+### Backend Interaction
+
+* `/orders/create`
+
+📌 Order status → **PLACED / NEW**
+📌 Payment status → **UNPAID**
+
+---
+
+## 🟢 PHASE 8 – ORDER PLACEMENT & TRACKING
+
+### 🎯 Goal
+
+Enable customers to track order progress.
+
+### Features
+
+* Order list:
+
+  * All
+  * In progress
+  * Delivered
+  * Cancelled
+* Order tracking timeline:
+
+  * Placed
+  * Confirmed
+  * Preparing
+  * Out for delivery
+  * Delivered
+
+### Backend Interaction
+
+* `/orders`
+* `/orders/{id}`
+
+📌 *Order status updates are controlled only by the admin.*
+
+---
+
+## 🟢 PHASE 9 – PAYMENT AFTER ADMIN CONFIRMATION
+
+### 🎯 Goal
+
+Enable payment only after admin approval.
+
+### Flow
+
+1. Admin confirms order
+2. Customer receives notification
+3. Customer uploads bank receipt
+4. Payment status → **PENDING_VERIFICATION**
+5. Admin verifies payment
+
+### Backend Interaction
+
+* `/payments/upload-receipt`
+* `/payments/status`
+
+📌 *COD payments are collected at delivery.*
+
+---
+
+## 🟢 PHASE 10 – CUSTOM ORDER FLOW
+
+### 🎯 Goal
+
+Allow customers to place non-standard cake orders.
+
+### Features
+
+* Custom order form:
+
+  * Size
+  * Flavor
+  * Shape
+  * Quantity
+  * Special instructions
+* No predefined Cake Variant
+* Stored as order-specific configuration
+
+### Backend Interaction
+
+* `/custom-orders/create`
+
+📌 *Uses the same checkout, delivery, and payment flow as normal orders.*
+
+---
+
+## 🟢 PHASE 11 – BULK ORDER REQUEST FLOW
+
+### 🎯 Goal
+
+Allow customers to request large or event-based orders.
+
+### Features
+
+* Event name
+* Organization
+* Event date
+* Quantity
+* Cake preferences
+* Delivery and payment selection
+
+### Backend Interaction
+
+* `/bulk-orders/request`
+
+📌 *Admin approval is required before order creation.*
+
+---
+
+## 🟢 PHASE 12 – LOYALTY POINTS
+
+### 🎯 Goal
+
+Reward repeat customers.
+
+### Loyalty Logic
+
+* Earn: 1 point per Rs.100
+* Redeem: 1 point = Rs.1
+* Maximum redemption: 10% of order total
+
+### Features
+
+* Display loyalty balance
+* Apply points during checkout
+
+### Backend Interaction
+
+* `/loyalty/balance`
+* `/loyalty/redeem`
+
+---
+
+## 🟢 PHASE 13 – INVOICES, RATINGS & FEEDBACK
+
+### 🎯 Goal
+
+Enable post-delivery interaction.
+
+### Features
+
+* View invoice
+* Submit rating (1–5 stars)
+* Submit textual feedback
+
+### Rules
+
+* Ratings allowed only after delivery
+* One rating per delivered order item
+
+### Backend Interaction
+
+* `/invoices/{orderId}`
+* `/ratings`
+* `/feedback`
+
+---
+
+## 🟢 PHASE 14 – MY ACCOUNT & NOTIFICATIONS
+
+### 🎯 Goal
+
+Centralize all customer-related activities.
+
+### My Account Includes
+
+* Dashboard overview
+* Profile details
+* Wishlist
+* Notifications
+* Order history
+
+### Backend Interaction
+
+* `/customers/dashboard`
+* `/notifications`
+
+---
+
+## 🟢 PHASE 15 – SECURITY, VALIDATION & POLISH
+
+### 🎯 Goal
+
+Ensure system stability, security, and usability.
+
+### Tasks
+
+* Input validation
+* Token expiration handling
+* Loading and empty states
+* User-friendly error messages
+* Role-based UI protection
+
+---
+
+## ✅ FINAL DEVELOPMENT ORDER
+
+1️⃣ Backend & Admin Panel
+2️⃣ Authentication
+3️⃣ Browsing & product viewing
+4️⃣ Normal orders
+5️⃣ Checkout & delivery
+6️⃣ Payment flow
+7️⃣ Custom & bulk orders
+8️⃣ Loyalty system
+9️⃣ Tracking, ratings & feedback

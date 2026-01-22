@@ -1,0 +1,271 @@
+🟢 PHASE 0 – PROJECT & BASE SETUP
+🎯 Goal
+
+Create a clean backend and admin web panel foundation.
+
+🧠 Antigravity Prompt
+Create a full-stack project structure for an Admin-only Cake Order Management System.
+
+Backend:
+- Node.js + Express
+- Environment variable support
+- JWT authentication
+- Cloud SQL database (MySQL / PostgreSQL)
+- ORM: Prisma
+- REST API architecture
+
+Admin Web:
+- React.js
+- Ant Design UI
+- Routing setup
+- Authentication context
+- Protected routes
+
+Backend base modules:
+- auth
+- users
+- dashboard
+- products
+- variants
+- orders
+- payments
+- customers
+- notifications
+- cashbook
+- schedule
+
+Ensure backend APIs are reusable and secure.
+
+🟢 PHASE 1 – ADMIN AUTHENTICATION & ACCESS CONTROL
+🎯 Goal
+
+Secure admin access.
+
+🧠 Antigravity Prompt
+Implement admin authentication and authorization.
+
+Backend:
+- Admin user table
+- Password hashing (bcrypt)
+- JWT token generation
+- Admin-only middleware
+- Account status (ACTIVE / INACTIVE)
+
+Admin Web:
+- Login page
+- Token-based authentication
+- Protect all admin routes
+- Logout functionality
+
+🟢 PHASE 2 – DASHBOARD MODULE
+🎯 Goal
+
+Provide a high-level business overview.
+
+🧠 Antigravity Prompt
+Implement admin dashboard.
+
+Backend:
+- APIs for:
+  - Total orders
+  - Orders in delivery
+  - Completed orders
+  - Total revenue
+  - Recent orders list
+
+Admin Web:
+- Dashboard layout
+- Statistic cards
+- Recent orders table
+- Quick accept / reject actions
+
+🟢 PHASE 3 – PRODUCT & VARIANT MANAGEMENT
+🎯 Goal
+
+Feed all product data required for orders.
+
+🧠 Antigravity Prompt
+Implement product and variant management.
+
+Backend:
+- Cake CRUD
+- Cake size CRUD
+- Cake flavor CRUD
+- Cake shape CRUD
+- Cake variant creation
+- Variant availability control
+- Soft delete support
+
+Admin Web:
+- Product management screens
+- Add / edit / disable products
+- Variant creation UI
+- Top-selling products percentage API
+
+🟢 PHASE 4 – ORDER MANAGEMENT (CORE MODULE)
+🎯 Goal
+
+Control the full order lifecycle.
+
+🧠 Antigravity Prompt
+Implement admin order management system.
+
+Backend:
+- Order listing and filtering
+- Order status lifecycle:
+  NEW → CONFIRMED → IN_PROGRESS → READY → DELIVERED / CANCELLED
+- Prevent invalid status changes
+
+Admin Web:
+- Order list by status
+- Order details view
+- Confirm / reject orders
+- Update preparation and delivery status
+
+🟢 PHASE 5 – PAYMENT VERIFICATION & CASHBOOK
+🎯 Goal
+
+Manually manage payments without payment gateway.
+
+🧠 Antigravity Prompt
+Implement payment verification and cashbook management.
+
+Backend:
+- Payment methods: BANK_TRANSFER, COD
+- Payment status:
+  UNPAID
+  PENDING_VERIFICATION
+  PAID
+  COD
+- Receipt upload handling
+- Cashbook entries for income
+
+Admin Web:
+- Payment verification screen
+- View uploaded receipts
+- Mark payments as verified
+- Cashbook summary (daily / monthly income)
+
+🟢 PHASE 6 – CUSTOMER MANAGEMENT
+🎯 Goal
+
+Monitor customer activity and loyalty.
+
+🧠 Antigravity Prompt
+Implement customer management.
+
+Backend:
+- Customer listing API
+- Order history per customer
+- Loyalty points tracking
+
+Admin Web:
+- Customer list
+- Customer profile view
+- Total spent, total orders, last order date
+
+🟢 PHASE 7 – FEEDBACK & RATINGS MANAGEMENT
+🎯 Goal
+
+Control public feedback.
+
+🧠 Antigravity Prompt
+Implement feedback and rating moderation.
+
+Backend:
+- Feedback table
+- Rating table
+- Link feedback to delivered orders only
+- Approval / hide logic
+
+Admin Web:
+- Feedback list
+- Approve / reply / hide feedback
+
+🟢 PHASE 8 – NOTIFICATION MANAGEMENT
+🎯 Goal
+
+Handle system and manual notifications.
+
+🧠 Antigravity Prompt
+Implement notification management.
+
+Backend:
+- Notification table
+- System-generated notifications:
+  - New order
+  - Payment uploaded
+  - Delivery due
+- Manual notification support
+
+Admin Web:
+- View received notifications
+- Create notification templates
+- Send manual notifications
+
+🟢 PHASE 9 – INVOICE MANAGEMENT
+🎯 Goal
+
+Generate and manage invoices.
+
+🧠 Antigravity Prompt
+Implement invoice generation.
+
+Backend:
+- Invoice creation after payment verification
+- Invoice linked to order
+- Store invoice records
+
+Admin Web:
+- View invoices
+- Send invoices to customers
+
+🟢 PHASE 10 – PLAN SCHEDULE (CALENDAR MODULE)
+🎯 Goal
+
+Help admin plan bakery operations.
+
+🧠 Antigravity Prompt
+Implement schedule and calendar module.
+
+Backend:
+- Event table
+- Reminder logic
+
+Admin Web:
+- Calendar view
+- Add / edit / delete events
+- Upcoming event notifications
+
+🟢 PHASE 11 – SECURITY, LOGS & POLISH
+🎯 Goal
+
+Make the system production-ready.
+
+🧠 Antigravity Prompt
+Finalize system security and stability.
+
+Backend:
+- Role-based checks on all APIs
+- Input validation
+- Soft delete everywhere
+- Audit logs
+- Central error handling
+
+Admin Web:
+- Loading states
+- Empty states
+- Permission-based UI rendering
+
+✅ FINAL IMPLEMENTATION ORDER (VERY IMPORTANT)
+
+1️⃣ Auth
+2️⃣ Dashboard
+3️⃣ Products
+4️⃣ Orders
+5️⃣ Payments & Cashbook
+6️⃣ Customers
+7️⃣ Feedback
+8️⃣ Notifications
+9️⃣ Invoices
+🔟 Schedule
