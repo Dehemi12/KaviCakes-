@@ -21,7 +21,7 @@ exports.getStats = async (req, res) => {
             totalRevenue: parseFloat(totalRevenue)
         });
     } catch (error) {
-        console.error(error);
+        console.error('[DashboardController] Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -49,7 +49,7 @@ exports.getRecentOrders = async (req, res) => {
 
         res.json(formatted);
     } catch (error) {
-        console.error(error);
+        console.error('[DashboardController] Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };

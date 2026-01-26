@@ -36,8 +36,13 @@ const Register = () => {
             // Exclude confirmPassword from API call
             const { confirmPassword, ...dataToSend } = formData;
             await register(dataToSend);
-            // Pass the original 'from' state back to login, so login can redirect to checkout
-            navigate('/login', { state: { from: location.state?.from } });
+            // Pass email and original 'from' state to verification page
+            navigate('/verify-otp', {
+                state: {
+                    email: formData.email,
+                    from: location.state?.from
+                }
+            });
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to register. Please try again.');
         } finally {

@@ -8,7 +8,7 @@ exports.getNotifications = async (req, res) => {
         });
         res.json(notifications);
     } catch (error) {
-        res.status(500).json({ error: 'Server error' });
+        console.error('[NotificationController] Error:', error); res.status(500).json({ error: 'Server error' });
     }
 };
 
@@ -17,7 +17,7 @@ exports.getTemplates = async (req, res) => {
         const templates = await prisma.notificationTemplate.findMany();
         res.json(templates);
     } catch (error) {
-        res.status(500).json({ error: 'Server error' });
+        console.error('[NotificationController] Error:', error); res.status(500).json({ error: 'Server error' });
     }
 };
 
@@ -37,6 +37,7 @@ exports.approvePayment = async (req, res) => {
 
         res.json({ message: 'Payment Approved and Order Updated' });
     } catch (error) {
+        console.error('[NotificationController:approvePayment] Error:', error);
         res.status(500).json({ error: 'Failed to approve' });
     }
 };
@@ -50,6 +51,7 @@ exports.markAsRead = async (req, res) => {
         });
         res.json({ success: true });
     } catch (error) {
+        console.error('[NotificationController:markAsRead] Error:', error);
         res.status(500).json({ error: 'Failed' });
     }
 };

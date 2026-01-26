@@ -6,7 +6,7 @@ const getBulkPricing = async (req, res) => {
         const pricing = await prisma.bulkPricing.findMany();
         res.json(pricing);
     } catch (error) {
-        console.error('Error fetching bulk pricing:', error);
+        console.error('[BulkPricingController:getBulkPricing] Error:', error);
         res.status(500).json({ error: 'Failed to fetch pricing' });
     }
 };

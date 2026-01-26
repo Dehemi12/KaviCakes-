@@ -51,7 +51,7 @@ exports.createOrder = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Create Order Error:", error);
+        console.error('[OrderController:createOrder] Error:', error);
         res.status(500).json({ error: 'Failed to create order' });
     }
 };
@@ -96,7 +96,7 @@ exports.getAllOrders = async (req, res) => {
 
         res.json(formatted);
     } catch (error) {
-        console.error(error);
+        console.error('[OrderController:getAllOrders] Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -120,7 +120,7 @@ exports.updateOrderStatus = async (req, res) => {
 
         res.json(updatedOrder);
     } catch (error) {
-        console.error(error);
+        console.error('[OrderController:updateOrderStatus] Error:', error);
         res.status(500).json({ error: 'Failed to update status' });
     }
 };
@@ -144,7 +144,7 @@ exports.updatePaymentStatus = async (req, res) => {
 
         res.json(updatedOrder);
     } catch (error) {
-        console.error(error);
+        console.error('[OrderController:updatePaymentStatus] Error:', error);
         res.status(500).json({ error: 'Failed to update payment status' });
     }
 };
@@ -193,7 +193,7 @@ exports.deleteOrder = async (req, res) => {
 
         res.json({ message: 'Order cancelled and points reverted.' });
     } catch (error) {
-        console.error(error);
+        console.error('[OrderController:deleteOrder] Error:', error);
         res.status(500).json({ error: 'Failed to delete order' });
     }
 };
@@ -210,7 +210,7 @@ exports.sendInvoice = async (req, res) => {
 
         res.json({ message: 'Invoice sent successfully!' });
     } catch (error) {
-        console.error(error);
+        console.error('[OrderController:sendInvoice] Error:', error);
         res.status(500).json({ error: 'Failed to send invoice' });
     }
 };

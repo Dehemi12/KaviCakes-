@@ -82,7 +82,7 @@ exports.getAllCakes = async (req, res) => {
 
         res.json(formatted);
     } catch (error) {
-        console.error(error);
+        console.error('[CakeController] Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -132,7 +132,7 @@ exports.getCakeById = async (req, res) => {
 
         res.json(formatted);
     } catch (error) {
-        console.error(error);
+        console.error('[CakeController] Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -148,7 +148,7 @@ exports.getMasterData = async (req, res) => {
         ]);
         res.json({ sizes, shapes, flavors, categories });
     } catch (error) {
-        console.error(error);
+        console.error('[CakeController:getMasterData] Error:', error);
         res.status(500).json({ error: 'Failed to fetch master data' });
     }
 };
@@ -165,7 +165,7 @@ exports.createCategory = async (req, res) => {
         });
         res.status(201).json(category);
     } catch (error) {
-        console.error(error);
+        console.error('[CakeController:createCategory] Error:', error);
         res.status(500).json({ error: 'Failed to create category' });
     }
 };
@@ -210,7 +210,7 @@ exports.createCake = async (req, res) => {
 
         res.status(201).json(newCake);
     } catch (error) {
-        console.error('Create Cake Error:', error); // Log full error
+        console.error('[CakeController:createCake] Error:', error);
         // Return detailed error for debugging (remove in prod)
         res.status(500).json({ error: `Failed to create cake: ${error.message}` });
     }
@@ -223,7 +223,7 @@ exports.deleteCake = async (req, res) => {
         await prisma.cake.delete({ where: { id: parseInt(id) } });
         res.json({ message: 'Cake deleted' });
     } catch (error) {
-        console.error(error);
+        console.error('[CakeController:deleteCake] Error:', error);
         res.status(500).json({ error: 'Failed to delete' });
     }
 };
@@ -276,7 +276,7 @@ exports.updateCake = async (req, res) => {
 
         res.json(updatedCake);
     } catch (error) {
-        console.error(error);
+        console.error('[CakeController:updateCake] Error:', error);
         res.status(500).json({ error: 'Failed to update cake' });
     }
 };
@@ -288,7 +288,7 @@ exports.createSize = async (req, res) => {
         const size = await prisma.cakeSize.create({ data: { label, price: parseFloat(price || 0) } });
         res.status(201).json(size);
     } catch (error) {
-        res.status(500).json({ error: 'Failed' });
+        console.error('[CakeController] Error:', error); res.status(500).json({ error: 'Failed' });
     }
 };
 
@@ -299,7 +299,7 @@ exports.createShape = async (req, res) => {
         const shape = await prisma.cakeShape.create({ data: { label, price: parseFloat(price || 0) } });
         res.status(201).json(shape);
     } catch (error) {
-        res.status(500).json({ error: 'Failed' });
+        console.error('[CakeController] Error:', error); res.status(500).json({ error: 'Failed' });
     }
 };
 
@@ -310,6 +310,6 @@ exports.createFlavor = async (req, res) => {
         const flavor = await prisma.cakeFlavor.create({ data: { label, price: parseFloat(price || 0) } });
         res.status(201).json(flavor);
     } catch (error) {
-        res.status(500).json({ error: 'Failed' });
+        console.error('[CakeController] Error:', error); res.status(500).json({ error: 'Failed' });
     }
 };

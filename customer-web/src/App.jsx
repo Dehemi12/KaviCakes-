@@ -6,6 +6,9 @@ import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
+import VerifyOtp from './pages/auth/VerifyOtp';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import Profile from './pages/Profile';
 import CustomOrderPage from './pages/CustomOrderPage';
 import BulkOrderPage from './pages/BulkOrderPage';
@@ -46,6 +49,9 @@ function App() {
               <Route path="bulk-request-sent" element={<BulkRequestSentPage />} />
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
+              <Route path="verify-otp" element={<VerifyOtp />} />
+              <Route path="forgot-password" element={<ForgotPassword />} />
+              <Route path="reset-password" element={<ResetPassword />} />
               <Route path="profile" element={
                 <ProtectedRoute>
                   <Profile />

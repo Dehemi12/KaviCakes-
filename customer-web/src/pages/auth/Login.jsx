@@ -23,6 +23,13 @@ const Login = () => {
         } catch (err) {
             console.error('Login Error:', err);
             setError(err.response?.data?.error || 'Failed to login. Please check your credentials.');
+            if (err.response?.data?.needsVerification) {
+                // Option to redirect automatically or show a button
+                // For now, let's show a link in the error message or just redirect
+                setTimeout(() => {
+                    navigate('/verify-otp', { state: { email } });
+                }, 1500);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -109,9 +116,9 @@ const Login = () => {
                         </div>
 
                         <div className="text-sm">
-                            <a href="#" className="font-medium text-pink-600 hover:text-pink-500">
+                            <Link to="/forgot-password" className="font-medium text-pink-600 hover:text-pink-500">
                                 Forgot your password?
-                            </a>
+                            </Link>
                         </div>
                     </div>
 

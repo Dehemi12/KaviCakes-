@@ -28,6 +28,9 @@ model Customer {
   address       String?
   loyaltyPoints Int      @default(0)
   isActive      Boolean  @default(true)
+  isVerified    Boolean  @default(false)
+  otp           String?
+  otpExpiresAt  DateTime?
   orders        Order[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

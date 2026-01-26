@@ -116,7 +116,7 @@ exports.deleteEvent = async (req, res) => {
         await prisma.event.delete({ where: { id: parseInt(id) } });
         res.json({ message: 'Event deleted successfully' });
     } catch (error) {
-        console.error(error);
+        console.error('[ScheduleController] Error:', error);
         res.status(500).json({ error: 'Failed to delete event' });
     }
 };

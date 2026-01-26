@@ -58,7 +58,7 @@ exports.getCustomers = async (req, res) => {
 
         res.json(formatted);
     } catch (error) {
-        console.error(error);
+        console.error('[CustomerController:getCustomers] Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };

@@ -16,7 +16,7 @@ exports.getAllFeedback = async (req, res) => {
         });
         res.json(feedback);
     } catch (error) {
-        console.error(error);
+        console.error('[FeedbackController] Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -33,7 +33,7 @@ exports.updateFeedbackStatus = async (req, res) => {
 
         res.json({ message: 'Feedback status updated' });
     } catch (error) {
-        console.error(error);
+        console.error('[FeedbackController] Error:', error);
         res.status(500).json({ error: 'Failed to update status' });
     }
 };

@@ -30,23 +30,31 @@ const sendEmail = async (to, subject, text) => {
 };
 
 exports.register = async (req, res) => {
+    const { email, role } = req.body;
+    console.log(`[Registration] >>> Start request for: ${email} (${role})`);
+
     try {
-        const { email, password, name, phone, address, role } = req.body;
+        const { password, name, phone, address } = req.body;
 
         if (role === 'CUSTOMER') {
-            // Check if customer exists
+            console.log(`[Registration] Checking if customer exists...`);
             let customer = await prisma.customer.findUnique({ where: { email } });
-            if (customer) return res.status(400).json({ error: 'Customer already exists' });
+            if (customer) {
+                console.warn(`[Registration] Customer already exists: ${email}`);
+                return res.status(400).json({ error: 'Customer already exists' });
+            }
 
-            // Generate Display ID (Simple counter approach or UUID based)
-            // For simplicity in this phase, we'll count existing customers + 1
+            console.log(`[Registration] Calculating display ID and hashing password...`);
             const count = await prisma.customer.count();
             const displayId = `C${(count + 1).toString().padStart(3, '0')}`;
 
-            // Hash password
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
 
+            const otp = Math.floor(100000 + Math.random() * 900000).toString();
+            const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+            console.log(`[Registration] Saving customer to database...`);
             customer = await prisma.customer.create({
                 data: {
                     displayId,
@@ -54,22 +62,36 @@ exports.register = async (req, res) => {
                     email,
                     password: hashedPassword,
                     phone,
-                    address
+                    address,
+                    isVerified: false,
+                    otp,
+                    otpExpiresAt
                 }
             });
+            console.log(`[Registration] Successfully created customer ID: ${customer.id}`);
 
-            return res.status(201).json({ message: 'Customer registered successfully' });
+            console.log(`[Registration] Attempting to send OTP email via: ${process.env.EMAIL_USER}`);
+            try {
+                await sendEmail(email, 'KaviCakes - Email Verification', `Your verification code is: ${otp}`);
+                console.log(`[Registration] OTP Email sent successfully to: ${email}`);
+            } catch (emailError) {
+                console.error(`[Registration] ERROR: Failed to send email to ${email}:`, emailError.message);
+                // We proceed since user is created, but logging the error is critical
+            }
+
+            return res.status(201).json({ message: 'Registration successful. OTP sent to email.' });
         } else {
-            // Admin Registration
-            // Check if user exists
+            console.log(`[Registration] Checking if admin exists...`);
             let user = await prisma.admin.findUnique({ where: { email } });
-            if (user) return res.status(400).json({ error: 'User already exists' });
+            if (user) {
+                console.warn(`[Registration] Admin already exists: ${email}`);
+                return res.status(400).json({ error: 'User already exists' });
+            }
 
-            // Hash password
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
 
-            // Create user
+            console.log(`[Registration] Creating admin user...`);
             user = await prisma.admin.create({
                 data: {
                     email,
@@ -77,12 +99,72 @@ exports.register = async (req, res) => {
                     name,
                 },
             });
+            console.log(`[Registration] Admin created successfully: ${email}`);
 
             return res.status(201).json({ message: 'Admin registered successfully' });
         }
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Server error' });
+        console.error(`[Registration] CRITICAL ERROR for ${email}:`, error);
+        res.status(500).json({ error: 'Server error during registration' });
+    }
+};
+
+exports.verifyOTP = async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        const customer = await prisma.customer.findUnique({ where: { email } });
+
+        if (!customer) return res.status(400).json({ error: 'User not found' });
+        if (customer.isVerified) return res.status(400).json({ error: 'User already verified' });
+
+        if (!customer.otp || customer.otp !== otp) {
+            return res.status(400).json({ error: 'Invalid OTP' });
+        }
+
+        if (new Date() > customer.otpExpiresAt) {
+            return res.status(400).json({ error: 'OTP expired' });
+        }
+
+        // Verify user
+        await prisma.customer.update({
+            where: { id: customer.id },
+            data: {
+                isVerified: true,
+                otp: null,
+                otpExpiresAt: null
+            }
+        });
+
+        res.json({ message: 'Email verified successfully. You can now login.' });
+
+    } catch (error) {
+        console.error('[AuthController:verifyOTP] Error:', error);
+        res.status(500).json({ error: 'Verification failed' });
+    }
+};
+
+exports.resendOTP = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const customer = await prisma.customer.findUnique({ where: { email } });
+
+        if (!customer) return res.status(400).json({ error: 'User not found' });
+        if (customer.isVerified) return res.status(400).json({ error: 'User already verified' });
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+        await prisma.customer.update({
+            where: { id: customer.id },
+            data: { otp, otpExpiresAt }
+        });
+
+        await sendEmail(email, 'KaviCakes - New OTP', `Your new verification code is: ${otp}`);
+
+        res.json({ message: 'New OTP sent.' });
+    } catch (error) {
+        console.error('[AuthController:resendOTP] Error:', error);
+        res.status(500).json({ error: 'Failed' });
     }
 };
 
@@ -95,6 +177,11 @@ exports.login = async (req, res) => {
             if (!customer) return res.status(400).json({ error: 'Invalid credentials' });
 
             if (!customer.isActive) return res.status(403).json({ error: 'Account is inactive' });
+
+            // Verification Check
+            if (!customer.isVerified) {
+                return res.status(403).json({ error: 'Please verify your email first.', needsVerification: true });
+            }
 
             const isMatch = await bcrypt.compare(password, customer.password);
             if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
@@ -143,18 +230,9 @@ exports.login = async (req, res) => {
                     role: user.role,
                 },
             });
-            return res.json({
-                token,
-                user: {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                },
-            });
         }
     } catch (error) {
-        console.error(error);
+        console.error('[AuthController:login] Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -185,10 +263,13 @@ exports.forgotPassword = async (req, res) => {
         );
 
         // Verification Link
-        // Assuming Frontend runs on localhost:3000 (usually). If admin-web is distinct from customer-web, this link might need config.
-        // admin-web handles reset for both? Or separates?
-        // ResetPassword.jsx exists in admin-web, so let's point there.
-        const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
+        // Dynamic link based on role
+        let baseUrl = 'http://localhost:3000'; // Default to admin
+        if (role === 'CUSTOMER') {
+            baseUrl = 'http://localhost:5173'; // Default to customer web (Vite)
+        }
+
+        const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
 
         const subject = 'Password Reset Request';
         const text = `You requested a password reset. Click the link to reset: ${resetLink}`;
@@ -197,7 +278,7 @@ exports.forgotPassword = async (req, res) => {
 
         res.json({ message: 'Reset link sent' });
     } catch (error) {
-        console.error(error);
+        console.error('[AuthController:forgotPassword] Error:', error);
         res.status(500).json({ error: 'Failed' });
     }
 };
@@ -228,7 +309,7 @@ exports.resetPassword = async (req, res) => {
         res.json({ message: 'Password reset successfully' });
 
     } catch (error) {
-        // Token invalid or expired
+        console.error('[AuthController:resetPassword] Error:', error);
         return res.status(400).json({ error: 'Invalid or expired token' });
     }
 };

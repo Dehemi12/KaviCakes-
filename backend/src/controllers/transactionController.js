@@ -68,7 +68,7 @@ exports.getAllTransactions = async (req, res) => {
         res.json(combined);
 
     } catch (error) {
-        console.error(error);
+        console.error('[TransactionController:getAllTransactions] Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -87,7 +87,7 @@ exports.addTransaction = async (req, res) => {
         });
         res.json(transaction);
     } catch (error) {
-        console.error(error);
+        console.error('[TransactionController:addTransaction] Error:', error);
         res.status(500).json({ error: 'Failed to add transaction' });
     }
 };
@@ -183,7 +183,7 @@ exports.getFinancialSummary = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error in getFinancialSummary:', error);
+        console.error('[TransactionController:getFinancialSummary] Error:', error);
         res.status(500).json({ error: 'Failed to get summary' });
     }
 };
