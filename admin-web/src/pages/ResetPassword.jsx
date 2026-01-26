@@ -44,7 +44,15 @@ const ResetPassword = () => {
                     <Text type="secondary">Enter your new password below.</Text>
                 </div>
                 <Form layout="vertical" onFinish={onFinish}>
-                    <Form.Item name="newPassword" rules={[{ required: true, min: 6, message: 'Password must be at least 6 characters' }]}>
+                    <Form.Item
+                        name="newPassword"
+                        rules={[
+                            { required: true, message: 'Please enter your new password!' },
+                            { min: 8, message: 'Password must be at least 8 characters long!' },
+                            { pattern: /[0-9]/, message: 'Password must contain at least one number!' },
+                            { pattern: /[!@#$%^&*]/, message: 'Password must contain at least one special character!' }
+                        ]}
+                    >
                         <Input.Password prefix={<LockOutlined />} placeholder="New Password" size="large" />
                     </Form.Item>
                     <Form.Item

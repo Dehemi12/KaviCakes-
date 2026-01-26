@@ -81,7 +81,11 @@ const Login = () => {
                             <MailFilled style={styles.icon} />
                             <Form.Item
                                 name="email"
-                                rules={[{ required: true, message: 'Please input your Email!' }]}
+                                rules={[
+                                    { required: true, message: 'Please input your Email!' },
+                                    { type: 'email', message: 'Please enter a valid email!' },
+                                    { pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, message: 'Invalid email format!' }
+                                ]}
                                 style={{ marginBottom: 0, flex: 1 }}
                             >
                                 <Input

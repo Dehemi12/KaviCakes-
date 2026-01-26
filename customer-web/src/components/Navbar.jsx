@@ -6,7 +6,9 @@ import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
-    const { cartCount } = useCart();
+    const cartContext = useCart();
+    // Safe access to cartCount in case context is partial or failing
+    const cartCount = cartContext?.cartCount || 0;
     const navigate = useNavigate();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -94,27 +96,25 @@ const Navbar = () => {
             {/* Secondary Navigation (Categories) */}
             <div className="hidden md:block border-t border-gray-100 bg-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-center space-x-8 py-3">
-                        <div className="flex justify-center space-x-8 py-3">
-                            {['Home', 'Birthday Cakes', 'Wedding Cakes', 'Anniversary Cakes', 'Custom Orders', 'Bulk Orders', 'Cupcakes'].map((item) => {
-                                let path = '/';
-                                if (item === 'Home') path = '/';
-                                else if (item === 'Custom Orders') path = '/custom-orders';
-                                else if (item === 'Bulk Orders') path = '/bulk-orders';
-                                else path = `/cakes?category=${item.toLowerCase().replace(' cakes', '').replace(' ', '-')}`;
+                    <div className="flex justify-center space-x-8 py-3 overflow-x-auto">
+                        {['Home', 'Birthday Cakes', 'Wedding Cakes', 'Anniversary Cakes', 'Custom Orders', 'Bulk Orders', 'Cupcakes'].map((item) => {
+                            let path = '/';
+                            if (item === 'Home') path = '/';
+                            else if (item === 'Custom Orders') path = '/custom-orders';
+                            else if (item === 'Bulk Orders') path = '/bulk-orders';
+                            else path = `/cakes?category=${item.toLowerCase().replace(' cakes', '').replace(' ', '-')}`;
 
-                                return (
-                                    <Link
-                                        key={item}
-                                        to={path}
-                                        className="text-xs font-bold text-gray-500 hover:text-pink-600 transition-colors uppercase tracking-wider relative group"
-                                    >
-                                        {item}
-                                        <span className="absolute -bottom-3 left-0 w-0 h-0.5 bg-pink-600 transition-all group-hover:w-full"></span>
-                                    </Link>
-                                )
-                            })}
-                        </div>
+                            return (
+                                <Link
+                                    key={item}
+                                    to={path}
+                                    className="text-xs font-bold text-gray-500 hover:text-pink-600 transition-colors uppercase tracking-wider relative group whitespace-nowrap"
+                                >
+                                    {item}
+                                    <span className="absolute -bottom-3 left-0 w-0 h-0.5 bg-pink-600 transition-all group-hover:w-full"></span>
+                                </Link>
+                            )
+                        })}
                     </div>
                 </div>
             </div>

@@ -3,6 +3,7 @@ import { Table, Tag, Typography, Button, Space, Select, Popconfirm, message, Car
 import { DeleteOutlined, FileTextOutlined, PrinterOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import InvoiceModal from '../components/InvoiceModal';
+import { docData } from '../data/dummyData';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -17,14 +18,19 @@ const Orders = () => {
     const fetchOrders = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('http://localhost:5000/api/orders', {
-                headers: { Authorization: `Bearer ${token}` },
-                params: { status: statusFilter, paymentStatus: paymentFilter }
-            });
-            setOrders(res.data);
+            // Hardcoded Orders
+            let filtered = docData.orders;
+
+            if (statusFilter !== 'All') {
+                filtered = filtered.filter(o => o.status === statusFilter);
+            }
+            if (paymentFilter !== 'All') {
+                filtered = filtered.filter(o => o.paymentStatus === paymentFilter);
+            }
+
+            setOrders(filtered);
         } catch (error) {
-            message.error('Failed to fetch orders');
+            console.error("Fetch error:", error);
         } finally {
             setLoading(false);
         }
@@ -41,6 +47,19 @@ const Orders = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             message.success('Status updated');
+            fetchOrders();
+        } catch (error) {
+            message.error('Update failed');
+        }
+    };
+
+    const handlePaymentStatusChange = async (id, newStatus) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`http://localhost:5000/api/orders/${id}/payment-status`, { paymentStatus: newStatus }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            message.success('Payment status updated');
             fetchOrders();
         } catch (error) {
             message.error('Update failed');
@@ -88,9 +107,10 @@ const Orders = () => {
             key: 'items',
             render: items => (
                 <div style={{ fontSize: '12px', color: '#666' }}>
-                    {items && items.map((item, i) => (
-                        <div key={i}>{item.name} ({item.quantity})</div>
-                    ))}
+                    {/* Handle both array of objects or stringified JSON if database varies */}
+                    {Array.isArray(items) ? items.map((item, i) => (
+                        <div key={i}>{item.name || item.variant?.cake?.name} ({item.quantity})</div>
+                    )) : 'View Details'}
                 </div>
             )
         },
@@ -102,11 +122,10 @@ const Orders = () => {
             key: 'status',
             render: (status, record) => (
                 <Select
-                    defaultValue={status}
-                    style={{ width: 140 }}
+                    value={status}
+                    style={{ width: 150 }}
                     onChange={(val) => handleStatusChange(record.id, val)}
                     bordered={false}
-                    className={`status-select-${status}`} // Can add custom CSS for styling dropdowns
                 >
                     {['NEW', 'CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'].map(s => (
                         <Option key={s} value={s}>
@@ -124,7 +143,20 @@ const Orders = () => {
             title: 'Payment',
             dataIndex: 'paymentStatus',
             key: 'paymentStatus',
-            render: p => <Tag color={p === 'PAID' ? 'success' : 'warning'}>{p}</Tag>
+            render: (status, record) => (
+                <Select
+                    value={status}
+                    style={{ width: 120 }}
+                    onChange={(val) => handlePaymentStatusChange(record.id, val)}
+                    bordered={false}
+                >
+                    {['PENDING', 'PAID', 'REFUNDED'].map(p => (
+                        <Option key={p} value={p}>
+                            <Tag color={p === 'PAID' ? 'success' : 'warning'}>{p}</Tag>
+                        </Option>
+                    ))}
+                </Select>
+            )
         },
         { title: 'Address', dataIndex: 'address', key: 'address', ellipsis: true },
         {
@@ -136,6 +168,7 @@ const Orders = () => {
                         icon={<FileTextOutlined />}
                         onClick={() => setSelectedOrder(record)}
                         title="View Invoice"
+                        disabled={record.status !== 'DELIVERED'} // Can only view/generate invoice if delivered
                     />
                     <Popconfirm title="Delete order?" onConfirm={() => handleDelete(record.id)}>
                         <Button icon={<DeleteOutlined />} danger title="Delete" />

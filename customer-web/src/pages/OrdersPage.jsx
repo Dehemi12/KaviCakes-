@@ -1,195 +1,196 @@
 import React, { useState } from 'react';
-import { Package, Clock, CheckCircle, Truck, ShoppingBag, ChevronRight, MapPin, Phone } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Package, Clock, CheckCircle, XCircle, Filter, ChevronRight, Search, ArrowUpDown } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const OrdersPage = () => {
-    // Mock Orders Data
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('All Orders');
+
+    // Mock Data to match screenshot
     const [orders] = useState([
         {
-            id: 'ORD-2025-001',
-            date: '2026-01-22',
-            status: 'Processing',
-            total: 3500,
-            items: [
-                { name: 'Chocolate Fudge Cake', quantity: 1, variant: '1kg' },
-                { name: 'Red Velvet Cupcakes', quantity: 6, variant: 'Regular' }
-            ],
+            id: 'KVC-795189',
+            date: '10/20/2025',
+            status: 'Pending',
+            total: 4611,
+            items: [{ name: 'Chocolate Fudge Cake', quantity: 1, image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=100&auto=format&fit=crop' }],
             deliveryMethod: 'Delivery',
-            deliveryDate: '2026-01-25',
-            trackingSteps: [
-                { status: 'Pending', date: 'Jan 22, 10:00 AM', completed: true },
-                { status: 'Confirmed', date: 'Jan 22, 10:30 AM', completed: true },
-                { status: 'Baking', date: 'In Progress', completed: true },
-                { status: 'Ready', date: 'Estimated Jan 24', completed: false },
-                { status: 'Delivered', date: 'Estimated Jan 25', completed: false },
-            ]
+            deliveryAddress: '1/21/A',
+            expected: '10/27/2025'
         },
         {
-            id: 'ORD-2024-089',
-            date: '2025-12-15',
-            status: 'Delivered',
-            total: 4200,
-            items: [
-                { name: 'Christmas Fruit Cake', quantity: 1, variant: '2kg' }
-            ],
+            id: 'KVC-440215',
+            date: '10/20/2025',
+            status: 'Pending',
+            total: 170000,
+            items: [{ name: 'Bulk Order: Butter Vanilla', quantity: 100, image: 'https://images.unsplash.com/photo-1563729768-3980d7c74c6d?w=100&auto=format&fit=crop' }],
+            deliveryMethod: 'Delivery',
+            deliveryAddress: '44444',
+            expected: '10/29/2025'
+        },
+        {
+            id: 'KVC-571328',
+            date: '10/20/2025',
+            status: 'Pending',
+            total: 5500,
+            items: [{ name: 'Custom Round Vanilla Cake', quantity: 1, image: 'https://images.unsplash.com/photo-1627834377411-8da5f4f09de8?w=100&auto=format&fit=crop' }],
             deliveryMethod: 'Pickup',
-            deliveryDate: '2025-12-20',
-            trackingSteps: [
-                { status: 'Pending', date: 'Dec 15', completed: true },
-                { status: 'Confirmed', date: 'Dec 16', completed: true },
-                { status: 'Baking', date: 'Dec 18', completed: true },
-                { status: 'Ready', date: 'Dec 19', completed: true },
-                { status: 'Picked Up', date: 'Dec 20, 2:00 PM', completed: true },
-            ]
+            deliveryAddress: 'Store Pickup',
+            expected: '10/31/2025'
+        },
+        {
+            id: 'KVC-725286',
+            date: '10/20/2025',
+            status: 'Pending',
+            total: 4500,
+            items: [{ name: 'Chocolate Fudge Cake', quantity: 1, image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=100&auto=format&fit=crop' }],
+            deliveryMethod: 'Pickup',
+            deliveryAddress: 'Store Pickup',
+            expected: '10/30/2025'
+        },
+        {
+            id: 'KVC-622373',
+            date: '10/17/2025',
+            status: 'Pending',
+            total: 5500,
+            items: [{ name: 'Custom Round Vanilla Cake', quantity: 1, image: 'https://images.unsplash.com/photo-1627834377411-8da5f4f09de8?w=100&auto=format&fit=crop' }],
+            deliveryMethod: 'Pickup',
+            deliveryAddress: 'Store Pickup',
+            expected: '10/23/2025'
         }
     ]);
 
-    const [selectedOrder, setSelectedOrder] = useState(orders[0]); // Default to the first (latest) order
+    const stats = [
+        { label: 'All Orders', count: 6, icon: Package, color: 'bg-pink-500 text-white', iconColor: 'text-white' },
+        { label: 'In Progress', count: 6, icon: Clock, color: 'bg-white text-gray-900 border', iconColor: 'text-blue-500' },
+        { label: 'Delivered', count: 0, icon: CheckCircle, color: 'bg-white text-gray-900 border', iconColor: 'text-green-500' },
+        { label: 'Cancelled', count: 0, icon: XCircle, color: 'bg-white text-gray-900 border', iconColor: 'text-red-500' },
+    ];
 
-    // Status Badge Logic
     const getStatusColor = (status) => {
-        switch (status) {
-            case 'Pending': return 'bg-yellow-100 text-yellow-800';
-            case 'Processing': return 'bg-blue-100 text-blue-800';
-            case 'Baking': return 'bg-orange-100 text-orange-800';
-            case 'Ready': return 'bg-purple-100 text-purple-800';
-            case 'Delivered':
-            case 'Picked Up': return 'bg-green-100 text-green-800';
-            case 'Cancelled': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
+        if (status === 'Pending') return 'bg-yellow-100 text-yellow-800';
+        if (status === 'Delivered') return 'bg-green-100 text-green-800';
+        if (status === 'Cancelled') return 'bg-red-100 text-red-800';
+        return 'bg-gray-100 text-gray-800';
     };
 
     return (
-        <div className="bg-gray-50 min-h-screen py-12 font-sans">
+        <div className="bg-gray-50 min-h-screen py-8 font-sans">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <h1 className="text-3xl font-bold text-gray-900 mb-8">My Orders</h1>
 
-                <div className="flex flex-col lg:flex-row gap-8">
-                    {/* Order List Sidebar */}
-                    <div className="lg:w-1/3 space-y-4">
-                        {orders.map(order => (
-                            <div
-                                key={order.id}
-                                onClick={() => setSelectedOrder(order)}
-                                className={`bg-white p-5 rounded-xl shadow-sm border cursor-pointer transition-all hover:shadow-md ${selectedOrder?.id === order.id ? 'border-pink-500 ring-1 ring-pink-500' : 'border-gray-100'}`}
-                            >
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className="font-bold text-gray-900">{order.id}</span>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    {stats.map((stat) => (
+                        <div
+                            key={stat.label}
+                            onClick={() => setActiveTab(stat.label)}
+                            className={`p-4 rounded-xl cursor-pointer flex items-center space-x-4 transition-all shadow-sm ${activeTab === stat.label ? 'bg-pink-500 text-white ring-2 ring-pink-300' : 'bg-white text-gray-700 hover:bg-gray-50'
+                                }`}
+                        >
+                            <div className={`p-2 rounded-lg ${activeTab === stat.label ? 'bg-white/20' : 'bg-gray-100'}`}>
+                                <stat.icon className={`w-6 h-6 ${activeTab === stat.label ? 'text-white' : stat.iconColor}`} />
+                            </div>
+                            <div>
+                                <p className={`text-sm font-bold ${activeTab === stat.label ? 'text-pink-100' : 'text-gray-900'}`}>{stat.label}</p>
+                                <p className={`text-xs ${activeTab === stat.label ? 'text-white' : 'text-gray-500'}`}>{stat.count} orders</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Filter Bar */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="relative w-full md:w-96">
+                        <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search orders by ID or product..."
+                            className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-gray-50 border-none focus:ring-2 focus:ring-pink-500"
+                        />
+                    </div>
+                    <div className="flex gap-3">
+                        <button className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-100">
+                            <Filter className="w-4 h-4" /> <span>Filter</span>
+                        </button>
+                        <button className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-100">
+                            <ArrowUpDown className="w-4 h-4" /> <span>Newest First</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Orders List */}
+                <div className="space-y-4">
+                    {orders.map((order) => (
+                        <div
+                            key={order.id}
+                            onClick={() => {
+                                const isBulk = order.items.some(i => i.name.includes('Bulk') || i.isBulk);
+                                if (isBulk) {
+                                    navigate(`/bulk-order-review/${order.id}`, { state: { order } });
+                                } else {
+                                    navigate(`/track-order/${order.id}`, { state: { order } });
+                                }
+                            }}
+                            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group"
+                        >
+                            <div className="flex flex-col md:flex-row gap-6">
+                                {/* Left Info */}
+                                <div className="flex-1 space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <Clock className="w-4 h-4 text-orange-400" />
+                                        <span className="font-bold text-gray-900">{order.id}</span>
+                                        <span className="text-xs text-gray-400">{order.date}</span>
+                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                        <span className="text-xs text-gray-400">{order.items.length} item</span>
+                                    </div>
+
+                                    {/* Item Preview */}
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+                                            <img src={order.items[0].image} alt="" className="w-full h-full object-cover" />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <span className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                                                {order.items[0].name} <span className="text-gray-400 ml-1">x{order.items[0].quantity}</span>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Footer Info */}
+                                    <div className="flex items-center text-xs text-gray-500 gap-6">
+                                        <div>
+                                            <span className="text-gray-400">Delivery: </span>
+                                            {order.deliveryMethod}
+                                        </div>
+                                        <div>
+                                            {order.deliveryAddress}
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-400">Expected: </span>
+                                            {order.expected}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Info (Status & Price) */}
+                                <div className="flex flex-row md:flex-col justify-between items-end text-right">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
                                         {order.status}
                                     </span>
-                                </div>
-                                <div className="text-sm text-gray-500 mb-3">
-                                    {order.items.length} items • Rs.{order.total.toLocaleString()}
-                                </div>
-                                <div className="flex items-center text-xs text-gray-400">
-                                    <Clock className="w-3 h-3 mr-1" /> {order.date}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
 
-                    {/* Order Details & Tracking */}
-                    <div className="flex-1">
-                        {selectedOrder ? (
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                {/* Header */}
-                                <div className="bg-pink-50 p-6 border-b border-pink-100">
-                                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Order Details</h2>
-                                    <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-                                        <div className="flex items-center">
-                                            <Package className="w-4 h-4 mr-2 text-pink-600" />
-                                            Order #{selectedOrder.id}
-                                        </div>
-                                        <div className="flex items-center">
-                                            <CalendarIcon date={selectedOrder.date} />
-                                            Placed on {selectedOrder.date}
-                                        </div>
-                                        <div className="flex items-center">
-                                            <Truck className="w-4 h-4 mr-2 text-pink-600" />
-                                            {selectedOrder.deliveryMethod}
-                                        </div>
-                                        <div className="flex items-center font-bold text-pink-700">
-                                            Total: Rs.{selectedOrder.total.toLocaleString()}
-                                        </div>
+                                    <div className="flex items-center gap-4 mt-auto">
+                                        <span className="font-bold text-gray-900">Rs.{order.total.toLocaleString()}</span>
+                                        <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-pink-500 transition-colors" />
                                     </div>
                                 </div>
-
-                                {/* Tracking Timeline */}
-                                <div className="p-8">
-                                    <h3 className="font-bold text-gray-900 mb-6">Order Status</h3>
-                                    <div className="relative">
-                                        {/* Vertical connector line */}
-                                        <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-gray-200"></div>
-
-                                        <div className="space-y-8">
-                                            {selectedOrder.trackingSteps.map((step, idx) => (
-                                                <div key={idx} className="relative flex items-start pl-10">
-                                                    <div className={`absolute left-0 w-8 h-8 rounded-full flex items-center justify-center border-4 border-white ${step.completed ? 'bg-pink-600' : 'bg-gray-300'}`}>
-                                                        {step.completed && <CheckCircle className="w-4 h-4 text-white" />}
-                                                    </div>
-                                                    <div>
-                                                        <h4 className={`font-bold ${step.completed ? 'text-gray-900' : 'text-gray-400'}`}>{step.status}</h4>
-                                                        <p className="text-sm text-gray-500">{step.date}</p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="h-px bg-gray-100 mx-8"></div>
-
-                                {/* Items List */}
-                                <div className="p-8">
-                                    <h3 className="font-bold text-gray-900 mb-4">Items Ordered</h3>
-                                    <ul className="space-y-4">
-                                        {selectedOrder.items.map((item, index) => (
-                                            <li key={index} className="flex justify-between items-center text-sm border-b border-gray-50 pb-3 last:border-0">
-                                                <div className="flex items-center">
-                                                    <span className="bg-gray-100 text-gray-600 w-6 h-6 rounded flex items-center justify-center text-xs mr-3 font-bold">
-                                                        {item.quantity}x
-                                                    </span>
-                                                    <div>
-                                                        <span className="font-medium text-gray-900">{item.name}</span>
-                                                        <span className="text-gray-500 ml-2">({item.variant})</span>
-                                                    </div>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div className="p-6 bg-gray-50 flex justify-end gap-3">
-                                    <button className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50">
-                                        Need Help?
-                                    </button>
-                                    <button className="px-4 py-2 bg-pink-600 rounded-lg text-sm font-bold text-white hover:bg-pink-700 shadow flex items-center">
-                                        <ShoppingBag className="w-4 h-4 mr-2" />
-                                        Re-Order
-                                    </button>
-                                </div>
                             </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-gray-400 p-12 bg-white rounded-2xl border border-gray-100">
-                                <Package className="w-16 h-16 mb-4 opacity-20" />
-                                <p>Select an order to view details</p>
-                            </div>
-                        )}
-                    </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
     );
 };
-
-// Helper component for calendar icon to avoid repetition
-const CalendarIcon = ({ date }) => (
-    <svg className="w-4 h-4 mr-2 text-pink-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-);
 
 export default OrdersPage;

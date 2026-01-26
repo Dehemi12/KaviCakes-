@@ -1,0 +1,68 @@
+🔐 Admin Authentication List
+1️⃣ Admin Login Authentication
+
+Email is required
+
+Email format validation
+
+Password is required
+
+Admin email must exist
+
+Password hash must match
+
+Admin account status must be ACTIVE
+
+JWT token generation
+
+Token expiry validation
+
+2️⃣ Admin Authorization (Route Protection)
+
+JWT token must be provided
+
+JWT token must be valid
+
+JWT token must not be expired
+
+Role must be ADMIN
+
+Admin account status must be ACTIVE
+
+Customers are denied access
+
+3️⃣ Admin Forgot Password Authentication
+
+Email is required
+
+Email format validation
+
+Admin email must exist
+
+Admin account status must be ACTIVE
+
+Secure reset token generation
+
+Reset token expiry validation
+
+One-time use reset token
+
+4️⃣ Admin Reset Password Authentication
+
+Reset token must be valid
+
+Reset token must not be expired
+
+New password strength validation
+
+Password confirmation match
+
+New password must be hashed
+
+Invalidate old tokens after reset
+
+5️⃣ Admin Logout Authentication (Optional)
+
+JWT token invalidation (blacklist or expiry)
+
+Remove token from client

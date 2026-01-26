@@ -14,12 +14,19 @@ export const AuthProvider = ({ children }) => {
             const token = localStorage.getItem('customerToken');
             if (token) {
                 try {
-                    // Verify token and get profile? For now just simulate/check
-                    // In a real app we'd hit /auth/me or /customers/profile
-                    // const response = await api.get('/customers/profile');
-                    // setUser(response.data);
-                    // For now, if token exists, we assume logged in until we implement the profile endpoint
-                    setUser({ name: 'Customer', loyaltyPoints: 500 });
+                    // Start: Persist session if token matches demo token
+                    if (token === 'demo-token-123') {
+                        setUser({
+                            name: 'Kavindi Ratnayake',
+                            email: 'user@demo.com',
+                            phone: '077 123 4567',
+                            loyaltyPoints: 500,
+                            id: 'C001'
+                        });
+                    } else {
+                        // Invalid token
+                        localStorage.removeItem('customerToken');
+                    }
                 } catch (error) {
                     console.error("Failed to load user", error);
                     localStorage.removeItem('customerToken');
@@ -32,11 +39,24 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (email, password) => {
-        const response = await api.post('/auth/login', { email, password, role: 'CUSTOMER' });
-        const { token, user } = response.data;
-        localStorage.setItem('customerToken', token);
-        setUser(user);
-        return user;
+        // Hardcoded validation for Demo
+        if (email === 'user@demo.com' && password === '123456') { // Simple hardcoded check
+            const mockUser = {
+                name: 'Kavindi Ratnayake',
+                email: 'user@demo.com',
+                phone: '077 123 4567',
+                loyaltyPoints: 500,
+                id: 'C001'
+            };
+            const mockToken = 'demo-token-123';
+
+            localStorage.setItem('customerToken', mockToken);
+            setUser(mockUser);
+            return mockUser;
+        } else {
+            // Simulate API error structure
+            throw { response: { data: { error: 'Invalid email or password' } } };
+        }
     };
 
     const logout = () => {

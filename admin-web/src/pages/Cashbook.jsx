@@ -16,6 +16,33 @@ const Cashbook = () => {
 
     const fetchData = async () => {
         setLoading(true);
+        // Dummy Data
+        const dummyTransactions = [
+            { id: 1, date: '2023-10-25', description: 'Order #1089 Payment', category: 'Manual_Income', type: 'INCOME', amount: 4500, isOrder: true },
+            { id: 2, date: '2023-10-24', description: 'Monthly Shop Rent', category: 'Rent', type: 'EXPENSE', amount: 50000, isOrder: false },
+            { id: 3, date: '2023-10-24', description: 'Order #1088 Payment', category: 'Manual_Income', type: 'INCOME', amount: 8500, isOrder: true },
+            { id: 5, date: '2023-10-23', description: 'Wedding Cake Event Advance', category: 'Manual_Income', type: 'INCOME', amount: 65000, isOrder: true },
+            { id: 4, date: '2023-10-22', description: 'Electricity Bill', category: 'Utilities', type: 'EXPENSE', amount: 12500, isOrder: false },
+            { id: 6, date: '2023-10-21', description: 'Flour & Sugar Stock', category: 'Ingredients', type: 'EXPENSE', amount: 8500, isOrder: false },
+            { id: 7, date: '2023-10-20', description: 'Order #1085 Payment', category: 'Manual_Income', type: 'INCOME', amount: 3000, isOrder: true },
+        ];
+
+        const dummySummary = {
+            totalIncome: 81000,
+            totalExpenses: 71000,
+            netProfit: 10000,
+            totalOrders: 18,
+            pendingReceivables: 24500,
+            upcomingExpenses: 15000
+        };
+
+        setTimeout(() => {
+            setTransactions(dummyTransactions);
+            setSummary(dummySummary);
+            setLoading(false);
+        }, 500);
+
+        /*
         try {
             const token = localStorage.getItem('token');
             const [trxRes, sumRes] = await Promise.all([
@@ -30,6 +57,7 @@ const Cashbook = () => {
         } finally {
             setLoading(false);
         }
+        */
     };
 
     useEffect(() => {
@@ -37,6 +65,11 @@ const Cashbook = () => {
     }, []);
 
     const handleAddTransaction = async (values) => {
+        // Dummy add
+        message.success('Transaction added locally');
+        setIsModalOpen(false);
+        form.resetFields();
+        /*
         try {
             const token = localStorage.getItem('token');
             await axios.post('http://localhost:5000/api/transactions', values, {
@@ -49,6 +82,7 @@ const Cashbook = () => {
         } catch (error) {
             message.error('Failed to add transaction');
         }
+        */
     };
 
     const columns = [
@@ -89,12 +123,6 @@ const Cashbook = () => {
     ];
 
     const OverviewTab = () => {
-        const data = [
-            { name: 'Income', value: summary?.totalIncome || 0 },
-            { name: 'Expense', value: summary?.totalExpenses || 0 },
-        ];
-        const COLORS = ['#00C49F', '#FF8042'];
-
         return (
             <div>
                 <Row gutter={16} style={{ marginBottom: 24 }}>
@@ -138,29 +166,29 @@ const Cashbook = () => {
 
                 <Row gutter={16}>
                     <Col span={12}>
-                        <Card title="Income vs Expense">
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={data}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="value" fill="#8884d8">
-                                        {data.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <Card>
+                            <Statistic
+                                title="Pending Receivables"
+                                value={summary?.pendingReceivables}
+                                precision={2}
+                                valueStyle={{ color: '#faad14' }}
+                                prefix={<SwapOutlined />}
+                                suffix="Rs"
+                            />
+                            <Text type="secondary" style={{ fontSize: 12 }}>Unpaid Customer Orders</Text>
                         </Card>
                     </Col>
                     <Col span={12}>
-                        <Card title="Transaction Volume">
-                            <div style={{ textAlign: 'center', marginTop: 50 }}>
-                                <Statistic title="Total Orders" value={summary?.totalOrders} prefix={<SwapOutlined />} />
-                                <Text type="secondary">Processed in this period</Text>
-                            </div>
+                        <Card>
+                            <Statistic
+                                title="Upcoming Expenses"
+                                value={summary?.upcomingExpenses}
+                                precision={2}
+                                valueStyle={{ color: '#E91E63' }}
+                                prefix={<FallOutlined />}
+                                suffix="Rs"
+                            />
+                            <Text type="secondary" style={{ fontSize: 12 }}>Estimated Bills & Salaries</Text>
                         </Card>
                     </Col>
                 </Row>

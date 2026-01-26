@@ -12,9 +12,7 @@ app.use(morgan('dev'));
 const authRoutes = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const orderRoutes = require('./routes/orderRoutes');
-const orderRoutes = require('./routes/orderRoutes');
 const cakeRoutes = require('./routes/cakeRoutes');
-const customerRoutes = require('./routes/customerRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
@@ -33,6 +31,9 @@ app.use('/api/schedule', scheduleRoutes);
 
 const publicCakeRoutes = require('./routes/publicCakeRoutes');
 app.use('/api/public/cakes', publicCakeRoutes);
+
+const bulkRoutes = require('./routes/bulkRoutes');
+app.use('/api/bulk-pricing', bulkRoutes);
 
 // Routes
 app.get('/', (req, res) => {

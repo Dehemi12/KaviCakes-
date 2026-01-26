@@ -2,29 +2,39 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Star, ChevronRight, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { docData } from '../data/dummyData';
 
 const Home = () => {
-    // Placeholder Data
-    const categories = [
-        { name: 'Birthday Cakes', image: 'https://placehold.co/400x400/fee2e2/ec4899?text=Birthday', link: '/cakes?category=birthday' },
-        { name: 'Wedding Cakes', image: 'https://placehold.co/400x400/fce7f3/db2777?text=Wedding', link: '/cakes?category=wedding' },
-        { name: 'Anniversary', image: 'https://placehold.co/400x400/fae8ff/c026d3?text=Anniversary', link: '/cakes?category=anniversary' },
-        { name: 'Custom Cakes', image: 'https://placehold.co/400x400/f3e8ff/9333ea?text=Custom', link: '/custom-orders' },
-        { name: 'Cupcakes', image: 'https://placehold.co/400x400/e0e7ff/4f46e5?text=Cupcakes', link: '/cakes?category=cupcakes' },
-    ];
+    // Data from dummyData
+    const categories = docData.masterData.categories.map(c => ({
+        name: c.name,
+        // Map category ID/Name to representative images (hardcoded mapping for visuals)
+        image: c.name === 'Cakes' ? 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=400' :
+            c.name === 'Cupcakes' ? 'https://images.unsplash.com/photo-1599785209707-33b6a22f7907?auto=format&fit=crop&q=80&w=400' :
+                c.name === 'Dessert Jars' ? 'https://images.unsplash.com/photo-1563729768601-d6fa4805e9a1?auto=format&fit=crop&q=80&w=400' :
+                    c.name === 'Brownies' ? 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&q=80&w=400' :
+                        'https://placehold.co/400x400/fee2e2/ec4899?text=' + c.name,
+        link: `/cakes?category=${c.id}`
+    }));
 
-    const featuredCakes = [
-        { id: 1, name: 'Chocolate Fudge Cake', price: 1200, image: 'https://placehold.co/600x600/3e2723/ffffff?text=Chocolate', description: 'Rich chocolate layers with fudge frosting.' },
-        { id: 2, name: 'Vanilla Buttercream', price: 950, image: 'https://placehold.co/600x600/fff9c4/fbc02d?text=Vanilla', description: 'Light vanilla sponge with creamy frosting.' },
-        { id: 3, name: 'Strawberry Shortcake', price: 1350, image: 'https://placehold.co/600x600/fce4ec/ad1457?text=Strawberry', description: 'Fresh strawberries and cream.' },
-        { id: 4, name: 'Elegant Anniversary', price: 2500, image: 'https://placehold.co/600x600/eceff1/455a64?text=Wedding', description: 'Two-tier elegant design.' },
-    ];
+    // Get first 4 cakes as featured
+    const featuredCakes = docData.cakes.slice(0, 4).map(c => ({
+        id: c.id,
+        name: c.name,
+        price: c.basePrice,
+        image: c.imageUrl,
+        description: c.description
+    }));
 
-    const bestSellers = [
-        { id: 5, name: 'Red Velvet Cake', price: 1400, rating: 5, reviews: 120, image: 'https://placehold.co/600x600/b71c1c/ffffff?text=Red+Velvet' },
-        { id: 6, name: 'Black Forest', price: 1100, rating: 4.8, reviews: 95, image: 'https://placehold.co/600x600/212121/ffffff?text=Black+Forest' },
-        { id: 7, name: 'Blueberry Cheesecake', price: 1600, rating: 4.9, reviews: 80, image: 'https://placehold.co/600x600/e3f2fd/1565c0?text=Blueberry' },
-    ];
+    // Reuse cakes for best sellers (randomized or just next batch)
+    const bestSellers = docData.cakes.slice(0, 3).map(c => ({
+        id: c.id,
+        name: c.name,
+        price: c.basePrice,
+        rating: 5,
+        reviews: Math.floor(Math.random() * 100) + 20,
+        image: c.imageUrl
+    }));
 
     const testimonials = [
         { id: 1, name: 'Kasun Perera', text: 'The birthday cake I ordered for my daughter was absolutely beautiful and delicious. Everyone at the party loved it!', rating: 5 },

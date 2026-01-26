@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Tabs, List, Button, Card, Typography, Space, Badge, message, Row, Col, Input, Modal, Tag, Select, Table } from 'antd';
 import { BellOutlined, FileTextOutlined, CheckCircleOutlined, CloseCircleOutlined, BankOutlined, GiftOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import { docData } from '../data/dummyData';
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -20,19 +21,29 @@ const Notifications = () => {
 
     const fetchData = async () => {
         setLoading(true);
-        try {
-            const token = localStorage.getItem('token');
-            const [notifRes, tempRes] = await Promise.all([
-                axios.get('http://localhost:5000/api/notifications', { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('http://localhost:5000/api/notifications/templates', { headers: { Authorization: `Bearer ${token}` } })
-            ]);
-            setNotifications(notifRes.data);
-            setTemplates(tempRes.data);
-        } catch (error) {
-            console.error(error);
-        } finally {
+        // Simulate network delay
+        setTimeout(() => {
+            // Local fallback data since docData doesn't have these yet
+            const dummyNotifications = [
+                { id: 1, title: 'New Bulk Order Request', message: 'Kavindi Ratnayake has requested a bulk order', type: 'ORDER', isRead: false, createdAt: new Date().toISOString() },
+                { id: 2, title: 'Payment Slip Uploaded', message: 'Customer Didul Chamikara attached a bank slip', type: 'PAYMENT', isRead: false, createdAt: new Date().toISOString(), metadata: { slipUrl: 'https://via.placeholder.com/300' } },
+                { id: 3, title: 'Cake for Delivery', message: 'Deliver Amal Perera for order #1082 Today!', type: 'DELIVERY', isRead: true, createdAt: new Date().toISOString() }
+            ];
+
+            const dummyTemplates = [
+                { id: 1, title: 'Request Order Confirmation', category: 'Order', body: 'Hi {{name}}, please confirm your order #{{order_id}} for delivery on {{date}}.' },
+                { id: 2, title: 'Payment Confirmation', category: 'Payment', body: 'We have received your payment of Rs.{{amount}} for order #{{order_id}}. Thank you!' },
+                { id: 3, title: 'Out for Delivery', category: 'Delivery', body: 'Good news {{name}}! Your order #{{order_id}} is out for delivery. Our rider will contact you soon.' },
+                { id: 4, title: 'Order Delivered', category: 'Delivery', body: 'Your order #{{order_id}} has been delivered. We hope you enjoy your cake! Please leave us feedback.' },
+                { id: 5, title: 'Pending Payment Reminder', category: 'Payment', body: 'Hi {{name}}, this is a gentle reminder to settle the payment for order #{{order_id}} to proceed with baking.' },
+                { id: 6, title: 'Special Discount', category: 'Promotion', body: 'Hello! Enjoy a 10% discount on your next order with code SWEET10. Valid until Sunday.' },
+                { id: 7, title: 'Birthday Wish', category: 'Promotion', body: 'Happy Birthday {{name}}! Celebrate with a free cupcake on your next purchase.' }
+            ];
+
+            setNotifications(dummyNotifications);
+            setTemplates(dummyTemplates);
             setLoading(false);
-        }
+        }, 300);
     };
 
     useEffect(() => {
@@ -40,28 +51,12 @@ const Notifications = () => {
     }, []);
 
     const handleApprovePayment = async (notifId) => {
-        try {
-            const token = localStorage.getItem('token');
-            await axios.post('http://localhost:5000/api/notifications/approve-payment', { notificationId: notifId }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            message.success('Payment Approved & Order Updated');
-            fetchData(); // Refresh list
-        } catch (error) {
-            message.error('Action Failed');
-        }
+        message.success('Payment Approved (Demo)');
     };
 
     const handleMarkRead = async (id) => {
-        try {
-            const token = localStorage.getItem('token');
-            await axios.put(`http://localhost:5000/api/notifications/${id}/read`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            fetchData();
-        } catch (error) {
-            console.error(error);
-        }
+        const updated = notifications.map(n => n.id === id ? { ...n, isRead: true } : n);
+        setNotifications(updated);
     };
 
     const getIcon = (type) => {
@@ -135,7 +130,6 @@ const Notifications = () => {
         </div>
     );
 
-
     return (
         <div>
             <div style={{ marginBottom: 20 }}>
@@ -165,8 +159,8 @@ const Notifications = () => {
                 open={isSendModalOpen}
                 onClose={() => setIsSendModalOpen(false)}
                 template={selectedTemplate}
-                initialSelectedOrders={selectedTemplate ? [] : null} // Allow modal to handle pre-selection logic differently
-                manualRecipients={!selectedTemplate ? selectedTemplate : null} // Hacky way to pass data, better to use context or cleaner props
+                initialSelectedOrders={selectedTemplate ? [] : null}
+                manualRecipients={!selectedTemplate ? selectedTemplate : null}
             />
         </div>
     );
@@ -174,7 +168,7 @@ const Notifications = () => {
 
 function ManualSenderTab() {
     const [orders, setOrders] = useState([]);
-    const [selectedRowKeys, setSelectedRowKeys] = useState([]); // Array of order IDs
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
     const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
 
     useEffect(() => {
@@ -182,15 +176,8 @@ function ManualSenderTab() {
     }, []);
 
     const fetchOrders = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('http://localhost:5000/api/orders', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setOrders(res.data);
-        } catch (error) {
-            console.error(error);
-        }
+        // Use docData.orders
+        setOrders(docData.orders || []);
     };
 
     const columns = [
@@ -227,7 +214,6 @@ function ManualSenderTab() {
                 </Button>
             </div>
 
-            {/* Reusing the modal but for manual mode */}
             {isComposeModalOpen && (
                 <SendNotificationModal
                     open={true}
@@ -248,66 +234,62 @@ function SendNotificationModal({ open, onClose, template, preSelectedOrderIds })
     useEffect(() => {
         if (open) {
             fetchOrders();
-            // If manual mode (preSelectedOrderIds exists), use it. Else use auto-filter logic.
             if (preSelectedOrderIds) {
                 setSelectedOrders(preSelectedOrderIds);
                 setMessageText('');
             } else {
-                setSelectedOrders([]); // Will be populated by fetchOrders->filtering
+                setSelectedOrders([]);
                 setMessageText(template?.body || '');
             }
         }
     }, [open, template, preSelectedOrderIds]);
 
     const fetchOrders = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('http://localhost:5000/api/orders', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            const allOrders = res.data;
-            setOrders(allOrders);
+        // Use docData.orders
+        const allOrders = (docData.orders || []).map(o => ({
+            ...o,
+            // Ensure deliveryDate exists for filtering; default to 2 days after created
+            deliveryDate: o.deliveryDate || new Date(new Date(o.createdAt).getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        }));
+        setOrders(allOrders);
+        performFiltering(allOrders);
+    };
 
-            // Only run smart filtering if it's a template AND we aren't in manual mode
-            if (template && !preSelectedOrderIds) {
-                let filtered = allOrders;
-                // ... (Keep existing smart filtering logic) ...
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
+    const performFiltering = (allOrders) => {
+        if (template && !preSelectedOrderIds) {
+            let filtered = allOrders;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-                const getDiffDays = (d) => {
-                    if (!d) return -1;
-                    const date = new Date(d);
-                    date.setHours(0, 0, 0, 0);
-                    return Math.floor((date - today) / (1000 * 60 * 60 * 24));
-                };
+            const getDiffDays = (d) => {
+                if (!d) return -1;
+                const date = new Date(d);
+                date.setHours(0, 0, 0, 0);
+                return Math.floor((date - today) / (1000 * 60 * 60 * 24));
+            };
 
-                const title = template.title.toLowerCase();
+            const title = template.title.toLowerCase();
 
-                if (title.includes('request order confirmation') || title.includes('bulk order')) {
-                    filtered = allOrders.filter(o => getDiffDays(o.deliveryDate) >= 5 && (o.status === 'NEW' || o.status === 'CONFIRMED'));
-                } else if (title.includes('edit order')) {
-                    filtered = allOrders.filter(o => getDiffDays(o.deliveryDate) >= 2);
-                } else if (title.includes('out for delivery')) {
-                    filtered = allOrders.filter(o => {
-                        const days = getDiffDays(o.deliveryDate);
-                        return days === 0 && (o.status === 'PREPARING' || o.status === 'CONFIRMED');
-                    });
-                } else if (title.includes('payment') || title.includes('do payments')) {
-                    filtered = allOrders.filter(o => o.paymentStatus === 'PENDING' && o.status !== 'CANCELLED');
-                } else if (title.includes('delivered') || title.includes('feedback')) {
-                    filtered = allOrders.filter(o => o.status === 'DELIVERED');
-                }
-
-                if (filtered.length === 0 && !template?.title.toLowerCase().includes('delivered')) {
-                    filtered = allOrders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED');
-                }
-
-                // Auto-select for template mode
-                setSelectedOrders(filtered.map(o => o.id));
+            if (title.includes('request order confirmation') || title.includes('bulk order')) {
+                filtered = allOrders.filter(o => getDiffDays(o.deliveryDate) >= 5 && (o.status === 'NEW' || o.status === 'CONFIRMED'));
+            } else if (title.includes('edit order')) {
+                filtered = allOrders.filter(o => getDiffDays(o.deliveryDate) >= 2);
+            } else if (title.includes('out for delivery')) {
+                filtered = allOrders.filter(o => {
+                    const days = getDiffDays(o.deliveryDate);
+                    return days === 0 && (o.status === 'PREPARING' || o.status === 'CONFIRMED');
+                });
+            } else if (title.includes('payment') || title.includes('do payments')) {
+                filtered = allOrders.filter(o => o.paymentStatus === 'PENDING' && o.status !== 'CANCELLED');
+            } else if (title.includes('delivered') || title.includes('feedback')) {
+                filtered = allOrders.filter(o => o.status === 'DELIVERED');
             }
-        } catch (error) {
-            console.error('Failed to load orders');
+
+            if (filtered.length === 0 && !template?.title.toLowerCase().includes('delivered')) {
+                filtered = allOrders.filter(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED');
+            }
+
+            setSelectedOrders(filtered.map(o => o.id));
         }
     };
 
@@ -370,7 +352,7 @@ function SendNotificationModal({ open, onClose, template, preSelectedOrderIds })
                     value={messageText}
                     onChange={e => setMessageText(e.target.value)}
                     placeholder={isManual ? "Type your message here..." : ""}
-                    readOnly={!isManual} // Templates are read-only for now based on earlier logic, but manual should be editable
+                    readOnly={!isManual}
                     style={!isManual ? { background: '#f5f5f5' } : {}}
                 />
             </div>

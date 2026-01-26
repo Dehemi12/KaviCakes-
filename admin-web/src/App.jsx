@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import MainLayout from './layouts/MainLayout';
 import Orders from './pages/Orders';
 import Cakes from './pages/Cakes';
+import CakeDetails from './pages/CakeDetails';
 import Customers from './pages/Customers';
 import Notifications from './pages/Notifications';
 import Cashbook from './pages/Cashbook';
@@ -17,8 +18,19 @@ import ResetPassword from './pages/ResetPassword';
 
 const PrivateRoute = () => {
   const { user, loading } = useAuth();
+
   if (loading) return <div>Loading...</div>;
-  return user ? <MainLayout /> : <Navigate to="/login" />;
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  // Double check authorization (though login handles it, this protects direct route access)
+  if (user.role !== 'ADMIN') {
+    return <Navigate to="/login" />;
+  }
+
+  return <MainLayout />;
 };
 
 const App = () => {
@@ -34,6 +46,7 @@ const App = () => {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/cakes" element={<Cakes />} />
+          <Route path="/cakes/:id" element={<CakeDetails />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/cashbook" element={<Cashbook />} />

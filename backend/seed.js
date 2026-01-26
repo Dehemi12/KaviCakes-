@@ -6,6 +6,23 @@ const prisma = new PrismaClient();
 async function main() {
     console.log('🌱 Seeding database...');
 
+    // --- Seed Bulk Pricing ---
+    console.log('Seeding Bulk Pricing...');
+    const bulkItems = [
+        { categoryLabel: 'Cupcakes', basePrice: 200, bulkPrice: 180, bulkThreshold: 100, minOrderQty: 50 },
+        { categoryLabel: 'Mini Cakes', basePrice: 350, bulkPrice: 320, bulkThreshold: 100, minOrderQty: 50 },
+        { categoryLabel: 'Jar Cakes', basePrice: 450, bulkPrice: 400, bulkThreshold: 50, minOrderQty: 25 },
+        { categoryLabel: 'Brownies', basePrice: 150, bulkPrice: 130, bulkThreshold: 100, minOrderQty: 50 },
+    ];
+
+    for (const item of bulkItems) {
+        await prisma.bulkPricing.upsert({
+            where: { categoryLabel: item.categoryLabel },
+            update: item,
+            create: item
+        });
+    }
+
     // 1. Create Admin
     const email = 'admin@kavicakes.com';
     const hashedPassword = await bcrypt.hash('password123', 10);
@@ -53,25 +70,46 @@ async function main() {
         flavorMap[s.label] = res.id;
     }
 
-    // 3. Products
+    // 3. Cake Categories
+    const categories = [
+        { name: 'Cakes', basePrice: 4500 },
+        { name: 'Cupcakes', basePrice: 2000 },
+        { name: 'Pastries', basePrice: 1500 },
+        { name: 'Cookies', basePrice: 1000 }
+    ];
+
+    const categoryMap = {};
+    for (const c of categories) {
+        const res = await prisma.cakeCategory.upsert({
+            where: { name: c.name },
+            update: { basePrice: c.basePrice },
+            create: { name: c.name, basePrice: c.basePrice }
+        });
+        categoryMap[c.name] = res.id;
+    }
+
+    // 4. Products (Cakes)
     const products = [
-        { name: 'Chocolate Cake', category: 'Cakes', basePrice: 4599, description: 'Rich chocolate cake.', imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=500' },
-        { name: 'Vanilla Cupcakes', category: 'Cupcakes', basePrice: 2499, description: 'Classic vanilla cupcakes.', imageUrl: 'https://images.unsplash.com/photo-1599785209707-a456fc1337bb?auto=format&fit=crop&q=80&w=500' },
-        { name: 'Red Velvet Cake', category: 'Cakes', basePrice: 4999, description: 'Red Velvet cake.', imageUrl: 'https://images.unsplash.com/photo-1586788680434-30d324636fc2?auto=format&fit=crop&q=80&w=500' },
-        { name: 'Cheese Cake', category: 'Pastries', basePrice: 1899, description: 'Blueberry Cheesecake.', imageUrl: 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&q=80&w=500' },
-        { name: 'Chocolate Chip Cookies', category: 'Cookies', basePrice: 1299, description: 'Classic cookies.', imageUrl: 'https://images.unsplash.com/photo-1499636138143-bd649043ea52?auto=format&fit=crop&q=80&w=500' }
+        { name: 'Chocolate Cake', category: 'Cakes', description: 'Rich chocolate cake.', imageUrl: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=500' },
+        { name: 'Vanilla Cupcakes', category: 'Cupcakes', description: 'Classic vanilla cupcakes.', imageUrl: 'https://images.unsplash.com/photo-1599785209707-a456fc1337bb?auto=format&fit=crop&q=80&w=500' },
+        { name: 'Red Velvet Cake', category: 'Cakes', description: 'Red Velvet cake.', imageUrl: 'https://images.unsplash.com/photo-1586788680434-30d324636fc2?auto=format&fit=crop&q=80&w=500' },
+        { name: 'Cheese Cake', category: 'Pastries', description: 'Blueberry Cheesecake.', imageUrl: 'https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&q=80&w=500' },
+        { name: 'Chocolate Chip Cookies', category: 'Cookies', description: 'Classic cookies.', imageUrl: 'https://images.unsplash.com/photo-1499636138143-bd649043ea52?auto=format&fit=crop&q=80&w=500' }
     ];
 
     for (const p of products) {
-        const existing = await prisma.product.findFirst({ where: { name: p.name } });
+        const existing = await prisma.cake.findFirst({ where: { name: p.name } });
         if (!existing) {
-            await prisma.product.create({
+            await prisma.cake.create({
                 data: {
-                    ...p,
+                    name: p.name,
+                    description: p.description,
+                    imageUrl: p.imageUrl,
+                    categoryId: categoryMap[p.category],
                     variants: {
                         create: [
-                            { price: p.basePrice, sizeId: sizeMap['1kg'], shapeId: shapeMap['Round'], flavorId: flavorMap['Chocolate'] },
-                            { price: p.basePrice * 2, sizeId: sizeMap['2kg'], shapeId: shapeMap['Square'], flavorId: flavorMap['Red Velvet'] }
+                            { price: 0, sizeId: sizeMap['1kg'], shapeId: shapeMap['Round'], flavorId: flavorMap['Chocolate'] },
+                            { price: 1500, sizeId: sizeMap['2kg'], shapeId: shapeMap['Square'], flavorId: flavorMap['Red Velvet'] }
                         ]
                     }
                 }

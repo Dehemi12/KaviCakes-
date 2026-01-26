@@ -7,6 +7,7 @@ router.use(authMiddleware);
 
 router.get('/', orderController.getAllOrders);
 router.put('/:id/status', orderController.updateOrderStatus);
+router.put('/:id/payment-status', orderController.updatePaymentStatus);
 router.delete('/:id', orderController.deleteOrder);
 router.post('/:id/invoice/send', orderController.sendInvoice);
 

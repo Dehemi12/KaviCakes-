@@ -12,6 +12,30 @@ const Dashboard = () => {
 
     // Helper to fetch data
     const fetchData = async () => {
+        setLoading(true);
+        // Dummy Data implementation
+        const dummyStats = {
+            totalOrders: 1543,
+            inDelivery: 45,
+            completed: 1450,
+            totalRevenue: 2540000
+        };
+
+        const dummyRecentOrders = [
+            { id: 1089, customer: 'Amal Perera', date: '2023-10-25', total: 4500, status: 'NEW' },
+            { id: 1088, customer: 'Kavindi Ratnayake', date: '2023-10-24', total: 8500, status: 'CONFIRMED' },
+            { id: 1087, customer: 'Dinusha Jayathilake', date: '2023-10-24', total: 2500, status: 'PREPARING' },
+            { id: 1086, customer: 'Thilini Rajapakse', date: '2023-10-23', total: 1500, status: 'OUT_FOR_DELIVERY' },
+            { id: 1085, customer: 'Didul Chamikara', date: '2023-10-22', total: 3000, status: 'DELIVERED' },
+        ];
+
+        setTimeout(() => {
+            setStats(dummyStats);
+            setRecentOrders(dummyRecentOrders);
+            setLoading(false);
+        }, 500);
+
+        /* 
         try {
             const token = localStorage.getItem('token');
             const config = { headers: { Authorization: `Bearer ${token}` } };
@@ -28,6 +52,7 @@ const Dashboard = () => {
         } finally {
             setLoading(false);
         }
+        */
     };
 
     useEffect(() => {

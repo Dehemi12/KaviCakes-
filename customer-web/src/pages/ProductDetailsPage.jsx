@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Minus, Plus, Heart, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import api from '../services/api';
+import { docData } from '../data/dummyData';
 
 const ProductDetailsPage = () => {
     const { id } = useParams();
@@ -24,113 +25,48 @@ const ProductDetailsPage = () => {
     useEffect(() => {
         const fetchProduct = async () => {
             setLoading(true);
-            try {
-                const response = await api.get(`/public/cakes/${id}`);
-                setProduct(response.data);
+            // Simulate network delay
+            setTimeout(() => {
+                const found = docData.cakes.find(c => c.id === parseInt(id));
 
-                const foundProduct = response.data;
-                // Set defaults
-                if (foundProduct.variants?.length > 0) {
-                    // Note: Backend returns flat variants list with size/shape/flavor objects
-                    // But frontend UI expects structured variants { sizes: [], flavors: [], shapes: [] }
-                    // The backend controller returns formatted variants: [{ size: {}, shape: {}, flavor: {}, price: 100 }]
-                    // This simple UI logic expects the OLD structure. 
-                    // TO DO: Refactor UI to handle flat variants or Transform API response here.
+                if (found) {
+                    // Start: Transform docData structure to match UI expectations
+                    // docData has variants as array of objects { size, shape, flavor, price }
+                    // UI expects variants: { sizes: [], flavors: [], shapes: [] }
 
-                    // For now, let's assuming we transform it OR we keep mock data structure for this demo 
-                    // until we refactor the whole UI for complex variants.
-                    // The backend controller I wrote returns a list of variants.
-                    // The Frontend expects: variants: { sizes: [], flavors: [], shapes: [] }
+                    // We will extract unique options from docData variants to populate selectors
+                    // and then look up the specific variant price when selected.
 
-                    // This is a disconnect. I need to transform the backend response to frontend format
-                    // OR rely on the Master Data for options and match them.
+                    const sizes = [...new Set(found.variants.map(v => JSON.stringify(v.size)))].map(s => JSON.parse(s));
+                    const shapes = [...new Set(found.variants.map(v => JSON.stringify(v.shape)))].map(s => JSON.parse(s));
+                    const flavors = [...new Set(found.variants.map(v => JSON.stringify(v.flavor)))].map(s => JSON.parse(s));
 
-                    // Given the complexity, I will keep the Mock Data as the primary driver for "Visuals" 
-                    // but update the structure to match the "Cake" naming where possible, 
-                    // OR I will simulate the "Cake" schema in the mock data.
-                }
-
-                // Initial State Setup (for Mock Data flow which is consistent)
-                if (foundProduct.variants?.sizes?.length > 0) setSize(foundProduct.variants.sizes[0].label);
-                if (foundProduct.variants?.flavors?.length > 0) setFlavor(foundProduct.variants.flavors[0].label);
-                if (foundProduct.variants?.shapes?.length > 0) setShape(foundProduct.variants.shapes[0].label);
-
-                setCurrentPrice(foundProduct.basePrice);
-
-            } catch (error) {
-                console.warn('API fetch failed, utilizing mock data', error);
-
-                // Mock Data Dictionary (Updated to Cake Schema)
-                const mockProducts = {
-                    1: {
-                        id: 1,
-                        name: 'Chocolate Fudge Cake',
-                        description: 'Rich chocolate cake with fudge frosting and chocolate ganache drip. Perfect for any chocolate lover.',
-                        basePrice: 1200,
-                        image: 'https://placehold.co/600x600/3e2723/ffffff?text=Chocolate',
-                        categoryName: 'Birthday',
+                    const transformedProduct = {
+                        ...found,
+                        price: found.basePrice, // default
+                        image: found.imageUrl,
                         variants: {
-                            sizes: [
-                                { label: '1kg', priceMod: 0 },
-                                { label: '2kg', priceMod: 1000 },
-                                { label: '3kg', priceMod: 1800 }
-                            ],
-                            flavors: [
-                                { label: 'Chocolate', priceMod: 0 },
-                                { label: 'Dark Chocolate', priceMod: 100 },
-                                { label: 'Milk Chocolate', priceMod: 100 }
-                            ],
-                            shapes: [
-                                { label: 'Round', priceMod: 0 },
-                                { label: 'Square', priceMod: 200 },
-                                { label: 'Heart', priceMod: 200 }
-                            ]
+                            original: found.variants, // keep original for lookup
+                            sizes: sizes.map(s => ({ label: s.label, priceMod: s.price })),
+                            shapes: shapes.map(s => ({ label: s.label, priceMod: s.price })),
+                            flavors: flavors.map(s => ({ label: s.label, priceMod: s.price }))
                         },
-                        allergens: ['Eggs', 'Dairy', 'Gluten']
-                    },
-                    2: {
-                        id: 2,
-                        name: 'Vanilla Buttercream',
-                        description: 'Classic vanilla sponge with smooth buttercream frosting.',
-                        basePrice: 950,
-                        image: 'https://placehold.co/600x600/fff9c4/fbc02d?text=Vanilla',
-                        categoryName: 'Cupcakes',
-                        variants: {
-                            sizes: [
-                                { label: '1kg', priceMod: 0 },
-                                { label: '2kg', priceMod: 800 },
-                                { label: '3kg', priceMod: 1500 }
-                            ],
-                            flavors: [
-                                { label: 'Vanilla', priceMod: 0 },
-                                { label: 'French Vanilla', priceMod: 100 },
-                                { label: 'Strawberry Swirl', priceMod: 150 }
-                            ],
-                            shapes: [
-                                { label: 'Round', priceMod: 0 },
-                                { label: 'Square', priceMod: 150 },
-                                { label: 'Heart', priceMod: 150 }
-                            ]
-                        },
-                        allergens: ['Eggs', 'Dairy', 'Gluten']
-                    },
-                    // ... other products kept identical but with categoryName ... 
-                };
+                        allergens: ['Eggs', 'Dairy', 'Gluten'] // Hardcoded for now
+                    };
 
-                const foundProduct = mockProducts[Number(id)];
+                    setProduct(transformedProduct);
 
-                if (foundProduct) {
-                    setProduct(foundProduct);
-                    if (foundProduct.variants?.sizes?.length > 0) setSize(foundProduct.variants.sizes[0].label);
-                    if (foundProduct.variants?.flavors?.length > 0) setFlavor(foundProduct.variants.flavors[0].label);
-                    if (foundProduct.variants?.shapes?.length > 0) setShape(foundProduct.variants.shapes[0].label);
-                    setCurrentPrice(foundProduct.basePrice);
+                    // Set Defaults
+                    if (sizes.length > 0) setSize(sizes[0].label);
+                    if (flavors.length > 0) setFlavor(flavors[0].label);
+                    if (shapes.length > 0) setShape(shapes[0].label);
+
+                    setCurrentPrice(found.variants[0]?.price || found.basePrice);
                 } else {
                     setProduct(null);
                 }
-            } finally {
                 setLoading(false);
-            }
+            }, 500);
         };
 
         fetchProduct();
@@ -138,17 +74,37 @@ const ProductDetailsPage = () => {
 
     // Update price when size, flavor, or shape changes
     useEffect(() => {
-        if (product) {
-            const selectedSize = product.variants.sizes.find(s => s.label === size);
-            const selectedFlavor = product.variants.flavors.find(f => f.label === flavor);
-            const selectedShape = product.variants.shapes.find(s => s.label === shape);
+        if (product && product.variants && product.variants.original) {
+            // Find specific variant logic
+            // In docData, variants are specific combinations.
+            // We try to find the match.
+            const match = product.variants.original.find(v =>
+                v.size.label === size &&
+                v.shape.label === shape &&
+                v.flavor.label === flavor
+            );
 
-            let price = product.basePrice;
-            if (selectedSize) price += selectedSize.priceMod;
-            if (selectedFlavor) price += selectedFlavor.priceMod;
-            if (selectedShape) price += selectedShape.priceMod;
+            if (match) {
+                setCurrentPrice(match.price);
+            } else {
+                // Approximate fallback if exact combo not found (summing modifiers)
+                // This handles cases where user selects a combination that wasn't explicitly defined in docData examples
+                const selectedSize = product.variants.sizes.find(s => s.label === size);
+                const selectedFlavor = product.variants.flavors.find(f => f.label === flavor);
+                const selectedShape = product.variants.shapes.find(s => s.label === shape);
 
-            setCurrentPrice(price);
+                let price = product.basePrice;
+                if (selectedSize) price += (selectedSize.priceMod || 0); // Note: docData variant structure puts price in 'price' field, but transformed uses priceMod. 
+                // Actually my transform mapped 'price' to 'priceMod' for sizes/shapes/flavors.
+                // But wait, the 'price' in sizes/shapes/flavors in docData is actually 0 for base options. 
+                // Let's rely on the transformed priceMod logic which mapped 'price' -> 'priceMod'.
+
+                if (selectedSize) price += selectedSize.priceMod;
+                if (selectedFlavor) price += selectedFlavor.priceMod;
+                if (selectedShape) price += selectedShape.priceMod;
+
+                setCurrentPrice(price);
+            }
         }
     }, [size, flavor, shape, product]);
 
@@ -167,8 +123,15 @@ const ProductDetailsPage = () => {
         };
 
         addToCart(product, variant, quantity, instructions);
-        // Show success animation/toast (simple alert for now)
-        navigate('/cart');
+
+        // Feedback to user
+        // Using a simple alert for immediate feedback as requested, to verify functionality
+        alert("Delicious choice! Added to your cart.");
+
+        // Small delay to ensure state propagates (though React handles this, it feels better UX-wise in lieu of animation)
+        setTimeout(() => {
+            navigate('/cart');
+        }, 100);
     };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;

@@ -72,6 +72,50 @@ exports.getAllCakes = async (req, res) => {
     }
 };
 
+// GET Cake by ID
+exports.getCakeById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const cake = await prisma.cake.findUnique({
+            where: { id: parseInt(id) },
+            include: {
+                category: true,
+                variants: {
+                    include: { size: true, shape: true, flavor: true }
+                }
+            }
+        });
+
+        if (!cake) return res.status(404).json({ error: 'Cake not found' });
+
+        // Format to match frontend expectations
+        const formatted = {
+            id: cake.id,
+            name: cake.name,
+            description: cake.description,
+            imageUrl: cake.imageUrl,
+            ingredients: cake.ingredients,
+            availability: cake.availability,
+            categoryId: cake.categoryId,
+            categoryName: cake.category.name,
+            basePrice: parseFloat(cake.category.basePrice),
+            variants: cake.variants.map(v => ({
+                id: v.id,
+                price: parseFloat(v.price),
+                size: v.size,
+                shape: v.shape,
+                flavor: v.flavor
+            })),
+            createdAt: cake.createdAt
+        };
+
+        res.json(formatted);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
 // GET Master Data (Dropdowns) - Now includes Categories
 exports.getMasterData = async (req, res) => {
     try {
@@ -110,9 +154,14 @@ exports.createCake = async (req, res) => {
     try {
         const { name, categoryId, description, ingredients, imageUrl, variants } = req.body;
 
+        const parsedCategoryId = parseInt(categoryId);
+        if (isNaN(parsedCategoryId)) {
+            return res.status(400).json({ error: 'Invalid Category ID' });
+        }
+
         // Verify category exists
         const category = await prisma.cakeCategory.findUnique({
-            where: { id: parseInt(categoryId) }
+            where: { id: parsedCategoryId }
         });
 
         if (!category) {
@@ -122,18 +171,17 @@ exports.createCake = async (req, res) => {
         const newCake = await prisma.cake.create({
             data: {
                 name,
-                categoryId: parseInt(categoryId),
-                // basePrice IS NO LONGER STORED HERE
+                categoryId: parsedCategoryId,
                 description,
                 ingredients,
                 imageUrl,
                 variants: {
-                    create: variants.map(v => ({
-                        price: v.price,
-                        sizeId: v.sizeId,
-                        shapeId: v.shapeId,
-                        flavorId: v.flavorId
-                    }))
+                    create: Array.isArray(variants) ? variants.map(v => ({
+                        price: parseFloat(v.price || 0),
+                        sizeId: v.sizeId ? parseInt(v.sizeId) : null,
+                        shapeId: v.shapeId ? parseInt(v.shapeId) : null,
+                        flavorId: v.flavorId ? parseInt(v.flavorId) : null
+                    })) : []
                 }
             },
             include: { variants: true }
@@ -141,8 +189,9 @@ exports.createCake = async (req, res) => {
 
         res.status(201).json(newCake);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Failed to create cake' });
+        console.error('Create Cake Error:', error); // Log full error
+        // Return detailed error for debugging (remove in prod)
+        res.status(500).json({ error: `Failed to create cake: ${error.message}` });
     }
 };
 
@@ -155,5 +204,91 @@ exports.deleteCake = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to delete' });
+    }
+};
+
+// PUT Update Cake
+exports.updateCake = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, categoryId, description, ingredients, imageUrl, variants, availability } = req.body;
+
+        // Transaction to handle variants update (replace strategy for simplicity or update existing?)
+        // Simple strategy: Delete all variants and re-create them, or update carefully.
+        // For editing, let's assume we replace the variant list for now.
+
+        const updatedCake = await prisma.$transaction(async (prisma) => {
+            // Update basic details
+            const cake = await prisma.cake.update({
+                where: { id: parseInt(id) },
+                data: {
+                    name,
+                    categoryId: parseInt(categoryId),
+                    description,
+                    ingredients,
+                    imageUrl,
+                    availability
+                }
+            });
+
+            // If variants provided, replace them
+            if (variants) {
+                // Delete existing
+                await prisma.cakeVariant.deleteMany({
+                    where: { cakeId: parseInt(id) }
+                });
+
+                // Create new
+                await prisma.cakeVariant.createMany({
+                    data: variants.map(v => ({
+                        cakeId: parseInt(id),
+                        price: v.price,
+                        sizeId: v.sizeId,
+                        shapeId: v.shapeId,
+                        flavorId: v.flavorId
+                    }))
+                });
+            }
+
+            return cake;
+        });
+
+        res.json(updatedCake);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to update cake' });
+    }
+};
+
+// POST Create Size
+exports.createSize = async (req, res) => {
+    try {
+        const { label, price } = req.body;
+        const size = await prisma.cakeSize.create({ data: { label, price: parseFloat(price || 0) } });
+        res.status(201).json(size);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+// POST Create Shape
+exports.createShape = async (req, res) => {
+    try {
+        const { label, price } = req.body;
+        const shape = await prisma.cakeShape.create({ data: { label, price: parseFloat(price || 0) } });
+        res.status(201).json(shape);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+// POST Create Flavor
+exports.createFlavor = async (req, res) => {
+    try {
+        const { label, price } = req.body;
+        const flavor = await prisma.cakeFlavor.create({ data: { label, price: parseFloat(price || 0) } });
+        res.status(201).json(flavor);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed' });
     }
 };

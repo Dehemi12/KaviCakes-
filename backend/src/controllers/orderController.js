@@ -70,6 +70,30 @@ exports.updateOrderStatus = async (req, res) => {
     }
 };
 
+// PUT Update Payment Status
+exports.updatePaymentStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { paymentStatus } = req.body;
+
+        // Validate Status
+        const validStatuses = ['PENDING', 'PAID', 'REFUNDED'];
+        if (!validStatuses.includes(paymentStatus)) {
+            return res.status(400).json({ error: 'Invalid payment status' });
+        }
+
+        const updatedOrder = await prisma.order.update({
+            where: { id: parseInt(id) },
+            data: { paymentStatus }
+        });
+
+        res.json(updatedOrder);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to update payment status' });
+    }
+};
+
 // DELETE Order
 exports.deleteOrder = async (req, res) => {
     try {

@@ -5,10 +5,17 @@ const authMiddleware = require('../middlewares/authMiddleware');
 
 router.use(authMiddleware);
 
-router.get('/', cakeController.getAllCakes);
 router.get('/master-data', cakeController.getMasterData);
-router.post('/categories', cakeController.createCategory); // New Endpoint
-router.post('/', cakeController.createCake);
-router.delete('/:id', cakeController.deleteCake);
+router.get('/', cakeController.getAllCakes);
+router.get('/:id', cakeController.getCakeById); // Get Single Cake
+router.post('/', cakeController.createCake); // Create Cake
+router.delete('/:id', cakeController.deleteCake); // Delete Cake
+router.put('/:id', cakeController.updateCake); // New Endpoint for Edit
+
+// Master Data Management Routes
+router.post('/categories', cakeController.createCategory);
+router.post('/sizes', cakeController.createSize);
+router.post('/shapes', cakeController.createShape);
+router.post('/flavors', cakeController.createFlavor);
 
 module.exports = router;

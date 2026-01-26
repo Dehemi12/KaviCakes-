@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Row, Col, Card, Typography, Button, Input, Tag, message, Select, Space } from 'antd';
 import { PlusOutlined, EditOutlined, SearchOutlined, FilterOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import AddCakeModal from '../components/AddCakeModal';
+import { docData } from '../data/dummyData';
 
 const { Title, Text } = Typography;
 const { Meta } = Card;
@@ -11,47 +13,37 @@ const { Option } = Select;
 const Cakes = () => {
     const [cakes, setCakes] = useState([]);
     const [category, setCategory] = useState({ id: 'All', name: 'All' });
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [filters, setFilters] = useState({ sizeId: null, shapeId: null, flavorId: null });
     const [masterData, setMasterData] = useState({ sizes: [], shapes: [], flavors: [], categories: [] });
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingCake, setEditingCake] = useState(null);
 
     const fetchMasterData = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            // Assuming base URL is localhost:5000, ideally use env var
-            const res = await axios.get('http://localhost:5000/api/cakes/master-data', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setMasterData(res.data);
-        } catch (error) {
-            console.error('Failed to load filters');
-            message.error('Failed to load master data');
-        }
+        // Hardcoded Master Data
+        setMasterData(docData.masterData);
     };
 
     const fetchCakes = async () => {
-        try {
-            const token = localStorage.getItem('token');
+        // Hardcoded Cakes
+        // Filter logic can be simulated if needed, but for now just showing all or simple search
+        let filtered = docData.cakes;
 
-            const params = {
-                search: searchTerm,
-                ...filters
-            };
-
-            if (category.id !== 'All') {
-                params.categoryId = category.id;
-            }
-
-            const res = await axios.get('http://localhost:5000/api/cakes', {
-                headers: { Authorization: `Bearer ${token}` },
-                params
-            });
-            setCakes(res.data);
-        } catch (error) {
-            console.error(error);
-            message.error('Failed to load cakes');
+        if (searchTerm) {
+            filtered = filtered.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
         }
+
+        if (category.id !== 'All') {
+            filtered = filtered.filter(c => c.categoryId === category.id);
+        }
+
+        // Apply simulated filters
+        if (filters.sizeId) filtered = filtered.filter(c => c.variants.some(v => v.size.id === filters.sizeId));
+        if (filters.shapeId) filtered = filtered.filter(c => c.variants.some(v => v.shape.id === filters.shapeId));
+        if (filters.flavorId) filtered = filtered.filter(c => c.variants.some(v => v.flavor.id === filters.flavorId));
+
+        setCakes(filtered);
     };
 
     useEffect(() => {
@@ -60,10 +52,25 @@ const Cakes = () => {
 
     useEffect(() => {
         fetchCakes();
-    }, [category, searchTerm, filters]);
+    }, [category, searchTerm, filters]); // Re-fetch when filters change
 
     const handleFilterChange = (key, value) => {
         setFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleEditClick = (cake) => {
+        setEditingCake(cake);
+        setIsModalOpen(true);
+    };
+
+    const handleAddClick = () => {
+        setEditingCake(null);
+        setIsModalOpen(true);
+    };
+
+    const handleModalClose = () => {
+        setIsModalOpen(false);
+        setEditingCake(null);
     };
 
     // Combine 'All' with fetched categories
@@ -76,7 +83,7 @@ const Cakes = () => {
                     <Title level={2}>Cake Management</Title>
                     <Text type="secondary">Manage your bakery catalog</Text>
                 </div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)} style={{ background: '#E91E63', borderColor: '#E91E63' }}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={handleAddClick} style={{ background: '#E91E63', borderColor: '#E91E63' }}>
                     Add Cake
                 </Button>
             </div>
@@ -140,17 +147,27 @@ const Cakes = () => {
                             hoverable
                             cover={<img alt={cake.name} src={cake.imageUrl || 'https://via.placeholder.com/300'} style={{ height: 200, objectFit: 'cover' }} />}
                             actions={[
-                                <span key="edit" style={{ color: '#888' }}>Edit</span>,
-                                <Button type="primary" size="small" style={{ background: '#E91E63', borderColor: '#E91E63' }}>View Details</Button>
+                                <Button type="text" icon={<EditOutlined />} onClick={() => handleEditClick(cake)}>Edit</Button>,
+                                <Button
+                                    type="primary"
+                                    size="small"
+                                    style={{ background: '#E91E63', borderColor: '#E91E63' }}
+                                    onClick={() => navigate(`/cakes/${cake.id}`)}
+                                >
+                                    View Details
+                                </Button>
                             ]}
                         >
                             <Meta
                                 title={<div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <span style={{ maxWidth: '60%' }} title={cake.name}>{cake.name}</span>
-                                    {/* Display base price from Category or Range? 
-                                        The API returns category.basePrice as top level 'basePrice' now. 
-                                    */}
-                                    <span style={{ color: '#E91E63' }}>Rs.{cake.basePrice ? cake.basePrice.toLocaleString() : 'N/A'}</span>
+                                    <span style={{ color: '#E91E63' }}>
+                                        Rs.{(() => {
+                                            const v1kg = cake.variants?.find(v => v.size?.label === '1kg');
+                                            const price = v1kg ? v1kg.price : (cake.variants?.[0]?.price || cake.basePrice);
+                                            return price ? price.toLocaleString() : 'N/A';
+                                        })()}
+                                    </span>
                                 </div>}
                                 description={<div style={{ height: 40, overflow: 'hidden', textOverflow: 'ellipsis' }}>{cake.description}</div>}
                             />
@@ -168,12 +185,17 @@ const Cakes = () => {
                 )}
             </Row>
 
+            {/* Modal for Add or Edit */}
             <AddCakeModal
                 open={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                onSuccess={fetchCakes}
+                onClose={handleModalClose}
+                onSuccess={() => {
+                    fetchCakes();
+                    fetchMasterData(); // Refresh master data in case new cats were added
+                }}
+                cakeToEdit={editingCake}
             />
-        </div >
+        </div>
     );
 };
 

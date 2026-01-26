@@ -29,7 +29,14 @@ const ForgotPassword = () => {
                     <Text type="secondary">Enter your email to receive a reset link.</Text>
                 </div>
                 <Form layout="vertical" onFinish={onFinish}>
-                    <Form.Item name="email" rules={[{ required: true, type: 'email', message: 'Please enter a valid email!' }]}>
+                    <Form.Item
+                        name="email"
+                        rules={[
+                            { required: true, message: 'Please enter a valid email!' },
+                            { type: 'email', message: 'Please enter a valid email!' },
+                            { pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, message: 'Invalid email format!' }
+                        ]}
+                    >
                         <Input prefix={<MailOutlined />} placeholder="Enter your email" size="large" />
                     </Form.Item>
                     <Form.Item>

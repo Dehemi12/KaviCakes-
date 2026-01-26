@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Table, Avatar, Typography, Button, Space, Card, Tag, Input, Row, Col } from 'antd';
 import { UserOutlined, MailOutlined, PhoneOutlined, FilterOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import { docData } from '../data/dummyData';
 
 const { Title, Text } = Typography;
 
@@ -13,27 +14,20 @@ const Customers = () => {
 
     const fetchData = async () => {
         setLoading(true);
-        try {
-            const token = localStorage.getItem('token');
+
+        // Simulate network delay
+        setTimeout(() => {
             if (filter === 'Feedbacks') {
-                const res = await axios.get('http://localhost:5000/api/feedback', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setFeedbacks(res.data);
+                setFeedbacks(docData.feedbacks);
             } else {
-                const params = {};
-                if (filter === 'HighLoyalty') params.minLoyalty = 1000;
-                const res = await axios.get('http://localhost:5000/api/customers', {
-                    headers: { Authorization: `Bearer ${token}` },
-                    params
-                });
-                setCustomers(res.data);
+                let filtered = docData.customers;
+                if (filter === 'HighLoyalty') {
+                    filtered = filtered.filter(c => c.loyaltyPoints >= 1000);
+                }
+                setCustomers(filtered);
             }
-        } catch (error) {
-            console.error('Failed to fetch data', error);
-        } finally {
             setLoading(false);
-        }
+        }, 300);
     };
 
     useEffect(() => {

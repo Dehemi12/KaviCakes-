@@ -1,21 +1,19 @@
 import React from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { CheckCircle, ShoppingBag, ArrowRight } from 'lucide-react';
 
-const OrderSuccessPage = () => {
+const BulkRequestSentPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const order = location.state?.order;
 
-    // Use mock data if no order state is present (for development/testing)
-    const orderDetails = order || {
-        id: 'ORD-MOCK-001',
-        date: new Date().toLocaleDateString(),
-        deliveryDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        total: 4611,
-        paymentMethod: 'Cash on Delivery',
-        status: 'Pending'
-    };
+    // Use mock data if no order state is present
+    // Order data from checkout
+    const orderDetails = order;
+
+    if (!orderDetails) {
+        return <div className="min-h-screen flex items-center justify-center text-gray-500">Order details not found.</div>;
+    }
 
     return (
         <div className="min-h-screen bg-pink-50/30 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
@@ -79,12 +77,10 @@ const OrderSuccessPage = () => {
 
                     <div className="space-y-4">
                         <button
-                            onClick={() => navigate(`/track-order/${orderDetails.id}`, { state: { order: orderDetails } })}
-                            style={{ backgroundColor: '#F43F96' }}
-                            className="w-full text-white py-3.5 px-4 rounded-xl font-bold shadow-md hover:opacity-90 transition-opacity flex items-center justify-center"
+                            onClick={() => navigate(`/bulk-order-review/${orderDetails.id}`, { state: { order: orderDetails } })}
+                            className="w-full bg-pink-500 text-white py-3.5 px-4 rounded-xl font-bold shadow-md hover:opacity-90 transition-opacity flex items-center justify-center"
                         >
-                            Track Order
-                            <ArrowRight className="w-4 h-4 ml-2" />
+                            Confirmation <ArrowRight className="w-4 h-4 ml-2" />
                         </button>
 
                         <button
@@ -100,4 +96,4 @@ const OrderSuccessPage = () => {
     );
 };
 
-export default OrderSuccessPage;
+export default BulkRequestSentPage;

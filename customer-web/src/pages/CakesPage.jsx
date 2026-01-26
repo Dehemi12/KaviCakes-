@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import api from '../services/api';
 import { Filter, ChevronDown } from 'lucide-react';
+import { docData } from '../data/dummyData';
 
 const CakesPage = () => {
     const location = useLocation();
@@ -20,8 +21,8 @@ const CakesPage = () => {
         setCategory(categoryParam);
     }, [categoryParam]);
 
-    // Mock categories
-    const categories = ['All', 'Birthday', 'Wedding', 'Anniversary', 'Cupcakes'];
+    // Data from dummyData
+    const categories = ['All', ...docData.masterData.categories.map(c => c.name)];
 
     useEffect(() => {
         fetchProducts();
@@ -29,29 +30,23 @@ const CakesPage = () => {
 
     const fetchProducts = async () => {
         setLoading(true);
-        try {
-            // In a real app, pass filters to API
-            const response = await api.get('/public/cakes', {
-                params: {
-                    categoryName: category === 'All' ? undefined : category,
-                    // search: initialSearch
-                }
-            });
-            setProducts(response.data);
-        } catch (error) {
-            console.error('Failed to fetch cakes', error);
-            // Fallback mock data if API fails or is empty for dev
-            if (products.length === 0) {
-                setProducts([
-                    { id: 1, name: 'Chocolate Fudge Cake', basePrice: 1200, categoryName: 'Birthday', imageUrl: 'https://placehold.co/600x600/3e2723/ffffff?text=Chocolate' },
-                    { id: 2, name: 'Vanilla Buttercream', basePrice: 950, categoryName: 'Cupcakes', imageUrl: 'https://placehold.co/600x600/fff9c4/fbc02d?text=Vanilla' },
-                    { id: 3, name: 'Red Velvet Cake', basePrice: 1400, categoryName: 'Anniversary', imageUrl: 'https://placehold.co/600x600/b71c1c/ffffff?text=Red+Velvet' },
-                    { id: 4, name: 'Elegant White Wedding', basePrice: 5000, categoryName: 'Wedding', imageUrl: 'https://placehold.co/600x600/eceff1/455a64?text=Wedding' },
-                ]);
-            }
-        } finally {
+        // Simulate network delay
+        setTimeout(() => {
+            let allCakes = docData.cakes.map(c => ({
+                id: c.id,
+                name: c.name,
+                basePrice: c.basePrice,
+                categoryName: c.categoryName,
+                imageUrl: c.imageUrl,
+                description: c.description
+            }));
+
+            // In a real app, API handles this. Here we filter locally if needed,
+            // but the main filtering logic is already in the render variable `filteredProducts` below.
+            // So we just set all products and let frontend filter handle it.
+            setProducts(allCakes);
             setLoading(false);
-        }
+        }, 500);
     };
 
     // Filter logic (Frontend side for price/sort for now)

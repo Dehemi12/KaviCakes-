@@ -143,9 +143,92 @@ exports.login = async (req, res) => {
                     role: user.role,
                 },
             });
+            return res.json({
+                token,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                },
+            });
         }
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        // Check both tables
+        let user = await prisma.admin.findUnique({ where: { email } });
+        let role = 'ADMIN';
+
+        if (!user) {
+            user = await prisma.customer.findUnique({ where: { email } });
+            role = 'CUSTOMER';
+        }
+
+        if (!user) {
+            // Check security practice: return success even if email not found?
+            // For now, let's be explicitly helpful for admin panel dev
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Generate simple token (In prod, use crypto random bytes)
+        const resetToken = jwt.sign(
+            { id: user.id, role },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        // Verification Link
+        // Assuming Frontend runs on localhost:3000 (usually). If admin-web is distinct from customer-web, this link might need config.
+        // admin-web handles reset for both? Or separates?
+        // ResetPassword.jsx exists in admin-web, so let's point there.
+        const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
+
+        const subject = 'Password Reset Request';
+        const text = `You requested a password reset. Click the link to reset: ${resetLink}`;
+
+        await sendEmail(email, subject, text);
+
+        res.json({ message: 'Reset link sent' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        if (decoded.role === 'CUSTOMER') {
+            await prisma.customer.update({
+                where: { id: decoded.id },
+                data: { password: hashedPassword }
+            });
+        } else {
+            await prisma.admin.update({
+                where: { id: decoded.id },
+                data: { password: hashedPassword }
+            });
+        }
+
+        res.json({ message: 'Password reset successfully' });
+
+    } catch (error) {
+        // Token invalid or expired
+        return res.status(400).json({ error: 'Invalid or expired token' });
     }
 };

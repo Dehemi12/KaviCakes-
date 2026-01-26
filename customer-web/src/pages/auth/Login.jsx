@@ -47,6 +47,14 @@ const Login = () => {
                     </div>
                 )}
 
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-md mt-4">
+                    <p className="text-sm text-blue-700">
+                        <strong>Demo Credentials:</strong><br />
+                        Email: user@demo.com<br />
+                        Password: 123456
+                    </p>
+                </div>
+
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div className="rounded-md shadow-sm space-y-4">
                         <div>
@@ -64,7 +72,7 @@ const Login = () => {
                                     autoComplete="email"
                                     required
                                     className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm transition-colors"
-                                    placeholder="you@example.com"
+                                    placeholder="user@demo.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                 />
