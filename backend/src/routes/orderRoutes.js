@@ -6,6 +6,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 router.use(authMiddleware);
 
 router.get('/', orderController.getAllOrders);
+router.post('/', orderController.createOrder);
 router.put('/:id/status', orderController.updateOrderStatus);
 router.put('/:id/payment-status', orderController.updatePaymentStatus);
 router.delete('/:id', orderController.deleteOrder);

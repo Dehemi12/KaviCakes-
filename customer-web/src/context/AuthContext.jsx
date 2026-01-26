@@ -14,22 +14,14 @@ export const AuthProvider = ({ children }) => {
             const token = localStorage.getItem('customerToken');
             if (token) {
                 try {
-                    // Start: Persist session if token matches demo token
-                    if (token === 'demo-token-123') {
-                        setUser({
-                            name: 'Kavindi Ratnayake',
-                            email: 'user@demo.com',
-                            phone: '077 123 4567',
-                            loyaltyPoints: 500,
-                            id: 'C001'
-                        });
-                    } else {
-                        // Invalid token
-                        localStorage.removeItem('customerToken');
+                    const storedUser = localStorage.getItem('customerData');
+                    if (storedUser) {
+                        setUser(JSON.parse(storedUser));
                     }
                 } catch (error) {
                     console.error("Failed to load user", error);
                     localStorage.removeItem('customerToken');
+                    localStorage.removeItem('customerData');
                 }
             }
             setLoading(false);
@@ -39,28 +31,23 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (email, password) => {
-        // Hardcoded validation for Demo
-        if (email === 'user@demo.com' && password === '123456') { // Simple hardcoded check
-            const mockUser = {
-                name: 'Kavindi Ratnayake',
-                email: 'user@demo.com',
-                phone: '077 123 4567',
-                loyaltyPoints: 500,
-                id: 'C001'
-            };
-            const mockToken = 'demo-token-123';
+        try {
+            const response = await api.post('/auth/login', { email, password, role: 'CUSTOMER' });
+            const { token, user } = response.data;
 
-            localStorage.setItem('customerToken', mockToken);
-            setUser(mockUser);
-            return mockUser;
-        } else {
-            // Simulate API error structure
-            throw { response: { data: { error: 'Invalid email or password' } } };
+            localStorage.setItem('customerToken', token);
+            localStorage.setItem('customerData', JSON.stringify(user));
+            setUser(user);
+            return user;
+        } catch (error) {
+            console.error("Login failed", error);
+            throw error; // Let the component handle the error display
         }
     };
 
     const logout = () => {
         localStorage.removeItem('customerToken');
+        localStorage.removeItem('customerData');
         setUser(null);
     };
 

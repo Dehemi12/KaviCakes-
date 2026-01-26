@@ -21,6 +21,7 @@ const ProductDetailsPage = () => {
     const [quantity, setQuantity] = useState(1);
     const [instructions, setInstructions] = useState('');
     const [currentPrice, setCurrentPrice] = useState(0);
+    const [isWishlisted, setIsWishlisted] = useState(false);
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -231,17 +232,7 @@ const ProductDetailsPage = () => {
                             />
                         </div>
 
-                        {/* Allergens */}
-                        <div className="mb-8">
-                            <h3 className="text-sm font-bold text-gray-900 mb-3">Allergens</h3>
-                            <div className="flex flex-wrap gap-2">
-                                {product.allergens.map(a => (
-                                    <span key={a} className="px-3 py-1 bg-gray-100 text-gray-600 rounded-md text-xs font-medium">
-                                        {a}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
+
 
                         {/* Quantity & Actions */}
                         <div className="border-t border-gray-100 pt-8 flex flex-col sm:flex-row gap-6">
@@ -264,16 +255,28 @@ const ProductDetailsPage = () => {
                                 </div>
                             </div>
 
-                            <div className="flex-1 flex gap-4 items-end">
-                                <button
-                                    onClick={handleAddToCart}
-                                    className="flex-1 bg-pink-600 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg hover:bg-pink-700 hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center justify-center"
-                                >
-                                    <ShoppingBag className="h-5 w-5 mr-2" /> Add to Cart
-                                </button>
-                                <button className="px-4 py-3.5 rounded-xl border border-pink-200 text-pink-600 font-bold hover:bg-pink-50 transition-colors flex items-center justify-center">
-                                    <Heart className="h-5 w-5 mr-2" /> Save for Later
-                                </button>
+                            <div className="flex-1 flex flex-col items-end gap-2">
+                                <div className="text-right">
+                                    <span className="text-gray-500 text-sm">Total Price:</span>
+                                    <span className="text-2xl font-bold text-pink-600 ml-2">Rs. {(currentPrice * quantity).toLocaleString()}</span>
+                                </div>
+                                <div className="flex gap-4 w-full">
+                                    <button
+                                        onClick={handleAddToCart}
+                                        className="flex-1 bg-pink-600 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg hover:bg-pink-700 hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center justify-center"
+                                    >
+                                        <ShoppingBag className="h-5 w-5 mr-2" /> Add to Cart
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsWishlisted(!isWishlisted);
+                                            alert(isWishlisted ? "Removed from Wishlist" : "Added to Wishlist");
+                                        }}
+                                        className={`px-4 py-3.5 rounded-xl border font-bold transition-colors flex items-center justify-center min-w-[60px] ${isWishlisted ? 'bg-pink-50 border-pink-200 text-pink-600' : 'border-pink-200 text-pink-600 hover:bg-pink-50'}`}
+                                    >
+                                        <Heart className={`h-5 w-5 ${isWishlisted ? 'fill-current' : ''}`} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

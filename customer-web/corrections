@@ -1,0 +1,408 @@
+📌 Phase-Wise Correction Plan
+Project: Kavi Cakes Order Management System
+Purpose: Fix existing functional, navigation, pricing, loyalty, order flow, and validation issues across all order types (Normal, Custom, Bulk)
+
+🔹 PHASE 1 – Global UI, Navigation & Data Consistency Fixes
+1. Navigation Bar & Page Recognition
+
+
+Fix navigation so that:
+
+
+The currently active page is visually highlighted in the navigation bar.
+
+
+Users can clearly identify which page they are currently on.
+
+
+
+
+Ensure route recognition works correctly for all navigation links.
+
+
+2. Home Page Navigation Corrections
+
+
+Custom Order buttons:
+
+
+Every button related to “Custom Order” must navigate to the Custom Order Page.
+
+
+
+
+Browse by Category section:
+
+
+Clicking a category must navigate to the respective Category Page.
+
+
+Category pages must display all cakes belonging to that category.
+
+
+
+
+Featured Cakes section:
+
+
+Featured cakes must be the most recently added cakes by the admin.
+
+
+Clicking View Details must navigate to the Cake Details Page.
+
+
+
+
+Remove the Community section completely.
+
+
+3. Global Price Display Rule
+
+
+Wherever cake prices are displayed (home, category, listings, featured cakes):
+
+
+Always display the 1kg variant price only.
+
+
+
+
+
+🔹 PHASE 2 – Cake Listing & Cake Detail Page Corrections
+1. Birthday Cake Page
+
+
+Display price as 1kg price only for all cakes.
+
+
+2. Cake Detail Page
+
+
+Show all available variant prices (e.g., 500g, 1kg, 1.5kg, etc.).
+
+
+Remove allergen information.
+
+
+Enable Save Cake / Wishlist functionality.
+
+
+When quantity increases:
+
+
+Total price must update dynamically based on quantity × selected variant price.
+
+
+
+
+
+🔹 PHASE 3 – Cart, Loyalty Points & Delivery Date Logic
+1. Add to Cart & Loyalty Points
+
+
+Correctly calculate loyalty points per order.
+
+
+Assign earned loyalty points to the relevant logged-in customer account.
+
+
+Display:
+
+
+Earned loyalty points for the current order.
+
+
+Total loyalty points balance correctly.
+
+
+
+
+2. Delivery Date Validation (Common for Normal, Custom & Bulk Orders)
+
+
+Prevent selecting past dates.
+
+
+If customer selects a near date (e.g., day after tomorrow):
+
+
+System must prompt the user to use/burn loyalty points.
+
+
+If user confirms burning points → allow continuation.
+
+
+If not → block the selection.
+
+
+
+
+Ensure the same logic applies consistently across:
+
+
+Normal orders
+
+
+Custom orders
+
+
+Bulk orders
+
+
+
+
+
+🔹 PHASE 4 – Payment Rules & Checkout Validation
+1. Payment Type Logic
+
+
+Cash on Delivery (COD):
+
+
+Customers must NOT be able to select advance or partial payment.
+
+
+Full payment is mandatory on delivery.
+
+
+
+
+Bank Payment:
+
+
+Customer can place order without payment.
+
+
+After admin approval, customer can upload bank slip.
+
+
+
+
+2. Checkout Page Fixes
+
+
+Ensure order summary correctly displays:
+
+
+Total amount
+
+
+Loyalty points earned
+
+
+
+
+Disable Advance Payment radio button when COD is selected.
+
+
+Ensure checkout → place order flow works without missing data.
+
+
+
+🔹 PHASE 5 – Order Tracking, Cancellation & Editing Rules
+1. Order Tracking Page
+
+
+Do Payment button:
+
+
+Must navigate to Upload Bank Slip Page.
+
+
+
+
+Remove Help / Need Help section.
+
+
+2. Cancel Order
+
+
+Allow cancellation only within 2 days from order placement.
+
+
+On cancellation:
+
+
+Remove all related order records.
+
+
+Update loyalty points accordingly.
+
+
+
+
+3. Edit Order
+
+
+Allow editing only within 2 days.
+
+
+Redirect customer to Cart Page with order details loaded.
+
+
+4. My Orders Section
+
+
+Orders must be filtered by status:
+
+
+Pending
+
+
+In Progress
+
+
+Delivered
+
+
+
+
+
+🔹 PHASE 6 – Custom Order Module Corrections
+1. Basic Order Details
+
+
+Remove Occasion Date field.
+
+
+Display all available:
+
+
+Cake sizes
+
+
+Shapes
+
+
+Flavors
+
+
+
+
+2. Custom Design Details
+
+
+Allow:
+
+
+Uploading reference images
+
+
+Adding reference links
+
+
+
+
+Special Instructions:
+
+
+Editable text field (add/edit content).
+
+
+
+
+3. Custom Order Price Calculation
+
+
+Calculate price using:
+
+
+Stored additional prices from database (size, flavor, shape).
+
+
+
+
+Price must be dynamically generated based on selections.
+
+
+4. Custom Order Delivery Date
+
+
+Must follow same delivery rules as normal orders.
+
+
+Minimum delivery date must be 5 days ahead.
+
+
+5. Checkout & Order Placement (Custom Order)
+
+
+Display custom order price correctly in Order Summary.
+
+
+Show earned loyalty points clearly.
+
+
+COD rules same as normal orders (no advance payment).
+
+
+After placing order:
+
+
+Total amount must be displayed.
+
+
+Admin status should be “Not Yet Confirmed”.
+
+
+
+
+6. Custom Order Tracking
+
+
+Remove Help section.
+
+
+Allow Cancel and Edit within allowed time frame.
+
+
+
+🔹 PHASE 7 – Bulk Order Request Module
+1. Database Requirement
+Create a Bulk Order Cake Type Table with:
+CakeTypeIDCake TypeUnit Price1Cupcake1202Mini Cakes5003Jar Cakes2504Brownies2005Wedding Cakes80
+2. Bulk Order Form Corrections
+
+
+Remove Event Date from initial page.
+
+
+Event date must be:
+
+
+At least 1 month ahead
+
+
+Admin approval mandatory before confirmation.
+
+
+
+
+3. Order Summary & Payment
+
+
+Fix order summary (currently missing values).
+
+
+Apply same COD payment restrictions as other orders.
+
+
+4. Order Placement Flow
+
+
+After user submits bulk order:
+
+
+Show message: “Bulk order request sent”
+
+
+
+
+Order remains unconfirmed until admin approval.
+
+
+Only after admin confirmation:
+
+
+User can see order confirmation details.
+

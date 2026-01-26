@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Lock, Mail, User, Phone, MapPin, AlertCircle } from 'lucide-react';
 
@@ -14,6 +14,7 @@ const Register = () => {
     });
     const { register } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -35,7 +36,8 @@ const Register = () => {
             // Exclude confirmPassword from API call
             const { confirmPassword, ...dataToSend } = formData;
             await register(dataToSend);
-            navigate('/login');
+            // Pass the original 'from' state back to login, so login can redirect to checkout
+            navigate('/login', { state: { from: location.state?.from } });
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to register. Please try again.');
         } finally {

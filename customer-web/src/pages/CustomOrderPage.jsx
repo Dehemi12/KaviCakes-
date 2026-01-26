@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Upload, X, ChevronRight, Calendar, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, X, ChevronRight, Calendar, Check, Link as LinkIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 
@@ -7,6 +7,7 @@ const CustomOrderPage = () => {
     const navigate = useNavigate();
     const { addToCart } = useCart();
     const [step, setStep] = useState(1);
+    const [price, setPrice] = useState(2500);
 
     const [formData, setFormData] = useState({
         // Basic Details
@@ -16,14 +17,13 @@ const CustomOrderPage = () => {
         fillingType: 'Whipped Cream',
         frostingType: 'Buttercream',
         frostingColor: 'White',
-        occasionDate: '2025-10-31',
         cakeCategory: 'Birthday Cake',
 
         // Design Details
         topDecoration: 'None',
-        message: 'Happy Birthday Dad',
-        designReference: null, // file
-        instructions: 'not', // user typed 'not' in screenshot
+        message: '',
+        designLink: '',
+        instructions: '',
 
         // Recipient
         recipientName: 'dehemi',
@@ -31,9 +31,35 @@ const CustomOrderPage = () => {
         recipientEmail: 'deheminimshara@gmail.com'
     });
 
+    const [designFile, setDesignFile] = useState(null);
+
+    // Pricing Constants
+    const PRICES = {
+        sizes: { '1 kg (Serves 10-12)': 2500, '2 kg (Serves 20-25)': 4500, '3 kg (Serves 30-35)': 6500 },
+        shapes: { 'Round': 0, 'Square': 200, 'Heart': 450, 'Tiered': 1000 },
+        flavors: { 'Vanilla': 0, 'Chocolate': 350, 'Butterscotch': 250, 'Coffee': 300, 'Red Velvet': 400 },
+        decorations: { 'None': 0, 'Flowers': 500, 'Topper': 300, 'Gold Leaf': 600 }
+    };
+
+    // Calculate Price Effect
+    useEffect(() => {
+        let newPrice = 0;
+        newPrice += PRICES.sizes[formData.cakeSize] || 2500;
+        newPrice += PRICES.shapes[formData.cakeShape] || 0;
+        newPrice += PRICES.flavors[formData.flavor] || 0;
+        newPrice += PRICES.decorations[formData.topDecoration] || 0;
+        setPrice(newPrice);
+    }, [formData]);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleFileChange = (e) => {
+        if (e.target.files[0]) {
+            setDesignFile(e.target.files[0]);
+        }
     };
 
     const handleNext = () => setStep(prev => prev + 1);
@@ -45,10 +71,13 @@ const CustomOrderPage = () => {
             id: 'CUST-' + Date.now(),
             name: 'Custom Cake Order',
             description: `${formData.cakeSize}, ${formData.flavor}, ${formData.cakeShape}`,
-            price: 5500, // Fixed mock price from screenshot
-            image: 'https://images.unsplash.com/photo-1563729768-3980d7c74c6d?auto=format&fit=crop&q=80&w=300', // Generic placeholder
+            price: price,
+            image: designFile ? URL.createObjectURL(designFile) : 'https://images.unsplash.com/photo-1563729768-3980d7c74c6d?auto=format&fit=crop&q=80&w=300',
             isCustom: true,
-            customDetails: formData
+            customDetails: {
+                ...formData,
+                designFileName: designFile?.name
+            }
         };
 
         // Add to cart with a custom variant structure
@@ -106,6 +135,7 @@ const CustomOrderPage = () => {
                                     <select name="cakeSize" value={formData.cakeSize} onChange={handleChange} className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-pink-500 bg-transparent text-gray-900 font-medium text-sm">
                                         <option>1 kg (Serves 10-12)</option>
                                         <option>2 kg (Serves 20-25)</option>
+                                        <option>3 kg (Serves 30-35)</option>
                                     </select>
                                 </div>
                                 <div>
@@ -114,6 +144,7 @@ const CustomOrderPage = () => {
                                         <option>Round</option>
                                         <option>Square</option>
                                         <option>Heart</option>
+                                        <option>Tiered</option>
                                     </select>
                                 </div>
                                 <div>
@@ -122,6 +153,8 @@ const CustomOrderPage = () => {
                                         <option>Butterscotch</option>
                                         <option>Chocolate</option>
                                         <option>Vanilla</option>
+                                        <option>Coffee</option>
+                                        <option>Red Velvet</option>
                                     </select>
                                 </div>
                                 <div>
@@ -145,21 +178,8 @@ const CustomOrderPage = () => {
                                         <option>White</option>
                                         <option>Pink</option>
                                         <option>Blue</option>
+                                        <option>Custom (Specify in instructions)</option>
                                     </select>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-medium text-gray-500 mb-2">Occasion Date</label>
-                                    <div className="relative">
-                                        <input
-                                            type="date"
-                                            name="occasionDate"
-                                            value={formData.occasionDate}
-                                            onChange={handleChange}
-                                            className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-pink-500 bg-transparent text-gray-900 font-medium text-sm"
-                                        />
-                                        <Calendar className="absolute right-0 top-2 h-4 w-4 text-gray-400" />
-                                    </div>
-                                    <p className="text-[10px] text-gray-400 mt-2">Date must be at least 5 days from today</p>
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className="block text-xs font-medium text-gray-500 mb-2">Cake Category</label>
@@ -167,8 +187,14 @@ const CustomOrderPage = () => {
                                         <option>Birthday Cake</option>
                                         <option>Wedding Cake</option>
                                         <option>Anniversary Cake</option>
+                                        <option>Other</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div className="mt-8 bg-blue-50 p-4 rounded-lg text-sm text-blue-800 flex items-center">
+                                <Calendar className="w-5 h-5 mr-3 text-blue-500" />
+                                Please note: Custom orders require at least 5 days notice. You will select the delivery date at checkout.
                             </div>
 
                             <div className="mt-12 flex justify-end">
@@ -191,6 +217,7 @@ const CustomOrderPage = () => {
                                         <option>None</option>
                                         <option>Flowers</option>
                                         <option>Topper</option>
+                                        <option>Gold Leaf</option>
                                     </select>
                                 </div>
 
@@ -201,19 +228,51 @@ const CustomOrderPage = () => {
                                         name="message"
                                         value={formData.message}
                                         onChange={handleChange}
+                                        placeholder="e.g., Happy Birthday John"
                                         className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-pink-500 bg-transparent text-gray-900 font-medium text-sm"
                                     />
-                                    <p className="text-[10px] text-gray-400 mt-1">Leave blank if no message required</p>
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-2">Design Reference (Optional)</label>
-                                    <p className="text-sm font-medium text-gray-900">not</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-2">Upload Reference Image</label>
+                                        <div className="relative border-2 border-dashed border-gray-200 rounded-lg p-6 hover:bg-gray-50 transition-colors text-center cursor-pointer">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleFileChange}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            />
+                                            <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                                            <p className="text-xs text-gray-500">{designFile ? designFile.name : 'Click to Upload Image'}</p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-2">Or Paste Image Link</label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                name="designLink"
+                                                value={formData.designLink}
+                                                onChange={handleChange}
+                                                placeholder="https://pinterest.com/..."
+                                                className="w-full border-b border-gray-200 py-2 pl-8 focus:outline-none focus:border-pink-500 bg-transparent text-gray-900 font-medium text-sm"
+                                            />
+                                            <LinkIcon className="absolute left-0 top-2 h-4 w-4 text-gray-400" />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div>
                                     <label className="block text-xs font-medium text-gray-500 mb-2">Special Instructions</label>
-                                    <p className="text-sm font-medium text-gray-900">{formData.instructions}</p>
+                                    <textarea
+                                        name="instructions"
+                                        value={formData.instructions}
+                                        onChange={handleChange}
+                                        rows="4"
+                                        placeholder="Describe your design, specific colors, or any other details..."
+                                        className="w-full border rounded-lg p-3 focus:outline-none focus:border-pink-500 bg-white text-gray-900 text-sm"
+                                    ></textarea>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-8 pt-4">
@@ -225,7 +284,7 @@ const CustomOrderPage = () => {
                                             name="recipientName"
                                             value={formData.recipientName}
                                             onChange={handleChange}
-                                            className="w-full border-none p-0 text-sm font-medium text-gray-900 focus:ring-0"
+                                            className="w-full border-b border-gray-200 py-1 text-sm font-medium text-gray-900 focus:outline-none focus:border-pink-500"
                                         />
                                     </div>
                                     <div>
@@ -235,7 +294,7 @@ const CustomOrderPage = () => {
                                             name="recipientPhone"
                                             value={formData.recipientPhone}
                                             onChange={handleChange}
-                                            className="w-full border-none p-0 text-sm font-medium text-gray-900 focus:ring-0"
+                                            className="w-full border-b border-gray-200 py-1 text-sm font-medium text-gray-900 focus:outline-none focus:border-pink-500"
                                         />
                                     </div>
                                     <div className="col-span-2">
@@ -245,7 +304,7 @@ const CustomOrderPage = () => {
                                             name="recipientEmail"
                                             value={formData.recipientEmail}
                                             onChange={handleChange}
-                                            className="w-full border-none p-0 text-sm font-medium text-gray-900 focus:ring-0"
+                                            className="w-full border-b border-gray-200 py-1 text-sm font-medium text-gray-900 focus:outline-none focus:border-pink-500"
                                         />
                                     </div>
                                 </div>
@@ -290,7 +349,6 @@ const CustomOrderPage = () => {
                                             ['Cake Shape', formData.cakeShape],
                                             ['Filling Type', formData.fillingType],
                                             ['Frosting Color', formData.frostingColor],
-                                            ['Occasion Date', formData.occasionDate],
                                         ].map(([label, val]) => (
                                             <div key={label}>
                                                 <p className="text-xs text-gray-400 mb-0.5">{label}</p>
@@ -306,15 +364,25 @@ const CustomOrderPage = () => {
                                 <div className="space-y-6">
                                     <div>
                                         <p className="text-xs text-gray-400 mb-0.5">Cake Message</p>
-                                        <p className="text-sm font-medium text-gray-900">{formData.message}</p>
+                                        <p className="text-sm font-medium text-gray-900">{formData.message || 'None'}</p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-400 mb-0.5">Special Instructions</p>
-                                        <p className="text-sm font-medium text-gray-900">{formData.instructions}</p>
+                                        <p className="text-sm font-medium text-gray-900 whitespace-pre-wrap">{formData.instructions || 'None'}</p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-400 mb-0.5">Design Reference</p>
-                                        <p className="text-sm font-medium text-gray-900">not</p>
+                                        {designFile ? (
+                                            <p className="text-sm font-medium text-pink-600 flex items-center">
+                                                <Check className="w-4 h-4 mr-1" /> File Uploaded: {designFile.name}
+                                            </p>
+                                        ) : formData.designLink ? (
+                                            <a href={formData.designLink} target="_blank" rel="noreferrer" className="text-sm font-medium text-blue-600 hover:underline truncate block">
+                                                {formData.designLink}
+                                            </a>
+                                        ) : (
+                                            <p className="text-sm font-medium text-gray-900">None</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -337,10 +405,13 @@ const CustomOrderPage = () => {
                                 </div>
                             </div>
 
-                            <h3 className="text-xs font-bold text-gray-900 mb-4">Total price</h3>
-                            <div className="bg-pink-50 rounded-xl p-6 mb-8">
-                                <p className="text-xs text-gray-500 mb-1">Based on your selections, the Order price is:</p>
-                                <p className="text-2xl font-bold text-pink-600">Rs. 5,500</p>
+                            <h3 className="text-xs font-bold text-gray-900 mb-4">Estimated Total</h3>
+                            <div className="bg-pink-50 rounded-xl p-6 mb-8 flex justify-between items-center">
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Based on your selections,</p>
+                                    <p className="text-xs text-gray-500">the estimated price is:</p>
+                                </div>
+                                <p className="text-3xl font-bold text-pink-600">Rs. {price.toLocaleString()}</p>
                             </div>
 
                             <div className="flex justify-between items-center">

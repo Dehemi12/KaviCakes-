@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X, Search, Heart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,7 @@ const Navbar = () => {
     // Safe access to cartCount in case context is partial or failing
     const cartCount = cartContext?.cartCount || 0;
     const navigate = useNavigate();
+    const location = useLocation();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const handleLogout = () => {
@@ -104,14 +105,16 @@ const Navbar = () => {
                             else if (item === 'Bulk Orders') path = '/bulk-orders';
                             else path = `/cakes?category=${item.toLowerCase().replace(' cakes', '').replace(' ', '-')}`;
 
+                            const isActive = location.pathname === path || (path.includes('?category=') && location.search.includes(item.toLowerCase().replace(' cakes', '').replace(' ', '-')));
+
                             return (
                                 <Link
                                     key={item}
                                     to={path}
-                                    className="text-xs font-bold text-gray-500 hover:text-pink-600 transition-colors uppercase tracking-wider relative group whitespace-nowrap"
+                                    className={`text-xs font-bold transition-colors uppercase tracking-wider relative group whitespace-nowrap ${isActive ? 'text-pink-600' : 'text-gray-500 hover:text-pink-600'}`}
                                 >
                                     {item}
-                                    <span className="absolute -bottom-3 left-0 w-0 h-0.5 bg-pink-600 transition-all group-hover:w-full"></span>
+                                    <span className={`absolute -bottom-3 left-0 h-0.5 bg-pink-600 transition-all ${isActive ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
                                 </Link>
                             )
                         })}

@@ -47,13 +47,7 @@ const Login = () => {
                     </div>
                 )}
 
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-md mt-4">
-                    <p className="text-sm text-blue-700">
-                        <strong>Demo Credentials:</strong><br />
-                        Email: user@demo.com<br />
-                        Password: 123456
-                    </p>
-                </div>
+
 
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
                     <div className="rounded-md shadow-sm space-y-4">
@@ -146,7 +140,11 @@ const Login = () => {
                     </div>
 
                     <div className="mt-6 text-center">
-                        <Link to="/register" className="font-medium text-pink-600 hover:text-pink-500">
+                        <Link
+                            to="/register"
+                            state={{ from: location.state?.from }}
+                            className="font-medium text-pink-600 hover:text-pink-500"
+                        >
                             Create a free account
                         </Link>
                     </div>

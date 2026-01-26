@@ -67,6 +67,41 @@ const OrderSuccessPage = () => {
                         </div>
                     </div>
 
+                    {/* Bank Transfer Instructions */}
+                    {orderDetails.paymentMethod === 'bank_transfer' && (
+                        <div className="bg-blue-50 rounded-xl p-6 text-left mb-8 border border-blue-100">
+                            <h3 className="font-bold text-blue-900 mb-4 flex items-center">
+                                <span className="mr-2">🏦</span> Bank Transfer Details
+                            </h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-blue-800 mb-6">
+                                <div><span className="block text-xs text-blue-500">Bank</span>Commercial Bank</div>
+                                <div><span className="block text-xs text-blue-500">Account No</span>1234 5678 9000</div>
+                                <div><span className="block text-xs text-blue-500">Account Name</span>Kavi Cakes</div>
+                                <div><span className="block text-xs text-blue-500">Branch</span>Colombo 7</div>
+                            </div>
+
+                            <div className="border-t border-blue-200 pt-4">
+                                <label className="block text-sm font-medium text-blue-900 mb-2">Upload Payment Slip</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="file"
+                                        className="block w-full text-sm text-blue-500
+                                          file:mr-4 file:py-2 file:px-4
+                                          file:rounded-full file:border-0
+                                          file:text-xs file:font-semibold
+                                          file:bg-blue-100 file:text-blue-700
+                                          hover:file:bg-blue-200
+                                        "
+                                    />
+                                    <button className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors">
+                                        Upload
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-blue-400 mt-2">* You can also upload this later from the Order Tracking page.</p>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="bg-pink-50 rounded-xl p-4 flex items-start text-left mb-8">
                         <ShoppingBag className="w-5 h-5 text-pink-600 mt-1 mr-3 flex-shrink-0" />
                         <div>

@@ -11,6 +11,13 @@ const OrdersPage = () => {
         {
             id: 'KVC-795189',
             date: '10/20/2025',
+            // ... (rest of mock data same, assuming simplified replacement for filter implementation)
+            // Actually, I should update the render logic.
+            // Let's use clean replace for the render part.
+            // I need to filter `orders` based on `activeTab`.
+
+            // Filter logic
+
             status: 'Pending',
             total: 4611,
             items: [{ name: 'Chocolate Fudge Cake', quantity: 1, image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=100&auto=format&fit=crop' }],
@@ -74,6 +81,15 @@ const OrdersPage = () => {
         return 'bg-gray-100 text-gray-800';
     };
 
+    // Filter logic
+    const filteredOrders = orders.filter(order => {
+        if (activeTab === 'All Orders') return true;
+        if (activeTab === 'In Progress') return ['Pending', 'Confirmed', 'Preparing', 'Out for Delivery'].includes(order.status);
+        if (activeTab === 'Delivered') return order.status === 'Delivered';
+        if (activeTab === 'Cancelled') return order.status === 'Cancelled';
+        return true;
+    });
+
     return (
         <div className="bg-gray-50 min-h-screen py-8 font-sans">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -121,7 +137,7 @@ const OrdersPage = () => {
 
                 {/* Orders List */}
                 <div className="space-y-4">
-                    {orders.map((order) => (
+                    {filteredOrders.map((order) => (
                         <div
                             key={order.id}
                             onClick={() => {

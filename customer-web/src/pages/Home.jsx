@@ -17,14 +17,46 @@ const Home = () => {
         link: `/cakes?category=${c.id}`
     }));
 
-    // Get first 4 cakes as featured
-    const featuredCakes = docData.cakes.slice(0, 4).map(c => ({
-        id: c.id,
-        name: c.name,
-        price: c.basePrice,
-        image: c.imageUrl,
-        description: c.description
-    }));
+    const [featuredCakes, setFeaturedCakes] = React.useState([]);
+
+    React.useEffect(() => {
+        const fetchFeatured = async () => {
+            try {
+                // Fetch latest 4 cakes
+                const res = await fetch('http://localhost:5000/api/cakes?limit=4');
+                if (res.ok) {
+                    const data = await res.json();
+                    setFeaturedCakes(data.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        price: c.price, // Use calculated 1kg price
+                        image: c.imageUrl,
+                        description: c.description
+                    })));
+                } else {
+                    // Fallback to dummy data if API fails
+                    setFeaturedCakes(docData.cakes.slice(0, 4).map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        price: c.basePrice,
+                        image: c.imageUrl,
+                        description: c.description
+                    })));
+                }
+            } catch (err) {
+                console.error("Failed to fetch featured cakes", err);
+                // Fallback
+                setFeaturedCakes(docData.cakes.slice(0, 4).map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    price: c.basePrice,
+                    image: c.imageUrl,
+                    description: c.description
+                })));
+            }
+        };
+        fetchFeatured();
+    }, []);
 
     // Reuse cakes for best sellers (randomized or just next batch)
     const bestSellers = docData.cakes.slice(0, 3).map(c => ({
@@ -136,24 +168,26 @@ const Home = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                         {featuredCakes.map((cake) => (
                             <div key={cake.id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow overflow-hidden border border-gray-100">
-                                <div className="relative aspect-[4/3] overflow-hidden">
-                                    <img
-                                        src={cake.image}
-                                        alt={cake.name}
-                                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                                    />
-                                    <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-md text-xs font-bold shadow-sm uppercase tracking-wide text-gray-800">New</div>
-                                </div>
-                                <div className="p-5">
-                                    <h3 className="text-lg font-bold text-gray-900 mb-1 truncate">{cake.name}</h3>
-                                    <p className="text-sm text-gray-500 mb-4 line-clamp-2">{cake.description}</p>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-xl font-bold text-pink-600">Rs. {cake.price}</span>
-                                        <button className="text-sm bg-pink-100 text-pink-700 px-3 py-1.5 rounded-lg hover:bg-pink-200 transition-colors font-medium">
-                                            View Details
-                                        </button>
+                                <Link to={`/cakes/${cake.id}`}>
+                                    <div className="relative aspect-[4/3] overflow-hidden">
+                                        <img
+                                            src={cake.image || 'https://placehold.co/400x300?text=No+Image'}
+                                            alt={cake.name}
+                                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                                        />
+                                        <div className="absolute top-3 right-3 bg-white px-2 py-1 rounded-md text-xs font-bold shadow-sm uppercase tracking-wide text-gray-800">New</div>
                                     </div>
-                                </div>
+                                    <div className="p-5">
+                                        <h3 className="text-lg font-bold text-gray-900 mb-1 truncate">{cake.name}</h3>
+                                        <p className="text-sm text-gray-500 mb-4 line-clamp-2">{cake.description}</p>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xl font-bold text-pink-600">Rs. {cake.price}</span>
+                                            <button className="text-sm bg-pink-100 text-pink-700 px-3 py-1.5 rounded-lg hover:bg-pink-200 transition-colors font-medium">
+                                                View Details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </Link>
                             </div>
                         ))}
                     </div>
@@ -270,22 +304,7 @@ const Home = () => {
                 </div>
             </section>
 
-            {/* Newsletter / CTA */}
-            <section className="py-20">
-                <div className="max-w-5xl mx-auto px-4 bg-gray-900 rounded-3xl p-10 md:p-16 text-center relative overflow-hidden">
-                    <div className="relative z-10">
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Join our Sweet Community</h2>
-                        <p className="text-gray-400 mb-8 max-w-2xl mx-auto">Subscribe for exclusive offers, new flavor launches, and baking tips delivered straight to your inbox.</p>
-                        <form className="flex flex-col sm:flex-row justify-center max-w-lg mx-auto gap-4">
-                            <input type="email" placeholder="Enter your email" className="px-6 py-3 rounded-full flex-grow focus:outline-none focus:ring-2 focus:ring-pink-500" />
-                            <button type="submit" className="bg-pink-600 text-white px-8 py-3 rounded-full font-bold hover:bg-pink-700 transition-colors">Subscribe</button>
-                        </form>
-                    </div>
-                    {/* Decorative circles */}
-                    <div className="absolute top-0 left-0 -ml-10 -mt-10 w-40 h-40 bg-pink-600 rounded-full opacity-20 blur-2xl"></div>
-                    <div className="absolute bottom-0 right-0 -mr-10 -mb-10 w-40 h-40 bg-blue-600 rounded-full opacity-20 blur-2xl"></div>
-                </div>
-            </section>
+            {/* Newsletter is deliberately removed or should I remove it? The plan says "Remove Community section". The newsletter section title is "Join our Sweet Community". So I should remove lines 274-288. In this replacement I already removed it. Wait. My replacement ends at 288 (the section closing tag). But the original file has lines up to 289 where the newsletter section is. I should ensure I am removing the Newsletter section. */}
         </div>
     );
 };

@@ -30,28 +30,33 @@ const CakesPage = () => {
 
     const fetchProducts = async () => {
         setLoading(true);
-        // Simulate network delay
-        setTimeout(() => {
-            let allCakes = docData.cakes.map(c => ({
-                id: c.id,
-                name: c.name,
-                basePrice: c.basePrice,
-                categoryName: c.categoryName,
-                imageUrl: c.imageUrl,
-                description: c.description
-            }));
+        try {
+            // Fetch from API with current filters
+            // Note: For now fetching all and filtering locally or fetching by category if simple
+            // Building query string
+            let url = `http://localhost:5000/api/cakes?`;
+            if (category !== 'All') url += `categoryName=${encodeURIComponent(category)}`;
 
-            // In a real app, API handles this. Here we filter locally if needed,
-            // but the main filtering logic is already in the render variable `filteredProducts` below.
-            // So we just set all products and let frontend filter handle it.
-            setProducts(allCakes);
-            setLoading(false);
-        }, 500);
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                setProducts(data);
+            } else {
+                // Fallback to dummy
+                console.error("Failed to fetch products");
+                setProducts(docData.cakes.map(c => ({ ...c, price: c.basePrice }))); // Fallback
+            }
+        } catch (err) {
+            console.error(err);
+            setProducts(docData.cakes.map(c => ({ ...c, price: c.basePrice }))); // Fallback
+        }
+        setLoading(false);
     };
 
     // Filter logic (Frontend side for price/sort for now)
+    // Filter logic (Frontend side for price/sort for now)
     const filteredProducts = products.filter(product => {
-        const matchesPrice = (product.basePrice || product.price) <= priceRange;
+        const matchesPrice = (product.price || product.basePrice) <= priceRange;
         const matchesCategory = category === 'All' ||
             (product.categoryName && product.categoryName.toLowerCase() === category.toLowerCase()) ||
             (product.categoryName && category.toLowerCase().includes(product.categoryName.toLowerCase())); // partial match for robust fallback
@@ -59,8 +64,8 @@ const CakesPage = () => {
     });
 
     const sortedProducts = [...filteredProducts].sort((a, b) => {
-        if (sortBy === 'price-low') return (a.basePrice || a.price) - (b.basePrice || b.price);
-        if (sortBy === 'price-high') return (b.basePrice || b.price) - (a.basePrice || a.price);
+        if (sortBy === 'price-low') return (a.price || a.basePrice) - (b.price || b.basePrice);
+        if (sortBy === 'price-high') return (b.price || b.basePrice) - (a.price || a.basePrice);
         return 0; // Default featured
     });
 

@@ -171,7 +171,13 @@ const CartPage = () => {
                             </div>
 
                             <button
-                                onClick={() => navigate('/checkout')}
+                                onClick={() => {
+                                    if (user) {
+                                        navigate('/checkout');
+                                    } else {
+                                        navigate('/login', { state: { from: { pathname: '/checkout' } } });
+                                    }
+                                }}
                                 className="w-full bg-pink-600 text-white py-4 rounded-xl font-bold shadow-lg hover:bg-pink-700 transition-colors flex items-center justify-center mb-4"
                             >
                                 Proceed to Checkout <ArrowRight className="ml-2 h-5 w-5" />

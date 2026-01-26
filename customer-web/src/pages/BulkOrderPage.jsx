@@ -12,7 +12,6 @@ const BulkOrderPage = () => {
     const [formData, setFormData] = useState({
         eventName: 'Annual Gathering',
         organization: 'Company ABC',
-        eventDate: '2025-11-22',
         quantity: 200,
         cakeType: 'Cupcakes',
         cakeFlavor: 'Chocolate',
@@ -121,22 +120,6 @@ const BulkOrderPage = () => {
                                     className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900"
                                     placeholder="Company Name"
                                 />
-                            </div>
-
-                            {/* Event Date */}
-                            <div className="col-span-1">
-                                <label className="block text-xs font-medium text-gray-500 mb-2">Event Date</label>
-                                <div className="relative">
-                                    <input
-                                        type="date"
-                                        name="eventDate"
-                                        value={formData.eventDate}
-                                        onChange={handleChange}
-                                        className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900"
-                                    />
-                                    <Calendar className="absolute right-0 top-2 h-4 w-4 text-gray-400" />
-                                </div>
-                                <p className="text-[10px] text-gray-400 mt-2">Event date must be at least 30 days from today</p>
                             </div>
 
                             {/* Quantity */}

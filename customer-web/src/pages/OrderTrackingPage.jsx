@@ -127,10 +127,10 @@ const OrderTrackingPage = () => {
                                 return (
                                     <div key={step.id} className="flex flex-col items-center w-24 text-center">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-all duration-300 ${isActive
-                                                ? 'bg-pink-500 text-white shadow-md scale-110'
-                                                : isCompleted
-                                                    ? 'bg-gray-900 text-white'
-                                                    : 'bg-white border-2 border-gray-200 text-gray-300'
+                                            ? 'bg-pink-500 text-white shadow-md scale-110'
+                                            : isCompleted
+                                                ? 'bg-gray-900 text-white'
+                                                : 'bg-white border-2 border-gray-200 text-gray-300'
                                             }`}>
                                             <Icon className="w-5 h-5" />
                                         </div>
@@ -175,12 +175,40 @@ const OrderTrackingPage = () => {
                                             Do payment
                                         </button>
                                     )}
-                                    <button className="px-5 py-2.5 bg-red-500 text-white font-bold rounded-lg shadow-sm hover:bg-red-600 transition-colors text-sm">
-                                        Cancel Order
-                                    </button>
-                                    <button className="px-5 py-2.5 bg-yellow-400 text-white font-bold rounded-lg shadow-sm hover:bg-yellow-500 transition-colors text-sm">
-                                        Edit Order
-                                    </button>
+
+                                    {/* Cancellation Logic: Only within 2 days of order date */}
+                                    {(() => {
+                                        const orderDate = new Date(order.date);
+                                        const now = new Date();
+                                        const diffTime = Math.abs(now - orderDate);
+                                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                        if (diffDays <= 2 && order.status === 'Placed') { // Assuming 'Placed' or 'New' checks
+                                            return (
+                                                <>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm("Are you sure you want to cancel? This will revert your loyalty points.")) {
+                                                                alert("Order cancelled!"); // Mock for now, should call API
+                                                            }
+                                                        }}
+                                                        className="px-5 py-2.5 bg-red-500 text-white font-bold rounded-lg shadow-sm hover:bg-red-600 transition-colors text-sm"
+                                                    >
+                                                        Cancel Order
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            navigate('/cart', { state: { items: order.items } }); // Redirect to cart logic
+                                                        }}
+                                                        className="px-5 py-2.5 bg-yellow-400 text-white font-bold rounded-lg shadow-sm hover:bg-yellow-500 transition-colors text-sm"
+                                                    >
+                                                        Edit Order
+                                                    </button>
+                                                </>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                             </div>
                         </div>
@@ -274,16 +302,20 @@ const OrderTrackingPage = () => {
                             </div>
                         </div>
 
-                        {/* Need Help */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                            <h3 className="font-bold text-gray-900 mb-2">Need Help?</h3>
-                            <p className="text-xs text-gray-500 mb-4">
-                                Contact our customer service if you have any questions about your order.
-                            </p>
-                            <button className="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-xl transition-colors text-sm">
-                                Contact Support
-                            </button>
-                        </div>
+                        {/* Bank Slip Upload */}
+                        {isBank && order.paymentMethod === 'bank_transfer' && (
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                <h3 className="font-bold text-gray-900 mb-2">Payment Verification</h3>
+                                <p className="text-xs text-gray-500 mb-4">
+                                    Please upload your payment slip to confirm your order.
+                                </p>
+                                <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 text-center hover:bg-gray-50 transition-colors cursor-pointer">
+                                    <p className="text-sm font-bold text-gray-600">Upload Slip</p>
+                                    <p className="text-xs text-gray-400 mt-1">JPG, PNG or PDF</p>
+                                    <input type="file" className="hidden" />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

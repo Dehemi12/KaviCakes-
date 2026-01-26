@@ -33,7 +33,7 @@ exports.getAllCakes = async (req, res) => {
             };
         }
 
-        const cakes = await prisma.cake.findMany({
+        const queryOptions = {
             where,
             include: {
                 category: true, // properties: id, name, basePrice
@@ -42,28 +42,43 @@ exports.getAllCakes = async (req, res) => {
                 }
             },
             orderBy: { createdAt: 'desc' }
-        });
+        };
+
+        if (req.query.limit) {
+            queryOptions.take = parseInt(req.query.limit);
+        }
+
+        const cakes = await prisma.cake.findMany(queryOptions);
 
         // Format response to flat structure where basePrice is top-level
-        const formatted = cakes.map(c => ({
-            id: c.id,
-            name: c.name,
-            description: c.description,
-            imageUrl: c.imageUrl,
-            ingredients: c.ingredients,
-            availability: c.availability,
-            categoryId: c.categoryId,
-            categoryName: c.category.name,
-            basePrice: parseFloat(c.category.basePrice), // Inherited from Category
-            variants: c.variants.map(v => ({
-                id: v.id,
-                price: parseFloat(v.price), // Modifier/Specific price
-                size: v.size,
-                shape: v.shape,
-                flavor: v.flavor
-            })),
-            createdAt: c.createdAt
-        }));
+        const formatted = cakes.map(c => {
+            // Find 1kg variant for default price display
+            const variant1kg = c.variants.find(v => v.size && v.size.label === '1kg');
+            const categoryBase = parseFloat(c.category.basePrice);
+            // Default to category base if 1kg not found (fallback), otherwise add variant price
+            const displayPrice = variant1kg ? (categoryBase + parseFloat(variant1kg.price)) : categoryBase;
+
+            return {
+                id: c.id,
+                name: c.name,
+                description: c.description,
+                imageUrl: c.imageUrl,
+                ingredients: c.ingredients,
+                availability: c.availability,
+                categoryId: c.categoryId,
+                categoryName: c.category.name,
+                basePrice: categoryBase, // Raw category base
+                price: displayPrice, // Calculated 1kg price for display
+                variants: c.variants.map(v => ({
+                    id: v.id,
+                    price: parseFloat(v.price), // Modifier/Specific price
+                    size: v.size,
+                    shape: v.shape,
+                    flavor: v.flavor
+                })),
+                createdAt: c.createdAt
+            };
+        });
 
         res.json(formatted);
     } catch (error) {
@@ -88,6 +103,11 @@ exports.getCakeById = async (req, res) => {
 
         if (!cake) return res.status(404).json({ error: 'Cake not found' });
 
+        // Find 1kg variant for default price display
+        const variant1kg = cake.variants.find(v => v.size && v.size.label === '1kg');
+        const categoryBase = parseFloat(cake.category.basePrice);
+        const displayPrice = variant1kg ? (categoryBase + parseFloat(variant1kg.price)) : categoryBase;
+
         // Format to match frontend expectations
         const formatted = {
             id: cake.id,
@@ -98,7 +118,8 @@ exports.getCakeById = async (req, res) => {
             availability: cake.availability,
             categoryId: cake.categoryId,
             categoryName: cake.category.name,
-            basePrice: parseFloat(cake.category.basePrice),
+            basePrice: categoryBase,
+            price: displayPrice, // Calculated 1kg price
             variants: cake.variants.map(v => ({
                 id: v.id,
                 price: parseFloat(v.price),
