@@ -1,55 +1,77 @@
 import React, { useEffect, useState } from 'react';
-import { Tabs, Table, Button, Card, Typography, Space, Row, Col, Statistic, Tag, Modal, Form, Input, Select, DatePicker, message } from 'antd';
-import { DollarCircleOutlined, SwapOutlined, RiseOutlined, FallOutlined, PlusOutlined, DownloadOutlined, BarChartOutlined } from '@ant-design/icons';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { 
+    Table, Button, Card, Typography, Space, Row, Col, 
+    Statistic, Tag, Modal, Form, Input, Select, DatePicker, 
+    message, Divider, Tooltip as AntTooltip, InputNumber, 
+    Avatar, Empty
+} from 'antd';
+import { 
+    DollarCircleOutlined, 
+    SwapOutlined, 
+    PlusOutlined, 
+    MinusOutlined, 
+    SearchOutlined, 
+    FileTextOutlined,
+    EditOutlined,
+    DeleteOutlined,
+    FilterOutlined,
+    CalendarOutlined,
+    InfoCircleOutlined
+} from '@ant-design/icons';
 import axios from 'axios';
+import './Cashbook.css'; // I will create this for custom styles
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 const Cashbook = () => {
     const [transactions, setTransactions] = useState([]);
-    const [summary, setSummary] = useState(null);
+    const [summary, setSummary] = useState({
+        totalIncome: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+        pendingReceivables: 0
+    });
     const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
+    const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [dateRange, setDateRange] = useState([null, null]);
     const [form] = Form.useForm();
 
-    const fetchData = async () => {
+    const fetchData = async (start = null, end = null) => {
         setLoading(true);
-        // Dummy Data
-        const dummyTransactions = [
-            { id: 1, date: '2023-10-25', description: 'Order #1089 Payment', category: 'Manual_Income', type: 'INCOME', amount: 4500, isOrder: true },
-            { id: 2, date: '2023-10-24', description: 'Monthly Shop Rent', category: 'Rent', type: 'EXPENSE', amount: 50000, isOrder: false },
-            { id: 3, date: '2023-10-24', description: 'Order #1088 Payment', category: 'Manual_Income', type: 'INCOME', amount: 8500, isOrder: true },
-            { id: 5, date: '2023-10-23', description: 'Wedding Cake Event Advance', category: 'Manual_Income', type: 'INCOME', amount: 65000, isOrder: true },
-            { id: 4, date: '2023-10-22', description: 'Electricity Bill', category: 'Utilities', type: 'EXPENSE', amount: 12500, isOrder: false },
-            { id: 6, date: '2023-10-21', description: 'Flour & Sugar Stock', category: 'Ingredients', type: 'EXPENSE', amount: 8500, isOrder: false },
-            { id: 7, date: '2023-10-20', description: 'Order #1085 Payment', category: 'Manual_Income', type: 'INCOME', amount: 3000, isOrder: true },
-        ];
-
-        const dummySummary = {
-            totalIncome: 81000,
-            totalExpenses: 71000,
-            netProfit: 10000,
-            totalOrders: 18,
-            pendingReceivables: 24500,
-            upcomingExpenses: 15000
-        };
-
-        setTimeout(() => {
-            setTransactions(dummyTransactions);
-            setSummary(dummySummary);
-            setLoading(false);
-        }, 500);
-
-        /*
         try {
             const token = localStorage.getItem('token');
+            const params = {};
+            if (start && end) {
+                params.startDate = start.format('YYYY-MM-DD');
+                params.endDate = end.format('YYYY-MM-DD');
+            }
+
             const [trxRes, sumRes] = await Promise.all([
-                axios.get('http://localhost:5000/api/transactions', { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('http://localhost:5000/api/transactions/summary', { headers: { Authorization: `Bearer ${token}` } })
+                axios.get('http://localhost:5000/api/transactions', { 
+                    headers: { Authorization: `Bearer ${token}` },
+                    params
+                }),
+                axios.get('http://localhost:5000/api/transactions/summary', { 
+                    headers: { Authorization: `Bearer ${token}` },
+                    params
+                })
             ]);
-            setTransactions(trxRes.data);
+
+            const trxData = trxRes.data.transactions || [];
+            const openingBalance = trxRes.data.openingBalance || 0;
+
+            // Calculate running balance starting from opening balance
+            let currentBalance = openingBalance;
+            const trxWithBalance = [...trxData].reverse().map(t => {
+                if (t.type === 'INCOME') currentBalance += t.amount;
+                else currentBalance -= t.amount;
+                return { ...t, runningBalance: currentBalance };
+            }).reverse();
+
+            setTransactions(trxWithBalance);
             setSummary(sumRes.data);
         } catch (error) {
             console.error(error);
@@ -57,351 +79,323 @@ const Cashbook = () => {
         } finally {
             setLoading(false);
         }
-        */
     };
 
     useEffect(() => {
         fetchData();
     }, []);
 
-    const handleAddTransaction = async (values) => {
-        // Dummy add
-        message.success('Transaction added locally');
-        setIsModalOpen(false);
-        form.resetFields();
-        /*
+    const handleAddTransaction = async (values, type) => {
         try {
             const token = localStorage.getItem('token');
-            await axios.post('http://localhost:5000/api/transactions', values, {
+            await axios.post('http://localhost:5000/api/transactions', {
+                ...values,
+                type
+            }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            message.success('Transaction added successfully');
-            setIsModalOpen(false);
+            message.success(`${type === 'INCOME' ? 'Income' : 'Expense'} added successfully`);
+            setIsIncomeModalOpen(false);
+            setIsExpenseModalOpen(false);
             form.resetFields();
-            fetchData();
+            fetchData(dateRange[0], dateRange[1]);
         } catch (error) {
             message.error('Failed to add transaction');
         }
-        */
     };
+
+    const filteredTransactions = transactions.filter(t => 
+        t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.amount.toString().includes(searchTerm)
+    );
 
     const columns = [
         {
-            title: 'Date',
-            dataIndex: 'date',
-            render: d => new Date(d).toLocaleDateString(),
-            sorter: (a, b) => new Date(a.date) - new Date(b.date)
+            title: 'Date & Time',
+            key: 'date_time',
+            width: 150,
+            render: (_, r) => (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <Text strong>{new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>{new Date(r.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                </div>
+            )
         },
         {
-            title: 'Description',
+            title: 'Details',
             dataIndex: 'description',
+            key: 'details',
             render: (text, r) => (
                 <div>
-                    <Text strong>{text}</Text>
-                    {r.isOrder && <Tag color="blue" style={{ marginLeft: 8 }}>Order</Tag>}
+                    <Text style={{ fontSize: '14px' }}>{text}</Text>
+                    {r.isOrder && <Tag color="blue" style={{ marginLeft: 8, fontSize: '10px' }}>ORDER</Tag>}
                 </div>
             )
         },
         {
             title: 'Category',
             dataIndex: 'category',
-            render: c => <Tag>{c}</Tag>
+            key: 'category',
+            render: c => <Text type="secondary" style={{ fontSize: '13px' }}>{c || 'General'}</Text>
         },
         {
-            title: 'Type',
-            dataIndex: 'type',
-            render: t => <Tag color={t === 'INCOME' ? 'success' : 'error'}>{t}</Tag>,
-            filters: [{ text: 'Income', value: 'INCOME' }, { text: 'Expense', value: 'EXPENSE' }],
-            onFilter: (value, record) => record.type === value
+            title: 'Mode',
+            dataIndex: 'paymentMode',
+            key: 'mode',
+            render: m => <Tag color={m === 'Bank' ? 'cyan' : 'default'} style={{ borderRadius: '4px' }}>{m || 'Cash'}</Tag>
+        },
+        {
+            title: 'Bill',
+            dataIndex: 'billUrl',
+            key: 'bill',
+            align: 'center',
+            render: url => url ? <a href={url} target="_blank" rel="noreferrer"><FileTextOutlined style={{ color: '#E91E63' }} /></a> : '-'
         },
         {
             title: 'Amount',
             dataIndex: 'amount',
-            render: (amt, r) => <Text style={{ color: r.type === 'INCOME' ? '#3f8600' : '#cf1322' }}>{r.type === 'INCOME' ? '+' : '-'} Rs.{Number(amt).toLocaleString()}</Text>,
-            align: 'right'
+            key: 'amount',
+            align: 'right',
+            render: (amt, r) => (
+                <Text strong style={{ color: r.type === 'INCOME' ? '#10b981' : '#ef4444', fontSize: '15px' }}>
+                    {r.type === 'INCOME' ? '+' : '-'} {Number(amt).toLocaleString()}
+                </Text>
+            )
+        },
+        {
+            title: 'Balance',
+            dataIndex: 'runningBalance',
+            key: 'balance',
+            align: 'right',
+            render: bal => <Text strong style={{ color: '#1e293b' }}>{Number(bal).toLocaleString()}</Text>
         }
     ];
 
-    const OverviewTab = () => {
-        return (
-            <div>
-                <Row gutter={16} style={{ marginBottom: 24 }}>
-                    <Col span={8}>
-                        <Card>
-                            <Statistic
-                                title="Total Income"
-                                value={summary?.totalIncome}
-                                precision={2}
-                                valueStyle={{ color: '#3f8600' }}
-                                prefix={<RiseOutlined />}
-                                suffix="Rs"
-                            />
-                        </Card>
-                    </Col>
-                    <Col span={8}>
-                        <Card>
-                            <Statistic
-                                title="Total Expenses"
-                                value={summary?.totalExpenses}
-                                precision={2}
-                                valueStyle={{ color: '#cf1322' }}
-                                prefix={<FallOutlined />}
-                                suffix="Rs"
-                            />
-                        </Card>
-                    </Col>
-                    <Col span={8}>
-                        <Card>
-                            <Statistic
-                                title="Net Profit"
-                                value={summary?.netProfit}
-                                precision={2}
-                                valueStyle={{ color: summary?.netProfit >= 0 ? '#3f8600' : '#cf1322' }}
-                                prefix={<DollarCircleOutlined />}
-                                suffix="Rs"
-                            />
-                        </Card>
-                    </Col>
-                </Row>
-
-                <Row gutter={16}>
-                    <Col span={12}>
-                        <Card>
-                            <Statistic
-                                title="Pending Receivables"
-                                value={summary?.pendingReceivables}
-                                precision={2}
-                                valueStyle={{ color: '#faad14' }}
-                                prefix={<SwapOutlined />}
-                                suffix="Rs"
-                            />
-                            <Text type="secondary" style={{ fontSize: 12 }}>Unpaid Customer Orders</Text>
-                        </Card>
-                    </Col>
-                    <Col span={12}>
-                        <Card>
-                            <Statistic
-                                title="Upcoming Expenses"
-                                value={summary?.upcomingExpenses}
-                                precision={2}
-                                valueStyle={{ color: '#E91E63' }}
-                                prefix={<FallOutlined />}
-                                suffix="Rs"
-                            />
-                            <Text type="secondary" style={{ fontSize: 12 }}>Estimated Bills & Salaries</Text>
-                        </Card>
-                    </Col>
-                </Row>
-            </div>
-        );
-    };
-
-    const ReportsTab = () => {
-        const [reportPeriod, setReportPeriod] = useState([null, null]);
-        const [reportData, setReportData] = useState(null);
-
-        const fetchReport = async (start, end) => {
-            if (!start || !end) return;
-            try {
-                const token = localStorage.getItem('token');
-                const res = await axios.get('http://localhost:5000/api/transactions/summary', {
-                    headers: { Authorization: `Bearer ${token}` },
-                    params: {
-                        startDate: start.format('YYYY-MM-DD'),
-                        endDate: end.format('YYYY-MM-DD')
-                    }
-                });
-                setReportData(res.data);
-            } catch (error) {
-                console.error(error);
-                message.error('Failed to update report');
-            }
-        };
-
-        useEffect(() => {
-            // Initial load (default to current month logic from backend if params empty, 
-            // but we can also set default date range in picker)
-            // Or just use the global summary if no range selected? 
-            // Let's force a fetch for current month to start.
-            const now = new Date();
-            // Just triggering load with backend default behaviors
-            const loadDefault = async () => {
-                const token = localStorage.getItem('token');
-                const res = await axios.get('http://localhost:5000/api/transactions/summary', { headers: { Authorization: `Bearer ${token}` } });
-                setReportData(res.data);
-            };
-            loadDefault();
-        }, []);
-
-        if (!reportData) return <div style={{ padding: 40, textAlign: 'center' }}>Loading Report...</div>;
-
-        const breakdownColumns = [
-            { title: 'Category', dataIndex: 'category', key: 'category' },
-            { title: 'Amount', dataIndex: 'amount', key: 'amount', align: 'right', render: val => `Rs.${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}` }
-        ];
-
-        return (
-            <div style={{ padding: '20px 40px', background: '#fff' }}>
-                {/* Controls */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 20, alignItems: 'center', gap: 10 }}>
-                    <Text type="secondary">Select Period:</Text>
-                    <DatePicker.RangePicker
-                        onChange={(dates) => {
-                            if (dates) {
-                                fetchReport(dates[0], dates[1]);
-                            } else {
-                                // Reload default (current month)
-                                const now = new Date();
-                                const loadDefault = async () => {
-                                    const token = localStorage.getItem('token');
-                                    const res = await axios.get('http://localhost:5000/api/transactions/summary', { headers: { Authorization: `Bearer ${token}` } });
-                                    setReportData(res.data);
-                                };
-                                loadDefault();
-                            }
-                        }}
-                        style={{ width: 300 }}
-                    />
-                </div>
-
-                {/* Report Header */}
-                <div style={{ textAlign: 'center', marginBottom: 40 }}>
-                    <Title level={2} style={{ marginBottom: 0 }}>Monthly Financial Summary</Title>
-                    <Title level={3} style={{ marginTop: 5, color: '#E91E63' }}>Kavicakes</Title>
-
-                    <Text style={{ fontSize: 13, color: '#666', display: 'block', marginTop: 15 }}>
-                        Report for Period: <span style={{ fontWeight: 600 }}>{reportData.period}</span>
-                    </Text>
-                    <div style={{ maxWidth: 600, margin: '15px auto', fontSize: 13, color: '#888', fontStyle: 'italic' }}>
-                        This report provides a clear overview of the income, expenses, and profitability of Kavicakes for the selected period.
+    return (
+        <div className="cashbook-container">
+            {/* Header section with Buttons */}
+            <div className="cashbook-header">
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+                        <Title level={2} style={{ marginBottom: 0 }}>Cashbook</Title>
+                        <Tag color="geekblue" style={{ borderRadius: '4px', padding: '0 8px' }}>
+                            Gross Balance: Rs. {(summary?.netBalance || 0).toLocaleString()}
+                        </Tag>
                     </div>
+                    <Text type="secondary">Financial accounts and daily transaction logs</Text>
                 </div>
+                <Space size="middle">
+                    <Button 
+                        type="primary" 
+                        size="large" 
+                        icon={<PlusOutlined />} 
+                        onClick={() => setIsIncomeModalOpen(true)}
+                        className="btn-cash-in"
+                    >
+                        Cash In
+                    </Button>
+                    <Button 
+                        type="primary" 
+                        size="large" 
+                        icon={<MinusOutlined />} 
+                        onClick={() => setIsExpenseModalOpen(true)}
+                        className="btn-cash-out"
+                    >
+                        Cash Out
+                    </Button>
+                </Space>
+            </div>
 
-                {/* Highlights */}
-                <div style={{ marginBottom: 30 }}>
-                    <Title level={4}><BarChartOutlined /> Financial Highlights</Title>
-                    <Row gutter={40} style={{ marginTop: 15 }}>
-                        <Col span={8}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: 5 }}>
-                                <Text>Total Income:</Text>
-                                <Text strong>Rs. {reportData.totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}</Text>
+            {/* Summary Cards Section */}
+            <Row gutter={[24, 24]} style={{ marginBottom: 32 }}>
+                <Col xs={24} md={8}>
+                    <Card className="summary-card income">
+                        <Space align="center" size="middle">
+                            <div className="icon-wrapper income">
+                                <PlusOutlined />
                             </div>
+                            <div>
+                                <Text type="secondary" className="card-label">Cash In</Text>
+                                <div className="card-value">Rs. {(summary?.totalIncome || 0).toLocaleString()}</div>
+                            </div>
+                        </Space>
+                    </Card>
+                </Col>
+                <Col xs={24} md={8}>
+                    <Card className="summary-card expense">
+                        <Space align="center" size="middle">
+                            <div className="icon-wrapper expense">
+                                <MinusOutlined />
+                            </div>
+                            <div>
+                                <Text type="secondary" className="card-label">Cash Out</Text>
+                                <div className="card-value">Rs. {(summary?.totalExpenses || 0).toLocaleString()}</div>
+                            </div>
+                        </Space>
+                    </Card>
+                </Col>
+                <Col xs={24} md={8}>
+                    <Card className="summary-card balance">
+                        <Space align="center" size="middle">
+                            <div className="icon-wrapper balance">
+                                <SwapOutlined />
+                            </div>
+                            <div>
+                                <Text type="secondary" className="card-label">Net Balance</Text>
+                                <div className="card-value">
+                                    Rs. {(summary?.netBalance || 0).toLocaleString()}
+                                </div>
+                            </div>
+                        </Space>
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Filter & Search Bar */}
+            <Card className="filter-card">
+                <Row gutter={16} align="middle">
+                    <Col xs={24} md={12}>
+                        <Input 
+                            placeholder="Search by details, category or amount..." 
+                            prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />} 
+                            size="large"
+                            className="search-input"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </Col>
+                    <Col xs={24} md={8}>
+                        <DatePicker.RangePicker 
+                            size="large" 
+                            style={{ width: '100%' }}
+                            onChange={dates => {
+                                setDateRange(dates || [null, null]);
+                                fetchData(dates ? dates[0] : null, dates ? dates[1] : null);
+                            }}
+                        />
+                    </Col>
+                    <Col xs={24} md={4}>
+                        <Button 
+                            block 
+                            size="large" 
+                            icon={<FilterOutlined />}
+                            onClick={() => fetchData()}
+                        >
+                            Reset
+                        </Button>
+                    </Col>
+                </Row>
+            </Card>
+
+            {/* Transactions Table */}
+            <Card className="table-card" bodyStyle={{ padding: 0 }}>
+                <div style={{ padding: '16px 24px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text strong style={{ fontSize: '16px' }}>Showing {filteredTransactions.length} entries</Text>
+                    <Space size="small">
+                        <Button icon={<CalendarOutlined />}>Monthly View</Button>
+                        <Button icon={<InfoCircleOutlined />}>Daily Logs</Button>
+                    </Space>
+                </div>
+                <Table 
+                    rowSelection={{ type: 'checkbox' }}
+                    dataSource={filteredTransactions} 
+                    columns={columns} 
+                    loading={loading} 
+                    rowKey="id" 
+                    pagination={{ pageSize: 15 }}
+                    locale={{ emptyText: <Empty description="No transactions found for the selected period." /> }}
+                />
+            </Card>
+
+            {/* Modals for Cash In / Out */}
+            <Modal
+                title={<span style={{ color: '#10b981' }}><PlusOutlined /> Add Cash In (Income)</span>}
+                open={isIncomeModalOpen}
+                onCancel={() => setIsIncomeModalOpen(false)}
+                footer={null}
+                centered
+                className="transaction-modal"
+            >
+                <Form form={form} layout="vertical" onFinish={v => handleAddTransaction(v, 'INCOME')} initialValues={{ paymentMode: 'Cash' }}>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="amount" label="Amount (Rs)" rules={[{ required: true }]}>
+                                <InputNumber style={{ width: '100%' }} size="large" prefix="Rs." placeholder="0.00" />
+                            </Form.Item>
                         </Col>
-                        <Col span={8}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: 5 }}>
-                                <Text>Total Expenses:</Text>
-                                <Text strong>Rs. {reportData.totalExpenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</Text>
-                            </div>
-                        </Col>
-                        <Col span={8}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: 5 }}>
-                                <Text>Net Profit:</Text>
-                                <Text strong style={{ color: reportData.netProfit >= 0 ? '#3f8600' : '#cf1322' }}>
-                                    Rs. {reportData.netProfit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                </Text>
-                            </div>
+                        <Col span={12}>
+                            <Form.Item name="paymentMode" label="Payment Mode" rules={[{ required: true }]}>
+                                <Select size="large">
+                                    <Option value="Cash">Cash</Option>
+                                    <Option value="Bank">Bank Transfer</Option>
+                                </Select>
+                            </Form.Item>
                         </Col>
                     </Row>
-                </div>
-
-                {/* Breakdown Sections */}
-                <Row gutter={60}>
-                    <Col span={12}>
-                        <Title level={5} style={{ marginBottom: 15 }}><DollarCircleOutlined /> Income Breakdown</Title>
-                        <Table
-                            dataSource={reportData.incomeBreakdown}
-                            columns={breakdownColumns}
-                            pagination={false}
-                            size="small"
-                            rowKey="category"
-                            bordered={false}
-                            style={{ border: 'none' }}
-                        />
-                    </Col>
-                    <Col span={12}>
-                        <Title level={5} style={{ marginBottom: 15 }}><FallOutlined /> Expense Breakdown</Title>
-                        <Table
-                            dataSource={reportData.expenseBreakdown}
-                            columns={breakdownColumns}
-                            pagination={false}
-                            size="small"
-                            rowKey="category"
-                            bordered={false}
-                        />
-                    </Col>
-                </Row>
-
-                {/* Footer Download */}
-                <div style={{ marginTop: 50, textAlign: 'right' }}>
-                    <Button type="primary" icon={<DownloadOutlined />} size="large" style={{ background: '#E91E63', borderColor: '#E91E63', padding: '0 40px' }}>
-                        Download
-                    </Button>
-                </div>
-            </div>
-        );
-    };
-
-    return (
-        <div>
-            <div style={{ marginBottom: 20 }}>
-                <Title level={2}>Cashbook</Title>
-                <Text type="secondary">Manage your bakery's finances and track income & expenses</Text>
-            </div>
-
-            <Tabs defaultActiveKey="1" items={[
-                { key: '1', label: 'Financial Overview', children: <OverviewTab /> },
-                {
-                    key: '2',
-                    label: 'Transactions',
-                    children: (
-                        <div>
-                            <div style={{ textAlign: 'right', marginBottom: 16 }}>
-                                <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)} style={{ background: '#E91E63', borderColor: '#E91E63' }}>
-                                    Add Transaction
-                                </Button>
-                            </div>
-                            <Table dataSource={transactions} columns={columns} loading={loading} rowKey="id" />
-                        </div>
-                    )
-                },
-                { key: '3', label: 'Reports', children: <ReportsTab /> }
-            ]} />
-
-            <Modal
-                title="Add New Transaction"
-                open={isModalOpen}
-                onCancel={() => setIsModalOpen(false)}
-                footer={null}
-            >
-                <Form form={form} layout="vertical" onFinish={handleAddTransaction}>
-                    <Form.Item name="type" label="Type" rules={[{ required: true }]}>
-                        <Select placeholder="Select Type">
-                            <Option value="INCOME">Income</Option>
-                            <Option value="EXPENSE">Expense</Option>
-                        </Select>
-                    </Form.Item>
                     <Form.Item name="category" label="Category" rules={[{ required: true }]}>
-                        <Select placeholder="Select Category">
-                            <Option value="Rent">Rent</Option>
-                            <Option value="Utilities">Utilities</Option>
-                            <Option value="Salaries">Salaries</Option>
-                            <Option value="Ingredients">Ingredients</Option>
-                            <Option value="Manual_Income">Manual Income</Option>
+                        <Select placeholder="Select Income Category" size="large">
+                            <Option value="Sale">Sale (Manual)</Option>
+                            <Option value="Investment">Investment</Option>
+                            <Option value="Refund">Refund</Option>
                             <Option value="Other">Other</Option>
                         </Select>
                     </Form.Item>
-                    <Form.Item name="amount" label="Amount (Rs)" rules={[{ required: true }]}>
-                        <Input type="number" prefix="Rs." />
+                    <Form.Item name="description" label="Details / Remark" rules={[{ required: true }]}>
+                        <Input.TextArea rows={3} placeholder="What is this income for?" />
                     </Form.Item>
-                    <Form.Item name="description" label="Description">
-                        <Input.TextArea />
+                    <Form.Item name="date" label="Date & Time" initialValue={null}>
+                        <Input type="datetime-local" size="large" />
                     </Form.Item>
-                    <Form.Item name="date" label="Date" initialValue={null}>
-                        <Input type="date" />
-                        {/* Simple date input for now, AntD DatePicker needs moment/dayjs setup sometimes */}
+                    <Button type="primary" htmlType="submit" block size="large" className="btn-save-income">
+                        Save Income
+                    </Button>
+                </Form>
+            </Modal>
+
+            <Modal
+                title={<span style={{ color: '#ef4444' }}><MinusOutlined /> Add Cash Out (Expense)</span>}
+                open={isExpenseModalOpen}
+                onCancel={() => setIsExpenseModalOpen(false)}
+                footer={null}
+                centered
+                className="transaction-modal"
+            >
+                <Form form={form} layout="vertical" onFinish={v => handleAddTransaction(v, 'EXPENSE')} initialValues={{ paymentMode: 'Cash' }}>
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item name="amount" label="Amount (Rs)" rules={[{ required: true }]}>
+                                <InputNumber style={{ width: '100%' }} size="large" prefix="Rs." placeholder="0.00" />
+                            </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item name="paymentMode" label="Payment Mode" rules={[{ required: true }]}>
+                                <Select size="large">
+                                    <Option value="Cash">Cash</Option>
+                                    <Option value="Bank">Bank Transfer</Option>
+                                </Select>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                    <Form.Item name="category" label="Category" rules={[{ required: true }]}>
+                        <Select placeholder="Select Expense Category" size="large">
+                            <Option value="Raw Materials">Ingredients / Raw Materials</Option>
+                            <Option value="Utilities">Bills (Electricity/Water)</Option>
+                            <Option value="Salaries">Worker Salaries</Option>
+                            <Option value="Rent">Shop Rent</Option>
+                            <Option value="Marketing">Marketing / Ads</Option>
+                            <Option value="Repairs">Repairs & Maintenance</Option>
+                            <Option value="Other">Other</Option>
+                        </Select>
                     </Form.Item>
-                    <Button type="primary" htmlType="submit" block style={{ background: '#E91E63', borderColor: '#E91E63' }}>
-                        Add Transaction
+                    <Form.Item name="description" label="Details / Remark" rules={[{ required: true }]}>
+                        <Input.TextArea rows={3} placeholder="What was this expense for?" />
+                    </Form.Item>
+                    <Form.Item name="date" label="Date & Time" initialValue={null}>
+                        <Input type="datetime-local" size="large" />
+                    </Form.Item>
+                    <Button type="primary" htmlType="submit" block size="large" className="btn-save-expense">
+                        Save Expense
                     </Button>
                 </Form>
             </Modal>

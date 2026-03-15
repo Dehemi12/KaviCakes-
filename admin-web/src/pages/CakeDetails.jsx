@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Typography, Card, Button, Table, Tag, Space, message, Descriptions, Row, Col, Spin, Image } from 'antd';
 import { ArrowLeftOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import axios from 'axios';
-import AddCakeModal from '../components/AddCakeModal'; // Check path if simpler
-import { docData } from '../data/dummyData';
+import AddCakeModal from '../components/AddCakeModal';
 
 const { Title, Text } = Typography;
 
@@ -18,17 +17,15 @@ const CakeDetails = () => {
     const fetchCakeDetails = async () => {
         setLoading(true);
         try {
-            // Hardcoded fetch
-            const found = docData.cakes.find(c => c.id === parseInt(id));
-            if (found) {
-                setCake(found);
-            } else {
-                message.error('Cake not found (Static Data)');
-                navigate('/cakes');
-            }
+            const token = localStorage.getItem('token');
+            // Fetch from API instead of dummy data
+            const res = await axios.get(`http://localhost:5000/api/cakes/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setCake(res.data);
         } catch (error) {
             console.error(error);
-            message.error('Failed to load cake details');
+            message.error('Failed to load product details');
             navigate('/cakes');
         } finally {
             setLoading(false);
@@ -40,16 +37,16 @@ const CakeDetails = () => {
     }, [id]);
 
     const handleDelete = async () => {
-        if (!window.confirm('Are you sure you want to delete this cake?')) return;
+        if (!window.confirm('Are you sure you want to delete this product?')) return;
         try {
             const token = localStorage.getItem('token');
             await axios.delete(`http://localhost:5000/api/cakes/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            message.success('Cake deleted');
+            message.success('Product deleted');
             navigate('/cakes');
         } catch (error) {
-            message.error('Failed to delete cake');
+            message.error('Failed to delete product');
         }
     };
 
@@ -60,20 +57,20 @@ const CakeDetails = () => {
         { title: 'Size', dataIndex: ['size', 'label'], key: 'size', render: t => t || 'N/A' },
         { title: 'Shape', dataIndex: ['shape', 'label'], key: 'shape', render: t => t || 'N/A' },
         { title: 'Flavor', dataIndex: ['flavor', 'label'], key: 'flavor', render: t => t || 'N/A' },
-        { title: 'Price', dataIndex: 'price', key: 'price', render: p => `Rs. ${p.toLocaleString()}` },
+        { title: 'Price', dataIndex: 'price', key: 'price', render: p => `Rs. ${p ? p.toLocaleString() : '0'}` },
     ];
 
     return (
         <div>
             <div style={{ marginBottom: 20 }}>
                 <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/cakes')} style={{ marginBottom: 15 }}>
-                    Back to Cakes
+                    Back to Products
                 </Button>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Title level={2} style={{ margin: 0 }}>{cake.name}</Title>
                     <Space>
                         <Button type="primary" icon={<EditOutlined />} onClick={() => setIsEditModalOpen(true)}>
-                            Edit Cake
+                            Edit Product
                         </Button>
                         <Button danger icon={<DeleteOutlined />} onClick={handleDelete}>
                             Delete
@@ -86,7 +83,7 @@ const CakeDetails = () => {
                 <Col xs={24} md={8}>
                     <Card cover={<Image src={cake.imageUrl || 'https://via.placeholder.com/400'} alt={cake.name} />}>
                         <Descriptions column={1} bordered>
-                            <Descriptions.Item label="Category">{cake.categoryName}</Descriptions.Item>
+                            <Descriptions.Item label="Category">{cake.categoryName || cake.category?.name || 'Uncategorized'}</Descriptions.Item>
                             <Descriptions.Item label="Base Price">Rs. {cake.basePrice?.toLocaleString()}</Descriptions.Item>
                             <Descriptions.Item label="Availability">
                                 <Tag color={cake.availability ? 'green' : 'red'}>
@@ -113,20 +110,14 @@ const CakeDetails = () => {
                 </Col>
             </Row>
 
-            {/* Reusing existing AddCakeModal for editing */}
-            {/* Note: Ensure AddCakeModal is exported and supports editing mode correctly */}
-            {/* We might need to import it from pages/Cakes.jsx if it's not a separate component, 
-                Request check of file structure. 
-                Assuming it is in ../components based on common react structure, 
-                BUT previous view of Cakes.jsx showed it might be inline or imported. 
-                Let's check Cakes.jsx imports first in next step if this fails, 
-                but I'll assume for now or check quickly.
-                Actually, looking at Cakes.jsx in step 131:
-                It uses <AddCakeModal /> but imports? 
-                Let's check imports in Cakes.jsx:
-                I don't have the top of Cakes.jsx visible in step 131, but I can assume or check.
-                Wait, I'll search for AddCakeModal file location.
-            */}
+            <AddCakeModal
+                open={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                onSuccess={() => {
+                    fetchCakeDetails(); // Refresh details after edit
+                }}
+                cakeToEdit={cake}
+            />
         </div>
     );
 };

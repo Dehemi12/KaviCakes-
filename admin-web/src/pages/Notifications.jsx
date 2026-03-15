@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Tabs, List, Button, Card, Typography, Space, Badge, message, Row, Col, Input, Modal, Tag, Select, Table } from 'antd';
+import { Tabs, List, Button, Card, Typography, Space, Badge, message, Row, Col, Input, Modal, Tag, Select, Table, Form } from 'antd';
 import { BellOutlined, FileTextOutlined, CheckCircleOutlined, CloseCircleOutlined, BankOutlined, GiftOutlined, PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons';
 import axios from 'axios';
-import { docData } from '../data/dummyData';
+
 
 const { Title, Text } = Typography;
 const { Search } = Input;
@@ -13,6 +13,7 @@ const Notifications = () => {
     const [loading, setLoading] = useState(true);
     const [isSendModalOpen, setIsSendModalOpen] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [isCreateTemplateModalOpen, setIsCreateTemplateModalOpen] = useState(false);
 
     const openSendModal = (template) => {
         setSelectedTemplate(template);
@@ -21,29 +22,23 @@ const Notifications = () => {
 
     const fetchData = async () => {
         setLoading(true);
-        // Simulate network delay
-        setTimeout(() => {
-            // Local fallback data since docData doesn't have these yet
-            const dummyNotifications = [
-                { id: 1, title: 'New Bulk Order Request', message: 'Kavindi Ratnayake has requested a bulk order', type: 'ORDER', isRead: false, createdAt: new Date().toISOString() },
-                { id: 2, title: 'Payment Slip Uploaded', message: 'Customer Didul Chamikara attached a bank slip', type: 'PAYMENT', isRead: false, createdAt: new Date().toISOString(), metadata: { slipUrl: 'https://via.placeholder.com/300' } },
-                { id: 3, title: 'Cake for Delivery', message: 'Deliver Amal Perera for order #1082 Today!', type: 'DELIVERY', isRead: true, createdAt: new Date().toISOString() }
-            ];
+        try {
+            const token = localStorage.getItem('token');
+            const config = { headers: { Authorization: `Bearer ${token}` } };
 
-            const dummyTemplates = [
-                { id: 1, title: 'Request Order Confirmation', category: 'Order', body: 'Hi {{name}}, please confirm your order #{{order_id}} for delivery on {{date}}.' },
-                { id: 2, title: 'Payment Confirmation', category: 'Payment', body: 'We have received your payment of Rs.{{amount}} for order #{{order_id}}. Thank you!' },
-                { id: 3, title: 'Out for Delivery', category: 'Delivery', body: 'Good news {{name}}! Your order #{{order_id}} is out for delivery. Our rider will contact you soon.' },
-                { id: 4, title: 'Order Delivered', category: 'Delivery', body: 'Your order #{{order_id}} has been delivered. We hope you enjoy your cake! Please leave us feedback.' },
-                { id: 5, title: 'Pending Payment Reminder', category: 'Payment', body: 'Hi {{name}}, this is a gentle reminder to settle the payment for order #{{order_id}} to proceed with baking.' },
-                { id: 6, title: 'Special Discount', category: 'Promotion', body: 'Hello! Enjoy a 10% discount on your next order with code SWEET10. Valid until Sunday.' },
-                { id: 7, title: 'Birthday Wish', category: 'Promotion', body: 'Happy Birthday {{name}}! Celebrate with a free cupcake on your next purchase.' }
-            ];
+            const [notifRes, templRes] = await Promise.all([
+                axios.get('http://localhost:5000/api/notifications', config),
+                axios.get('http://localhost:5000/api/notifications/templates', config)
+            ]);
 
-            setNotifications(dummyNotifications);
-            setTemplates(dummyTemplates);
+            setNotifications(notifRes.data);
+            setTemplates(templRes.data);
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+            message.error('Failed to load notifications');
+        } finally {
             setLoading(false);
-        }, 300);
+        }
     };
 
     useEffect(() => {
@@ -107,7 +102,7 @@ const Notifications = () => {
                     <Select defaultValue="All Templates" style={{ width: 150 }} options={[{ value: 'All Templates', label: 'All Templates' }]} />
                     <Search placeholder="Search templates..." style={{ width: 200 }} />
                 </Space>
-                <Button type="primary" icon={<PlusOutlined />} style={{ background: '#E91E63', borderColor: '#E91E63' }}>Create Template</Button>
+                <Button type="primary" icon={<PlusOutlined />} style={{ background: '#E91E63', borderColor: '#E91E63' }} onClick={() => setIsCreateTemplateModalOpen(true)}>Create Template</Button>
             </div>
             <Row gutter={[16, 16]}>
                 {templates.map(t => (
@@ -162,6 +157,15 @@ const Notifications = () => {
                 initialSelectedOrders={selectedTemplate ? [] : null}
                 manualRecipients={!selectedTemplate ? selectedTemplate : null}
             />
+
+            <CreateTemplateModal
+                open={isCreateTemplateModalOpen}
+                onClose={() => setIsCreateTemplateModalOpen(false)}
+                onSuccess={(newTemplate) => {
+                    setTemplates([...templates, newTemplate]);
+                    setIsCreateTemplateModalOpen(false);
+                }}
+            />
         </div>
     );
 };
@@ -176,8 +180,15 @@ function ManualSenderTab() {
     }, []);
 
     const fetchOrders = async () => {
-        // Use docData.orders
-        setOrders(docData.orders || []);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get('http://localhost:5000/api/orders', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setOrders(res.data);
+        } catch (error) {
+            console.error("Failed to load orders");
+        }
     };
 
     const columns = [
@@ -245,14 +256,21 @@ function SendNotificationModal({ open, onClose, template, preSelectedOrderIds })
     }, [open, template, preSelectedOrderIds]);
 
     const fetchOrders = async () => {
-        // Use docData.orders
-        const allOrders = (docData.orders || []).map(o => ({
-            ...o,
-            // Ensure deliveryDate exists for filtering; default to 2 days after created
-            deliveryDate: o.deliveryDate || new Date(new Date(o.createdAt).getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        }));
-        setOrders(allOrders);
-        performFiltering(allOrders);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get('http://localhost:5000/api/orders', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const allOrders = (res.data || []).map(o => ({
+                ...o,
+                // Ensure deliveryDate exists
+                deliveryDate: o.deliveryDate || new Date(new Date(o.createdAt).getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            }));
+            setOrders(allOrders);
+            performFiltering(allOrders);
+        } catch (error) {
+            console.error("Failed to load orders for modal");
+        }
     };
 
     const performFiltering = (allOrders) => {
@@ -272,15 +290,35 @@ function SendNotificationModal({ open, onClose, template, preSelectedOrderIds })
 
             if (title.includes('request order confirmation') || title.includes('bulk order')) {
                 filtered = allOrders.filter(o => getDiffDays(o.deliveryDate) >= 5 && (o.status === 'NEW' || o.status === 'CONFIRMED'));
+            } else if (title.includes('preparation') || title.includes('baking') || title.includes('received')) {
+                filtered = allOrders.filter(o => {
+                    const isPaid = (o.paymentMethod === 'ONLINE_PAYMENT' || o.paymentMethod === 'BANK_TRANSFER')
+                        ? o.paymentStatus === 'PAID'
+                        : o.advanceStatus === 'APPROVED';
+
+                    const notStarted = !['PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'].includes(o.status);
+
+                    return isPaid && notStarted;
+                });
             } else if (title.includes('edit order')) {
-                filtered = allOrders.filter(o => getDiffDays(o.deliveryDate) >= 2);
             } else if (title.includes('out for delivery')) {
                 filtered = allOrders.filter(o => {
                     const days = getDiffDays(o.deliveryDate);
                     return days === 0 && (o.status === 'PREPARING' || o.status === 'CONFIRMED');
                 });
-            } else if (title.includes('payment') || title.includes('do payments')) {
-                filtered = allOrders.filter(o => o.paymentStatus === 'PENDING' && o.status !== 'CANCELLED');
+            } else if (title.includes('payment') || title.includes('advance')) {
+                filtered = allOrders.filter(o => {
+                    const days = getDiffDays(o.deliveryDate);
+                    if (days !== 2) return false;
+
+                    const isOnline = o.paymentMethod === 'ONLINE_PAYMENT' || o.paymentMethod === 'BANK_TRANSFER';
+                    if (isOnline) {
+                        return o.paymentStatus !== 'PAID';
+                    } else {
+                        // For COD, check if advance is approved
+                        return o.advanceStatus !== 'APPROVED';
+                    }
+                });
             } else if (title.includes('delivered') || title.includes('feedback')) {
                 filtered = allOrders.filter(o => o.status === 'DELIVERED');
             }
@@ -293,10 +331,30 @@ function SendNotificationModal({ open, onClose, template, preSelectedOrderIds })
         }
     };
 
-    const handleSend = () => {
+    const [isSending, setIsSending] = useState(false);
+
+    const handleSend = async () => {
         if (selectedOrders.length === 0) return message.error('No orders selected');
-        message.success(`Sent to ${selectedOrders.length} customers successfully!`);
-        onClose();
+        if (!messageText.trim()) return message.error('Message is required');
+
+        setIsSending(true);
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post('http://localhost:5000/api/notifications/send', {
+                orderIds: selectedOrders,
+                messageTitle: template ? template.title : 'Admin Notification',
+                messageBody: messageText
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            message.success(`Sent to ${selectedOrders.length} customers successfully!`);
+            onClose();
+        } catch (error) {
+            console.error('Failed to send messages', error);
+            message.error('Failed to send messages');
+        } finally {
+            setIsSending(false);
+        }
     };
 
     const isManual = !template;
@@ -308,6 +366,7 @@ function SendNotificationModal({ open, onClose, template, preSelectedOrderIds })
             title={template ? `Send: ${template.title}` : 'Compose Manual Message'}
             okText={`Send to ${selectedOrders.length} Customers`}
             onOk={handleSend}
+            confirmLoading={isSending}
             width={600}
         >
             {template && (
@@ -359,5 +418,69 @@ function SendNotificationModal({ open, onClose, template, preSelectedOrderIds })
         </Modal>
     );
 };
+
+function CreateTemplateModal({ open, onClose, onSuccess }) {
+    const [form] = Form.useForm();
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (values) => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.post('http://localhost:5000/api/notifications/templates', {
+                title: values.title,
+                name: values.name || null,
+                category: values.category,
+                body: values.body,
+                actionButton: values.actionButton || null
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            message.success('Template created successfully!');
+            form.resetFields();
+            onSuccess(res.data);
+        } catch (error) {
+            console.error('Failed to create template', error);
+            message.error('Failed to create template');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Modal
+            open={open}
+            title="Create Notification Template"
+            onCancel={onClose}
+            onOk={() => form.submit()}
+            confirmLoading={loading}
+            okText="Create Template"
+        >
+            <Form form={form} layout="vertical" onFinish={handleSubmit}>
+                <Form.Item label="Template Name (Internal)" name="name" tooltip="Optional unique identifier like CUSTOM_NOTIFICATION">
+                    <Input placeholder="e.g. CUSTOM_NOTIFICATION" />
+                </Form.Item>
+                <Form.Item label="Display Title" name="title" rules={[{ required: true, message: 'Please enter a title' }]}>
+                    <Input placeholder="e.g. Special Offer!" />
+                </Form.Item>
+                <Form.Item label="Category" name="category" rules={[{ required: true, message: 'Please select a category' }]}>
+                    <Select placeholder="Select category">
+                        <Select.Option value="Admin">Admin</Select.Option>
+                        <Select.Option value="Promotion">Promotion</Select.Option>
+                        <Select.Option value="Order">Order</Select.Option>
+                        <Select.Option value="Payment">Payment</Select.Option>
+                        <Select.Option value="Customer">Customer</Select.Option>
+                    </Select>
+                </Form.Item>
+                <Form.Item label="Message Body" name="body" rules={[{ required: true, message: 'Please enter message content' }]}>
+                    <Input.TextArea rows={4} placeholder="Type your message here. You can use dynamic variables like {TITLE} or {ORDER_ID}." />
+                </Form.Item>
+                <Form.Item label="Action Button Text" name="actionButton">
+                    <Input placeholder="e.g. Click Here" />
+                </Form.Item>
+            </Form>
+        </Modal>
+    );
+}
 
 export default Notifications;

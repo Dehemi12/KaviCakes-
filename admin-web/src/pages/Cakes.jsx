@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Row, Col, Card, Typography, Button, Input, Tag, message, Select, Space } from 'antd';
-import { PlusOutlined, EditOutlined, SearchOutlined, FilterOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Typography, Button, Input, Tag, message, Select, Space, Modal, Form, InputNumber } from 'antd';
+import { PlusOutlined, EditOutlined, SearchOutlined, FilterOutlined, AppstoreAddOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import AddCakeModal from '../components/AddCakeModal';
-import { docData } from '../data/dummyData';
+
 
 const { Title, Text } = Typography;
 const { Meta } = Card;
@@ -20,30 +20,42 @@ const Cakes = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCake, setEditingCake] = useState(null);
 
+    // Category Modal State
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+    const [categoryForm] = Form.useForm();
+
     const fetchMasterData = async () => {
-        // Hardcoded Master Data
-        setMasterData(docData.masterData);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get('http://localhost:5000/api/cakes/master-data', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setMasterData(res.data);
+        } catch (error) {
+            console.error(error);
+            message.error("Failed to load Master Data");
+        }
     };
 
     const fetchCakes = async () => {
-        // Hardcoded Cakes
-        // Filter logic can be simulated if needed, but for now just showing all or simple search
-        let filtered = docData.cakes;
-
-        if (searchTerm) {
-            filtered = filtered.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        try {
+            const token = localStorage.getItem('token');
+            const params = {
+                search: searchTerm,
+                categoryId: category.id !== 'All' ? category.id : undefined,
+                sizeId: filters.sizeId,
+                shapeId: filters.shapeId,
+                flavorId: filters.flavorId
+            };
+            const res = await axios.get('http://localhost:5000/api/cakes', {
+                headers: { Authorization: `Bearer ${token}` },
+                params
+            });
+            setCakes(res.data);
+        } catch (error) {
+            console.error(error);
+            message.error("Failed to load cakes");
         }
-
-        if (category.id !== 'All') {
-            filtered = filtered.filter(c => c.categoryId === category.id);
-        }
-
-        // Apply simulated filters
-        if (filters.sizeId) filtered = filtered.filter(c => c.variants.some(v => v.size.id === filters.sizeId));
-        if (filters.shapeId) filtered = filtered.filter(c => c.variants.some(v => v.shape.id === filters.shapeId));
-        if (filters.flavorId) filtered = filtered.filter(c => c.variants.some(v => v.flavor.id === filters.flavorId));
-
-        setCakes(filtered);
     };
 
     useEffect(() => {
@@ -73,6 +85,27 @@ const Cakes = () => {
         setEditingCake(null);
     };
 
+    // Category Handlers
+    const handleAddCategoryClick = () => {
+        setIsCategoryModalOpen(true);
+    };
+
+    const handleCreateCategory = async (values) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post('http://localhost:5000/api/cakes/categories', values, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            message.success('Category created successfully');
+            setIsCategoryModalOpen(false);
+            categoryForm.resetFields();
+            fetchMasterData(); // Refresh list
+        } catch (error) {
+            console.error(error);
+            message.error('Failed to create category');
+        }
+    };
+
     // Combine 'All' with fetched categories
     const displayCategories = [{ id: 'All', name: 'All' }, ...(masterData.categories || [])];
 
@@ -80,12 +113,25 @@ const Cakes = () => {
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <div>
-                    <Title level={2}>Cake Management</Title>
+                    <Title level={2}>Product Management</Title>
                     <Text type="secondary">Manage your bakery catalog</Text>
                 </div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleAddClick} style={{ background: '#E91E63', borderColor: '#E91E63' }}>
-                    Add Cake
-                </Button>
+                <Space>
+                    <Button
+                        icon={<AppstoreAddOutlined />}
+                        onClick={handleAddCategoryClick}
+                    >
+                        Add Category
+                    </Button>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={handleAddClick}
+                        style={{ background: '#E91E63', borderColor: '#E91E63' }}
+                    >
+                        Add Product
+                    </Button>
+                </Space>
             </div>
 
             {/* Filters & Search */}
@@ -105,7 +151,7 @@ const Cakes = () => {
                     </div>
                     <Input
                         prefix={<SearchOutlined />}
-                        placeholder="Search cakes..."
+                        placeholder="Search products..."
                         style={{ width: 250, borderRadius: 20 }}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -172,20 +218,22 @@ const Cakes = () => {
                                 description={<div style={{ height: 40, overflow: 'hidden', textOverflow: 'ellipsis' }}>{cake.description}</div>}
                             />
                             <div style={{ marginTop: 10 }}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>{cake.categoryName}</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    {cake.categoryName} • {cake.variants?.length || 0} Variant{cake.variants?.length !== 1 ? 's' : ''}
+                                </Text>
                             </div>
                         </Card>
                     </Col>
                 )) : (
                     <Col span={24}>
                         <div style={{ textAlign: 'center', padding: 50 }}>
-                            <Text type="secondary">No cakes found.</Text>
+                            <Text type="secondary">No products found.</Text>
                         </div>
                     </Col>
                 )}
             </Row>
 
-            {/* Modal for Add or Edit */}
+            {/* Modal for Add or Edit Product */}
             <AddCakeModal
                 open={isModalOpen}
                 onClose={handleModalClose}
@@ -195,6 +243,48 @@ const Cakes = () => {
                 }}
                 cakeToEdit={editingCake}
             />
+
+            {/* Modal for Add Category */}
+            <Modal
+                title="Add New Category"
+                open={isCategoryModalOpen}
+                onCancel={() => setIsCategoryModalOpen(false)}
+                footer={null}
+            >
+                <Form
+                    form={categoryForm}
+                    layout="vertical"
+                    onFinish={handleCreateCategory}
+                >
+                    <Form.Item
+                        name="name"
+                        label="Category Name"
+                        rules={[{ required: true, message: 'Please enter category name' }]}
+                    >
+                        <Input placeholder="e.g. Birthday Cakes" />
+                    </Form.Item>
+                    <Form.Item
+                        name="basePrice"
+                        label="Base Price (Starting Price)"
+                        rules={[{ required: true, message: 'Please enter base price' }]}
+                    >
+                        <InputNumber
+                            style={{ width: '100%' }}
+                            min={0}
+                            placeholder="e.g. 1500"
+                            prefix="Rs."
+                        />
+                    </Form.Item>
+                    <div style={{ textAlign: 'right' }}>
+                        <Space>
+                            <Button onClick={() => setIsCategoryModalOpen(false)}>Cancel</Button>
+                            <Button type="primary" htmlType="submit" style={{ background: '#E91E63', borderColor: '#E91E63' }}>
+                                Create Category
+                            </Button>
+                        </Space>
+                    </div>
+                </Form>
+            </Modal>
         </div>
     );
 };

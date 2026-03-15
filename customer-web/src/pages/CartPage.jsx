@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Trash2, Plus, Minus, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import api from '../services/api';
 
 const CartPage = () => {
     const cartContext = useCart();
@@ -15,7 +16,39 @@ const CartPage = () => {
     const { cart, removeFromCart, updateQuantity, cartTotal, clearCart, loyaltyDiscount, setLoyaltyDiscount } = cartContext;
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [pointsToBurn, setPointsToBurn] = React.useState(loyaltyDiscount || 0);
+    const [fetchedUser, setFetchedUser] = React.useState(null);
+
+    // Cap discount if cart total drops
+    React.useEffect(() => {
+        if (loyaltyDiscount > cartTotal) {
+            setLoyaltyDiscount(cartTotal);
+        }
+    }, [cartTotal, loyaltyDiscount, setLoyaltyDiscount]);
+
+    // Fetch fresh profile data on mount to get accurate points
+    React.useEffect(() => {
+        if (user) {
+            api.get('/auth/profile')
+                .then(res => setFetchedUser(res.data))
+                .catch(err => console.error('Failed to fetch profile', err));
+        }
+    }, [user]);
+
+    const activeUser = fetchedUser || user;
+    const availablePoints = activeUser?.loyaltyPoints || 0;
+
+    // Toggle Handler
+    const handleLoyaltyToggle = () => {
+        if (loyaltyDiscount > 0) {
+            setLoyaltyDiscount(0);
+        } else {
+            const maxPoints = Math.min(availablePoints, cartTotal);
+            setLoyaltyDiscount(maxPoints);
+        }
+    };
+
 
     // Debugging
     console.log('CartPage render. Cart:', cart);
@@ -132,32 +165,20 @@ const CartPage = () => {
                                 </h3>
 
                                 {user ? (
-                                    user.loyaltyPoints > 0 ? (
-                                        <>
-                                            <div className="text-xs text-gray-600 mb-2">
-                                                Available: <strong>{user.loyaltyPoints}</strong> (1 Point = Rs. 1)
+                                    availablePoints > 0 ? (
+                                        <div className="flex items-center justify-between">
+                                            <div className="text-sm text-gray-700">
+                                                <p className="font-medium">Redeem Points</p>
+                                                <p className="text-xs text-gray-500">Available: <strong>{availablePoints}</strong> (Rs. {availablePoints})</p>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    max={Math.min(user.loyaltyPoints, cartTotal)}
-                                                    value={pointsToBurn}
-                                                    onChange={(e) => {
-                                                        const val = Math.min(Math.max(0, Number(e.target.value)), Math.min(user.loyaltyPoints, cartTotal));
-                                                        setPointsToBurn(val);
-                                                    }}
-                                                    className="flex-1 rounded-lg border-gray-300 text-sm p-2 border"
-                                                    placeholder="Points"
-                                                />
-                                                <button
-                                                    onClick={() => setLoyaltyDiscount(pointsToBurn)}
-                                                    className="bg-gray-900 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-gray-800"
-                                                >
-                                                    Apply
-                                                </button>
-                                            </div>
-                                        </>
+
+                                            <button
+                                                onClick={handleLoyaltyToggle}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 ${loyaltyDiscount > 0 ? 'bg-pink-600' : 'bg-gray-200'}`}
+                                            >
+                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${loyaltyDiscount > 0 ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
                                     ) : (
                                         <p className="text-xs text-gray-600">
                                             You have 0 loyalty points. Earn points with this order!
@@ -173,7 +194,9 @@ const CartPage = () => {
                             <button
                                 onClick={() => {
                                     if (user) {
-                                        navigate('/checkout');
+                                        // Pass editingOrderId if present
+                                        const editingOrderId = location.state?.editingOrderId;
+                                        navigate('/checkout', { state: { editingOrderId } });
                                     } else {
                                         navigate('/login', { state: { from: { pathname: '/checkout' } } });
                                     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Upload, X, ChevronRight, Calendar, Check, Link as LinkIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import api from '../services/api';
 
 const CustomOrderPage = () => {
     const navigate = useNavigate();
@@ -33,32 +34,97 @@ const CustomOrderPage = () => {
 
     const [designFile, setDesignFile] = useState(null);
 
-    // Pricing Constants
-    const PRICES = {
-        sizes: { '1 kg (Serves 10-12)': 2500, '2 kg (Serves 20-25)': 4500, '3 kg (Serves 30-35)': 6500 },
-        shapes: { 'Round': 0, 'Square': 200, 'Heart': 450, 'Tiered': 1000 },
-        flavors: { 'Vanilla': 0, 'Chocolate': 350, 'Butterscotch': 250, 'Coffee': 300, 'Red Velvet': 400 },
-        decorations: { 'None': 0, 'Flowers': 500, 'Topper': 300, 'Gold Leaf': 600 }
-    };
+    const [masterData, setMasterData] = useState({ sizes: [], shapes: [], flavors: [], categories: [] });
+    const [loadingData, setLoadingData] = useState(true);
 
-    // Calculate Price Effect
+    // Fetch Master Data
     useEffect(() => {
-        let newPrice = 0;
-        newPrice += PRICES.sizes[formData.cakeSize] || 2500;
-        newPrice += PRICES.shapes[formData.cakeShape] || 0;
-        newPrice += PRICES.flavors[formData.flavor] || 0;
-        newPrice += PRICES.decorations[formData.topDecoration] || 0;
-        setPrice(newPrice);
-    }, [formData]);
+        const loadData = async () => {
+            try {
+                const res = await api.get('/cakes/master-data');
+                setMasterData(res.data);
+
+                // Set defaults if data loaded
+                setFormData(prev => ({
+                    ...prev,
+                    cakeCategory: res.data.categories?.length ? res.data.categories[0].id : prev.cakeCategory,
+                    cakeSize: res.data.sizes?.length ? res.data.sizes[0].label : prev.cakeSize,
+                    cakeShape: res.data.shapes?.length ? res.data.shapes[0].label : prev.cakeShape,
+                    flavor: res.data.flavors?.length ? res.data.flavors[0].label : prev.flavor
+                }));
+            } catch (err) {
+                console.error("Failed to load pricing data", err);
+            } finally {
+                setLoadingData(false);
+            }
+        };
+        loadData();
+    }, []);
+
+    // Price Calculation
+    useEffect(() => {
+        if (loadingData) return;
+
+        let total = 0;
+
+        // 1. Base Price from Category
+        const cat = masterData.categories.find(c => String(c.id) === String(formData.cakeCategory) || c.name === formData.cakeCategory);
+        if (cat) total += Number(cat.basePrice || 0);
+
+        // 2. Modifiers
+        const size = masterData.sizes.find(s => s.label === formData.cakeSize);
+        if (size) total += Number(size.price || 0);
+
+        const shape = masterData.shapes.find(s => s.label === formData.cakeShape);
+        if (shape) total += Number(shape.price || 0);
+
+        const flavor = masterData.flavors.find(f => f.label === formData.flavor);
+        if (flavor) total += Number(flavor.price || 0);
+
+        // Manual helpers for other decorations
+        const DECORATION_PRICES = { 'None': 0, 'Flowers': 500, 'Topper': 300, 'Gold Leaf': 600 };
+        total += DECORATION_PRICES[formData.topDecoration] || 0;
+
+        setPrice(total);
+    }, [formData, masterData, loadingData]);
+
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleFileChange = (e) => {
-        if (e.target.files[0]) {
-            setDesignFile(e.target.files[0]);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [uploadedImageUrl, setUploadedImageUrl] = useState('');
+
+    const handleFileChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setDesignFile(file);
+        setUploadingImage(true);
+
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+
+        try {
+            // Check Env or default
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+            const res = await fetch(`${baseUrl}/upload`, {
+                method: 'POST',
+                body: uploadData
+            });
+            const data = await res.json();
+            if (data.url) {
+                setUploadedImageUrl(data.url);
+            } else {
+                alert('Upload failed: No URL returned');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Image upload failed. Please try again.');
+        } finally {
+            setUploadingImage(false);
         }
     };
 
@@ -66,16 +132,26 @@ const CustomOrderPage = () => {
     const handleBack = () => setStep(prev => prev - 1);
 
     const handleProceedToCheckout = () => {
-        // Create a custom product object to add to cart
+        const selectedCat = masterData.categories.find(c => String(c.id) === String(formData.cakeCategory) || c.name === formData.cakeCategory);
+        const selectedSize = masterData.sizes.find(s => s.label === formData.cakeSize);
+        const selectedShape = masterData.shapes.find(s => s.label === formData.cakeShape);
+        const selectedFlavor = masterData.flavors.find(f => f.label === formData.flavor);
+
         const customProduct = {
             id: 'CUST-' + Date.now(),
             name: 'Custom Cake Order',
-            description: `${formData.cakeSize}, ${formData.flavor}, ${formData.cakeShape}`,
+            description: `${formData.cakeSize}, ${formData.flavor} (Custom Design)`,
             price: price,
-            image: designFile ? URL.createObjectURL(designFile) : 'https://images.unsplash.com/photo-1563729768-3980d7c74c6d?auto=format&fit=crop&q=80&w=300',
+            image: uploadedImageUrl || 'https://images.unsplash.com/photo-1563729768-3980d7c74c6d?auto=format&fit=crop&q=80&w=300',
             isCustom: true,
             customDetails: {
                 ...formData,
+                categoryId: selectedCat?.id,
+                sizeId: selectedSize?.id,
+                shapeId: selectedShape?.id,
+                flavorId: selectedFlavor?.id,
+                decorationPrice: ({ 'None': 0, 'Flowers': 500, 'Topper': 300, 'Gold Leaf': 600 })[formData.topDecoration] || 0,
+                designImage: uploadedImageUrl,
                 designFileName: designFile?.name
             }
         };
@@ -133,28 +209,25 @@ const CustomOrderPage = () => {
                                 <div>
                                     <label className="block text-xs font-medium text-gray-500 mb-2">Cake Size</label>
                                     <select name="cakeSize" value={formData.cakeSize} onChange={handleChange} className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-pink-500 bg-transparent text-gray-900 font-medium text-sm">
-                                        <option>1 kg (Serves 10-12)</option>
-                                        <option>2 kg (Serves 20-25)</option>
-                                        <option>3 kg (Serves 30-35)</option>
+                                        {masterData.sizes.map(s => (
+                                            <option key={s.id} value={s.label}>{s.label} (+Rs.{s.price})</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-gray-500 mb-2">Cake Shape</label>
                                     <select name="cakeShape" value={formData.cakeShape} onChange={handleChange} className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-pink-500 bg-transparent text-gray-900 font-medium text-sm">
-                                        <option>Round</option>
-                                        <option>Square</option>
-                                        <option>Heart</option>
-                                        <option>Tiered</option>
+                                        {masterData.shapes.map(s => (
+                                            <option key={s.id} value={s.label}>{s.label} (+Rs.{s.price})</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-gray-500 mb-2">Cake Flavor</label>
                                     <select name="flavor" value={formData.flavor} onChange={handleChange} className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-pink-500 bg-transparent text-gray-900 font-medium text-sm">
-                                        <option>Butterscotch</option>
-                                        <option>Chocolate</option>
-                                        <option>Vanilla</option>
-                                        <option>Coffee</option>
-                                        <option>Red Velvet</option>
+                                        {masterData.flavors.map(f => (
+                                            <option key={f.id} value={f.label}>{f.label} (+Rs.{f.price})</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div>
@@ -182,12 +255,11 @@ const CustomOrderPage = () => {
                                     </select>
                                 </div>
                                 <div className="md:col-span-2">
-                                    <label className="block text-xs font-medium text-gray-500 mb-2">Cake Category</label>
+                                    <label className="block text-xs font-medium text-gray-500 mb-2">Cake Category (Determines Base Price)</label>
                                     <select name="cakeCategory" value={formData.cakeCategory} onChange={handleChange} className="w-full border-b border-gray-200 py-2 focus:outline-none focus:border-pink-500 bg-transparent text-gray-900 font-medium text-sm">
-                                        <option>Birthday Cake</option>
-                                        <option>Wedding Cake</option>
-                                        <option>Anniversary Cake</option>
-                                        <option>Other</option>
+                                        {masterData.categories.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name} (Base: Rs.{c.basePrice})</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
@@ -405,11 +477,9 @@ const CustomOrderPage = () => {
                                 </div>
                             </div>
 
-                            <h3 className="text-xs font-bold text-gray-900 mb-4">Estimated Total</h3>
                             <div className="bg-pink-50 rounded-xl p-6 mb-8 flex justify-between items-center">
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">Based on your selections,</p>
-                                    <p className="text-xs text-gray-500">the estimated price is:</p>
+                                    <p className="text-xs text-gray-500">Total Price:</p>
                                 </div>
                                 <p className="text-3xl font-bold text-pink-600">Rs. {price.toLocaleString()}</p>
                             </div>
@@ -424,8 +494,8 @@ const CustomOrderPage = () => {
                     )}
 
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

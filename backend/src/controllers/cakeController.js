@@ -13,7 +13,7 @@ exports.getAllCakes = async (req, res) => {
             where.categoryId = parseInt(categoryId);
         } else if (categoryName && categoryName !== 'All') {
             where.category = {
-                name: categoryName // Case sensitive usually, unless configured otherwise
+                name: categoryName
             };
         }
 
@@ -50,13 +50,23 @@ exports.getAllCakes = async (req, res) => {
 
         const cakes = await prisma.cake.findMany(queryOptions);
 
-        // Format response to flat structure where basePrice is top-level
+        // Format to simplified structure for frontend
         const formatted = cakes.map(c => {
-            // Find 1kg variant for default price display
-            const variant1kg = c.variants.find(v => v.size && v.size.label === '1kg');
-            const categoryBase = parseFloat(c.category.basePrice);
-            // Default to category base if 1kg not found (fallback), otherwise add variant price
-            const displayPrice = variant1kg ? (categoryBase + parseFloat(variant1kg.price)) : categoryBase;
+            // Calculate display price (logic: Category Base + Variant Price)
+            // If no variants, just base price.
+            // If variants exist, try to find a balanced one or just take the first.
+
+            let displayPrice = parseFloat(c.category.basePrice || 0);
+
+            // Prefer 1kg variant if exists to show "starting" or "standard" price
+            const standardVariant = c.variants.find(v => v.size && v.size.label === '1kg') || c.variants[0];
+
+            if (standardVariant) {
+                // In new schema, variant.price is the Final/Computed price or Modifier. 
+                // If it's the specific price for that combo, we use it directly.
+                // If it's 0 (admin didn't set it), fallback to basePrice.
+                displayPrice = parseFloat(standardVariant.price) || parseFloat(c.category.basePrice || 0);
+            }
 
             return {
                 id: c.id,
@@ -67,11 +77,11 @@ exports.getAllCakes = async (req, res) => {
                 availability: c.availability,
                 categoryId: c.categoryId,
                 categoryName: c.category.name,
-                basePrice: categoryBase, // Raw category base
-                price: displayPrice, // Calculated 1kg price for display
+                basePrice: parseFloat(c.category.basePrice),
+                price: displayPrice,
                 variants: c.variants.map(v => ({
                     id: v.id,
-                    price: parseFloat(v.price), // Modifier/Specific price
+                    price: parseFloat(v.price),
                     size: v.size,
                     shape: v.shape,
                     flavor: v.flavor
@@ -103,12 +113,12 @@ exports.getCakeById = async (req, res) => {
 
         if (!cake) return res.status(404).json({ error: 'Cake not found' });
 
-        // Find 1kg variant for default price display
-        const variant1kg = cake.variants.find(v => v.size && v.size.label === '1kg');
-        const categoryBase = parseFloat(cake.category.basePrice);
-        const displayPrice = variant1kg ? (categoryBase + parseFloat(variant1kg.price)) : categoryBase;
+        let displayPrice = parseFloat(cake.category.basePrice || 0);
+        const standardVariant = cake.variants.find(v => v.size && v.size.label === '1kg') || cake.variants[0];
+        if (standardVariant) {
+            displayPrice = parseFloat(standardVariant.price) || parseFloat(cake.category.basePrice || 0);
+        }
 
-        // Format to match frontend expectations
         const formatted = {
             id: cake.id,
             name: cake.name,
@@ -118,8 +128,8 @@ exports.getCakeById = async (req, res) => {
             availability: cake.availability,
             categoryId: cake.categoryId,
             categoryName: cake.category.name,
-            basePrice: categoryBase,
-            price: displayPrice, // Calculated 1kg price
+            basePrice: parseFloat(cake.category.basePrice),
+            price: displayPrice,
             variants: cake.variants.map(v => ({
                 id: v.id,
                 price: parseFloat(v.price),
@@ -137,7 +147,7 @@ exports.getCakeById = async (req, res) => {
     }
 };
 
-// GET Master Data (Dropdowns) - Now includes Categories
+// GET Master Data (Dropdowns)
 exports.getMasterData = async (req, res) => {
     try {
         const [sizes, shapes, flavors, categories] = await Promise.all([
@@ -153,20 +163,59 @@ exports.getMasterData = async (req, res) => {
     }
 };
 
-// POST Create Category (New)
+// POST Create Category
 exports.createCategory = async (req, res) => {
     try {
-        const { name, basePrice } = req.body;
+        const { name, basePrice, imageUrl } = req.body;
         const category = await prisma.cakeCategory.create({
             data: {
                 name,
-                basePrice: parseFloat(basePrice)
+                basePrice: parseFloat(basePrice || 0),
+                imageUrl: imageUrl || null
             }
         });
         res.status(201).json(category);
     } catch (error) {
         console.error('[CakeController:createCategory] Error:', error);
         res.status(500).json({ error: 'Failed to create category' });
+    }
+};
+
+// PUT Update Category
+exports.updateCategory = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, basePrice, imageUrl } = req.body;
+
+        const category = await prisma.cakeCategory.update({
+            where: { id: parseInt(id) },
+            data: {
+                name,
+                basePrice: parseFloat(basePrice || 0),
+                imageUrl
+            }
+        });
+        res.json(category);
+    } catch (error) {
+        console.error('[CakeController:updateCategory] Error:', error);
+        res.status(500).json({ error: 'Failed to update category' });
+    }
+};
+
+// DELETE Category
+exports.deleteCategory = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Check if cakes exist
+        const count = await prisma.cake.count({ where: { categoryId: parseInt(id) } });
+        if (count > 0) {
+            return res.status(400).json({ error: 'Cannot delete category with existing cakes' });
+        }
+        await prisma.cakeCategory.delete({ where: { id: parseInt(id) } });
+        res.json({ message: 'Category deleted' });
+    } catch (error) {
+        console.error('[CakeController:deleteCategory] Error:', error);
+        res.status(500).json({ error: 'Failed to delete category' });
     }
 };
 
@@ -180,13 +229,28 @@ exports.createCake = async (req, res) => {
             return res.status(400).json({ error: 'Invalid Category ID' });
         }
 
-        // Verify category exists
         const category = await prisma.cakeCategory.findUnique({
             where: { id: parsedCategoryId }
         });
 
         if (!category) {
-            return res.status(400).json({ error: 'Invalid Category ID' });
+            return res.status(400).json({ error: 'Category not found' });
+        }
+
+        // Prepare variants data with strict validation
+        const variantsData = [];
+        if (Array.isArray(variants)) {
+            for (const v of variants) {
+                if (!v.sizeId || !v.shapeId || !v.flavorId) {
+                    continue; // Skip invalid variants in the loop, or throw error
+                }
+                variantsData.push({
+                    price: parseFloat(v.price || 0),
+                    sizeId: parseInt(v.sizeId),
+                    shapeId: parseInt(v.shapeId),
+                    flavorId: parseInt(v.flavorId)
+                });
+            }
         }
 
         const newCake = await prisma.cake.create({
@@ -197,12 +261,7 @@ exports.createCake = async (req, res) => {
                 ingredients,
                 imageUrl,
                 variants: {
-                    create: Array.isArray(variants) ? variants.map(v => ({
-                        price: parseFloat(v.price || 0),
-                        sizeId: v.sizeId ? parseInt(v.sizeId) : null,
-                        shapeId: v.shapeId ? parseInt(v.shapeId) : null,
-                        flavorId: v.flavorId ? parseInt(v.flavorId) : null
-                    })) : []
+                    create: variantsData
                 }
             },
             include: { variants: true }
@@ -211,7 +270,6 @@ exports.createCake = async (req, res) => {
         res.status(201).json(newCake);
     } catch (error) {
         console.error('[CakeController:createCake] Error:', error);
-        // Return detailed error for debugging (remove in prod)
         res.status(500).json({ error: `Failed to create cake: ${error.message}` });
     }
 };
@@ -234,10 +292,6 @@ exports.updateCake = async (req, res) => {
         const { id } = req.params;
         const { name, categoryId, description, ingredients, imageUrl, variants, availability } = req.body;
 
-        // Transaction to handle variants update (replace strategy for simplicity or update existing?)
-        // Simple strategy: Delete all variants and re-create them, or update carefully.
-        // For editing, let's assume we replace the variant list for now.
-
         const updatedCake = await prisma.$transaction(async (prisma) => {
             // Update basic details
             const cake = await prisma.cake.update({
@@ -253,22 +307,29 @@ exports.updateCake = async (req, res) => {
             });
 
             // If variants provided, replace them
-            if (variants) {
+            if (variants && Array.isArray(variants)) {
                 // Delete existing
                 await prisma.cakeVariant.deleteMany({
                     where: { cakeId: parseInt(id) }
                 });
 
-                // Create new
-                await prisma.cakeVariant.createMany({
-                    data: variants.map(v => ({
+                // Filter valid variants
+                const validVariants = variants
+                    .filter(v => v.sizeId && v.shapeId && v.flavorId)
+                    .map(v => ({
                         cakeId: parseInt(id),
-                        price: v.price,
-                        sizeId: v.sizeId,
-                        shapeId: v.shapeId,
-                        flavorId: v.flavorId
-                    }))
-                });
+                        price: parseFloat(v.price),
+                        sizeId: parseInt(v.sizeId),
+                        shapeId: parseInt(v.shapeId),
+                        flavorId: parseInt(v.flavorId)
+                    }));
+
+                // Create new
+                if (validVariants.length > 0) {
+                    await prisma.cakeVariant.createMany({
+                        data: validVariants
+                    });
+                }
             }
 
             return cake;
@@ -313,3 +374,4 @@ exports.createFlavor = async (req, res) => {
         console.error('[CakeController] Error:', error); res.status(500).json({ error: 'Failed' });
     }
 };
+

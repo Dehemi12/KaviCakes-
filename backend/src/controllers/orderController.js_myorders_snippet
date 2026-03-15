@@ -1,0 +1,47 @@
+
+// GET My Orders (Customer)
+exports.getMyOrders = async (req, res) => {
+    try {
+        const customerId = req.user.id; // From Auth Middleware
+        if (!customerId) return res.status(401).json({ error: 'Unauthorized' });
+
+        const orders = await prisma.order.findMany({
+            where: { customerId: customerId },
+            include: {
+                payment: true,
+                delivery: true,
+                items: {
+                    include: {
+                        variant: {
+                            include: { cake: true, size: true, flavor: true }
+                        }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // Format
+        const formatted = orders.map(order => ({
+            id: order.id,
+            date: new Date(order.createdAt).toLocaleDateString(),
+            status: order.status,
+            total: parseFloat(order.total),
+            items: order.items.map(i => ({
+                name: i.variant?.cake?.name || 'Item',
+                quantity: i.quantity,
+                image: i.variant?.cake?.imageUrl || 'https://via.placeholder.com/150',
+                isBulk: !!order.bulkOrder
+            })),
+            deliveryMethod: order.delivery?.deliveryMethod || 'Standard',
+            deliveryAddress: order.address || order.delivery?.address || '',
+            expected: order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'Pending'
+        }));
+
+        res.json(formatted);
+
+    } catch (error) {
+        console.error('[OrderController:getMyOrders] Error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};

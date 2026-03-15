@@ -1,99 +1,142 @@
-import React, { useState } from 'react';
-import { Package, Clock, CheckCircle, XCircle, Filter, ChevronRight, Search, ArrowUpDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Package, Clock, CheckCircle, XCircle, Filter, ChevronRight, Search, ArrowUpDown, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 const OrdersPage = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('All Orders');
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    // Mock Data to match screenshot
-    const [orders] = useState([
-        {
-            id: 'KVC-795189',
-            date: '10/20/2025',
-            // ... (rest of mock data same, assuming simplified replacement for filter implementation)
-            // Actually, I should update the render logic.
-            // Let's use clean replace for the render part.
-            // I need to filter `orders` based on `activeTab`.
+    const normalizeStatus = (backendStatus) => {
+        if (!backendStatus) return 'Pending';
+        const s = String(backendStatus).toUpperCase();
+        if (s === 'NEW' || s === 'ORDER_PLACED') return 'Pending';
+        if (s === 'READY') return 'Ready for Pickup';
+        if (s === 'CONFIRMED' || s === 'ADMIN_CONFIRMED') return 'Confirmed';
+        if (s === 'PREPARING') return 'Preparing';
+        if (s === 'OUT_FOR_DELIVERY') return 'Out for Delivery';
+        if (s === 'DELIVERED') return 'Delivered';
+        if (s === 'CANCELLED') return 'Cancelled';
+        return backendStatus; // Return original if unknown
+    };
 
-            // Filter logic
+    useEffect(() => {
+        const fetchOrders = async () => {
+            setLoading(true);
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.warn("No token found. Showing empty state.");
+                    setLoading(false);
+                    return;
+                }
 
-            status: 'Pending',
-            total: 4611,
-            items: [{ name: 'Chocolate Fudge Cake', quantity: 1, image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=100&auto=format&fit=crop' }],
-            deliveryMethod: 'Delivery',
-            deliveryAddress: '1/21/A',
-            expected: '10/27/2025'
-        },
-        {
-            id: 'KVC-440215',
-            date: '10/20/2025',
-            status: 'Pending',
-            total: 170000,
-            items: [{ name: 'Bulk Order: Butter Vanilla', quantity: 100, image: 'https://images.unsplash.com/photo-1563729768-3980d7c74c6d?w=100&auto=format&fit=crop' }],
-            deliveryMethod: 'Delivery',
-            deliveryAddress: '44444',
-            expected: '10/29/2025'
-        },
-        {
-            id: 'KVC-571328',
-            date: '10/20/2025',
-            status: 'Pending',
-            total: 5500,
-            items: [{ name: 'Custom Round Vanilla Cake', quantity: 1, image: 'https://images.unsplash.com/photo-1627834377411-8da5f4f09de8?w=100&auto=format&fit=crop' }],
-            deliveryMethod: 'Pickup',
-            deliveryAddress: 'Store Pickup',
-            expected: '10/31/2025'
-        },
-        {
-            id: 'KVC-725286',
-            date: '10/20/2025',
-            status: 'Pending',
-            total: 4500,
-            items: [{ name: 'Chocolate Fudge Cake', quantity: 1, image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=100&auto=format&fit=crop' }],
-            deliveryMethod: 'Pickup',
-            deliveryAddress: 'Store Pickup',
-            expected: '10/30/2025'
-        },
-        {
-            id: 'KVC-622373',
-            date: '10/17/2025',
-            status: 'Pending',
-            total: 5500,
-            items: [{ name: 'Custom Round Vanilla Cake', quantity: 1, image: 'https://images.unsplash.com/photo-1627834377411-8da5f4f09de8?w=100&auto=format&fit=crop' }],
-            deliveryMethod: 'Pickup',
-            deliveryAddress: 'Store Pickup',
-            expected: '10/23/2025'
-        }
-    ]);
+                console.log("Fetching orders from API...");
+                const response = await api.get('/orders/my-orders');
+
+                console.log("Orders API Response Status:", response.status);
+                console.log("Orders API Response Data Type:", typeof response.data);
+                console.log("Orders API Response Data:", JSON.stringify(response.data, null, 2));
+
+                let orderData = response.data;
+                // Fallback if data is wrapped
+                if (response.data && response.data.orders) {
+                    console.warn("Detected wrapped data structure (unexpected but handled).");
+                    orderData = response.data.orders;
+                }
+
+                if (Array.isArray(orderData)) {
+                    console.log(`Processing ${orderData.length} orders...`);
+                    const processed = orderData.map(o => ({
+                        ...o,
+                        statusDisplay: normalizeStatus(o.status),
+                        items: o.items || []
+                    }));
+                    setOrders(processed);
+                } else {
+                    console.error("API returned non-array:", orderData);
+                    setError("Received invalid data from server format.");
+                }
+
+            } catch (err) {
+                console.error("Failed to fetch orders:", err);
+                setError(err.response?.data?.error || "Failed to load orders.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchOrders();
+    }, []); // Run once on mount
+
+    // Debugging current user
+    console.log("Current User in LocalStorage:", localStorage.getItem('user'));
+    console.log("Current Token:", localStorage.getItem('token') ? "Token Exists" : "No Token");
 
     const stats = [
-        { label: 'All Orders', count: 6, icon: Package, color: 'bg-pink-500 text-white', iconColor: 'text-white' },
-        { label: 'In Progress', count: 6, icon: Clock, color: 'bg-white text-gray-900 border', iconColor: 'text-blue-500' },
-        { label: 'Delivered', count: 0, icon: CheckCircle, color: 'bg-white text-gray-900 border', iconColor: 'text-green-500' },
-        { label: 'Cancelled', count: 0, icon: XCircle, color: 'bg-white text-gray-900 border', iconColor: 'text-red-500' },
+        { label: 'All Orders', count: orders.length, icon: Package, color: 'bg-pink-500 text-white', iconColor: 'text-white' },
+        { label: 'In Progress', count: orders.filter(o => ['Pending', 'Confirmed', 'Preparing', 'Ready for Pickup', 'Out for Delivery'].includes(o.statusDisplay)).length, icon: Clock, color: 'bg-white text-gray-900 border', iconColor: 'text-blue-500' },
+        { label: 'Delivered', count: orders.filter(o => o.statusDisplay === 'Delivered').length, icon: CheckCircle, color: 'bg-white text-gray-900 border', iconColor: 'text-green-500' },
+        { label: 'Cancelled', count: orders.filter(o => o.statusDisplay === 'Cancelled').length, icon: XCircle, color: 'bg-white text-gray-900 border', iconColor: 'text-red-500' },
     ];
 
     const getStatusColor = (status) => {
         if (status === 'Pending') return 'bg-yellow-100 text-yellow-800';
+        if (status === 'Confirmed') return 'bg-blue-100 text-blue-800';
+        if (status === 'Preparing') return 'bg-purple-100 text-purple-800';
+        if (status === 'Ready for Pickup') return 'bg-orange-100 text-orange-800';
+        if (status === 'Out for Delivery') return 'bg-indigo-100 text-indigo-800';
         if (status === 'Delivered') return 'bg-green-100 text-green-800';
         if (status === 'Cancelled') return 'bg-red-100 text-red-800';
         return 'bg-gray-100 text-gray-800';
     };
 
-    // Filter logic
     const filteredOrders = orders.filter(order => {
+        const s = order.statusDisplay;
         if (activeTab === 'All Orders') return true;
-        if (activeTab === 'In Progress') return ['Pending', 'Confirmed', 'Preparing', 'Out for Delivery'].includes(order.status);
-        if (activeTab === 'Delivered') return order.status === 'Delivered';
-        if (activeTab === 'Cancelled') return order.status === 'Cancelled';
+        if (activeTab === 'In Progress') return ['Pending', 'Confirmed', 'Preparing', 'Ready for Pickup', 'Out for Delivery'].includes(s);
+        if (activeTab === 'Delivered') return s === 'Delivered';
+        if (activeTab === 'Cancelled') return s === 'Cancelled';
         return true;
     });
+
+    if (loading) return (
+        <div className="flex justify-center items-center h-screen bg-gray-50">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+        </div>
+    );
 
     return (
         <div className="bg-gray-50 min-h-screen py-8 font-sans">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-8">My Orders</h1>
+                {error && <div className="bg-red-100 text-red-700 p-4 mb-4 rounded">{error}</div>}
+
+                {/* ... (rest of header) ... */}
+
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Current Account: <span className="font-bold text-pink-600">
+                                {localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).email : 'Guest'}
+                            </span>
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            navigate('/login');
+                        }}
+                        className="flex items-center text-sm text-gray-500 hover:text-red-500 transition-colors bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm"
+                    >
+                        <LogOut className="w-4 h-4 mr-2" /> Logout
+                    </button>
+                </div>
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -136,76 +179,96 @@ const OrdersPage = () => {
                 </div>
 
                 {/* Orders List */}
-                <div className="space-y-4">
-                    {filteredOrders.map((order) => (
-                        <div
-                            key={order.id}
-                            onClick={() => {
-                                const isBulk = order.items.some(i => i.name.includes('Bulk') || i.isBulk);
-                                if (isBulk) {
-                                    navigate(`/bulk-order-review/${order.id}`, { state: { order } });
-                                } else {
-                                    navigate(`/track-order/${order.id}`, { state: { order } });
-                                }
-                            }}
-                            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group"
-                        >
-                            <div className="flex flex-col md:flex-row gap-6">
-                                {/* Left Info */}
-                                <div className="flex-1 space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <Clock className="w-4 h-4 text-orange-400" />
-                                        <span className="font-bold text-gray-900">{order.id}</span>
-                                        <span className="text-xs text-gray-400">{order.date}</span>
-                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                        <span className="text-xs text-gray-400">{order.items.length} item</span>
+                {filteredOrders.length === 0 ? (
+                    error ? (
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center text-red-500">
+                            <h3 className="text-lg font-bold mb-2">Error loading orders</h3>
+                            <p>{error}</p>
+                            <button onClick={() => window.location.reload()} className="mt-4 px-4 py-2 bg-gray-100 rounded hover:bg-gray-200 text-sm font-bold text-gray-700">Retry</button>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Package className="w-8 h-8 text-gray-400" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">No orders found</h3>
+                            <p className="text-gray-500 text-sm">Looks like you haven't placed any orders yet.</p>
+                            <button
+                                onClick={() => navigate('/cakes')}
+                                className="mt-6 px-6 py-2 bg-pink-600 text-white rounded-lg font-bold hover:bg-pink-700 transition"
+                            >
+                                Start Shopping
+                            </button>
+                        </div>
+                    )
+                ) : (
+                    <div className="space-y-4">
+                        {filteredOrders.map((order) => (
+                            <div
+                                key={order.id}
+                                onClick={() => navigate(`/track-order/${order.id}`, { state: { order } })}
+                                className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group"
+                            >
+                                <div className="flex flex-col md:flex-row gap-6">
+                                    {/* Left Info */}
+                                    <div className="flex-1 space-y-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center">
+                                                <Clock className="w-4 h-4 text-orange-500" />
+                                            </div>
+                                            <div>
+                                                <span className="font-bold text-gray-900 block">Order #{order.id}</span>
+                                                <span className="text-xs text-gray-500">{order.date}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Item Preview */}
+                                        {order.items.length > 0 && (
+                                            <div className="flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                                <div className="w-12 h-12 rounded-lg bg-gray-200 overflow-hidden shrink-0">
+                                                    <img
+                                                        src={order.items[0].image}
+                                                        alt=""
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=Cake'; }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">{order.items[0].name}</p>
+                                                    <p className="text-xs text-gray-500">
+                                                        Qty: {order.items[0].quantity} • Rs.{(parseFloat(order.total)).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                                {order.items.length > 1 && (
+                                                    <span className="ml-auto text-xs font-bold text-pink-600 bg-pink-50 px-2 py-1 rounded">
+                                                        +{order.items.length - 1} more
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Item Preview */}
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0">
-                                            <img src={order.items[0].image} alt="" className="w-full h-full object-cover" />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <span className="text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-                                                {order.items[0].name} <span className="text-gray-400 ml-1">x{order.items[0].quantity}</span>
-                                            </span>
-                                        </div>
-                                    </div>
+                                    {/* Right Info (Status & Price) */}
+                                    <div className="flex flex-row md:flex-col justify-between items-end text-right pl-0 md:pl-6 md:border-l border-gray-100">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${getStatusColor(order.statusDisplay)}`}>
+                                            {order.statusDisplay}
+                                        </span>
 
-                                    {/* Footer Info */}
-                                    <div className="flex items-center text-xs text-gray-500 gap-6">
-                                        <div>
-                                            <span className="text-gray-400">Delivery: </span>
-                                            {order.deliveryMethod}
+                                        <div className="flex items-center gap-2 mt-auto">
+                                            <div>
+                                                <p className="text-xs text-gray-400">Total Amount</p>
+                                                <p className="font-bold text-gray-900 text-lg">Rs.{order.total.toLocaleString()}</p>
+                                            </div>
+                                            <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-pink-500 transition-colors ml-4" />
                                         </div>
-                                        <div>
-                                            {order.deliveryAddress}
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-400">Expected: </span>
-                                            {order.expected}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Right Info (Status & Price) */}
-                                <div className="flex flex-row md:flex-col justify-between items-end text-right">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(order.status)}`}>
-                                        {order.status}
-                                    </span>
-
-                                    <div className="flex items-center gap-4 mt-auto">
-                                        <span className="font-bold text-gray-900">Rs.{order.total.toLocaleString()}</span>
-                                        <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-pink-500 transition-colors" />
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                )}
             </div>
-        </div>
+        </div >
     );
 };
 

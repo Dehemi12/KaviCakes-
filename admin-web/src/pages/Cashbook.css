@@ -1,0 +1,160 @@
+.cashbook-container {
+    padding: 24px;
+    background-color: #f8fafc;
+    min-height: 100vh;
+}
+
+.cashbook-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+}
+
+/* Summary Cards */
+.summary-card {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    transition: transform 0.2s;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+}
+
+.icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.icon-wrapper.income {
+    background-color: #ecfdf5;
+    color: #10b981;
+}
+
+.icon-wrapper.expense {
+    background-color: #fef2f2;
+    color: #ef4444;
+}
+
+.icon-wrapper.balance {
+    background-color: #eef2ff;
+    color: #6366f1;
+}
+
+.card-label {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.card-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 4px;
+}
+
+/* Filter Card */
+.filter-card {
+    border-radius: 12px;
+    border: none;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.search-input {
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.search-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+/* Table Card */
+.table-card {
+    border-radius: 16px;
+    border: none;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.ant-table-thead > tr > th {
+    background-color: #f1f5f9 !important;
+    color: #475569 !important;
+    font-weight: 600 !important;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.ant-table-row:hover {
+    background-color: #f8fafc;
+}
+
+/* Buttons */
+.btn-cash-in {
+    background-color: #059669 !important;
+    border-color: #059669 !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+
+.btn-cash-in:hover {
+    background-color: #047857 !important;
+}
+
+.btn-cash-out {
+    background-color: #dc2626 !important;
+    border-color: #dc2626 !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+
+.btn-cash-out:hover {
+    background-color: #b91c1c !important;
+}
+
+/* Modal styles */
+.transaction-modal .ant-modal-content {
+    border-radius: 16px;
+    padding: 24px;
+}
+
+.transaction-modal .ant-modal-title {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.btn-save-income {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+    height: 48px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    margin-top: 16px;
+}
+
+.btn-save-expense {
+    background-color: #ef4444 !important;
+    border-color: #ef4444 !important;
+    height: 48px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    margin-top: 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .cashbook-header {
+        flex-direction: column;
+        gap: 16px;
+    }
+}

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+// Forced restart check 4
 const morgan = require('morgan');
 require('dotenv').config(); // Load environment variables first
 
@@ -23,6 +24,7 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
+app.use('/uploads', express.static('uploads'));
 
 // Register Routes
 app.use('/api/auth', authRoutes);
@@ -36,6 +38,9 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/public/cakes', publicCakeRoutes);
 app.use('/api/bulk-pricing', bulkRoutes);
+app.use('/api/upload', require('./src/routes/uploadRoutes'));
+app.use('/api/content', require('./src/routes/contentRoutes'));
+app.use('/api/reports', require('./src/routes/reportRoutes'));
 
 // Root Route
 app.get('/', (req, res) => {

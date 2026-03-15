@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Minus, Plus, Heart, ShoppingBag, ArrowLeft } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import api from '../services/api';
-import { docData } from '../data/dummyData';
+
 
 const ProductDetailsPage = () => {
     const { id } = useParams();
@@ -15,9 +15,9 @@ const ProductDetailsPage = () => {
     const [loading, setLoading] = useState(true);
 
     // Selection States
-    const [size, setSize] = useState('1kg');
-    const [flavor, setFlavor] = useState('Chocolate');
-    const [shape, setShape] = useState('Round');
+    const [size, setSize] = useState('');
+    const [flavor, setFlavor] = useState('');
+    const [shape, setShape] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [instructions, setInstructions] = useState('');
     const [currentPrice, setCurrentPrice] = useState(0);
@@ -25,19 +25,19 @@ const ProductDetailsPage = () => {
 
     useEffect(() => {
         const fetchProduct = async () => {
-            setLoading(true);
-            // Simulate network delay
-            setTimeout(() => {
-                const found = docData.cakes.find(c => c.id === parseInt(id));
+            try {
+                setLoading(true);
+                const response = await api.get(`/public/cakes/${id}`);
+                const found = response.data;
+
+                // Start: Transform API data structure to match UI expectations
+                // API has variants as array of objects { size: {}, shape: {}, flavor: {}, price: number }
+                // UI expects variants: { sizes: [], flavors: [], shapes: [] }
+
+                // We will extract unique options from variants to populate selectors
+                // and then look up the specific variant price when selected.
 
                 if (found) {
-                    // Start: Transform docData structure to match UI expectations
-                    // docData has variants as array of objects { size, shape, flavor, price }
-                    // UI expects variants: { sizes: [], flavors: [], shapes: [] }
-
-                    // We will extract unique options from docData variants to populate selectors
-                    // and then look up the specific variant price when selected.
-
                     const sizes = [...new Set(found.variants.map(v => JSON.stringify(v.size)))].map(s => JSON.parse(s));
                     const shapes = [...new Set(found.variants.map(v => JSON.stringify(v.shape)))].map(s => JSON.parse(s));
                     const flavors = [...new Set(found.variants.map(v => JSON.stringify(v.flavor)))].map(s => JSON.parse(s));
@@ -48,26 +48,46 @@ const ProductDetailsPage = () => {
                         image: found.imageUrl,
                         variants: {
                             original: found.variants, // keep original for lookup
-                            sizes: sizes.map(s => ({ label: s.label, priceMod: s.price })),
+                            sizes: sizes.map(s => ({ label: s.label, priceMod: s.price })), // Assuming size.price is the extra cost
                             shapes: shapes.map(s => ({ label: s.label, priceMod: s.price })),
                             flavors: flavors.map(s => ({ label: s.label, priceMod: s.price }))
                         },
-                        allergens: ['Eggs', 'Dairy', 'Gluten'] // Hardcoded for now
+                        allergens: found.ingredients ? found.ingredients.split(',').map(i => i.trim()) : ['Eggs', 'Dairy', 'Gluten'] // Adapt if necessary
                     };
 
                     setProduct(transformedProduct);
 
                     // Set Defaults
-                    if (sizes.length > 0) setSize(sizes[0].label);
-                    if (flavors.length > 0) setFlavor(flavors[0].label);
-                    if (shapes.length > 0) setShape(shapes[0].label);
+                    const defaultSize = sizes.length > 0 ? sizes[0].label : '';
+                    const defaultFlavor = flavors.length > 0 ? flavors[0].label : '';
+                    const defaultShape = shapes.length > 0 ? shapes[0].label : '';
 
-                    setCurrentPrice(found.variants[0]?.price || found.basePrice);
+                    setSize(defaultSize);
+                    setFlavor(defaultFlavor);
+                    setShape(defaultShape);
+
+                    // Initial Price Calculation based on defaults
+                    // Try to find the matching variant for defaults
+                    const match = found.variants.find(v =>
+                        v.size.label === defaultSize &&
+                        v.shape.label === defaultShape &&
+                        v.flavor.label === defaultFlavor
+                    );
+
+                    if (match) {
+                        setCurrentPrice(match.price || found.basePrice);
+                    } else {
+                        setCurrentPrice(found.price || found.basePrice);
+                    }
                 } else {
                     setProduct(null);
                 }
+            } catch (error) {
+                console.error("Failed to fetch cake details", error);
+                setProduct(null);
+            } finally {
                 setLoading(false);
-            }, 500);
+            }
         };
 
         fetchProduct();
@@ -86,23 +106,22 @@ const ProductDetailsPage = () => {
             );
 
             if (match) {
-                setCurrentPrice(match.price);
+                setCurrentPrice(match.price || product.basePrice);
             } else {
                 // Approximate fallback if exact combo not found (summing modifiers)
-                // This handles cases where user selects a combination that wasn't explicitly defined in docData examples
+                // This handles cases where user selects a combination that wasn't explicitly defined
                 const selectedSize = product.variants.sizes.find(s => s.label === size);
                 const selectedFlavor = product.variants.flavors.find(f => f.label === flavor);
                 const selectedShape = product.variants.shapes.find(s => s.label === shape);
 
                 let price = product.basePrice;
-                if (selectedSize) price += (selectedSize.priceMod || 0); // Note: docData variant structure puts price in 'price' field, but transformed uses priceMod. 
-                // Actually my transform mapped 'price' to 'priceMod' for sizes/shapes/flavors.
-                // But wait, the 'price' in sizes/shapes/flavors in docData is actually 0 for base options. 
-                // Let's rely on the transformed priceMod logic which mapped 'price' -> 'priceMod'.
+                // Note: The backend logic for 'basePrice' + modifiers might differ from this frontend approximation.
+                // Ideally backend sends fully computed variants.
+                // If match is found, we use it. If not, we fall back to this sum.
 
-                if (selectedSize) price += selectedSize.priceMod;
-                if (selectedFlavor) price += selectedFlavor.priceMod;
-                if (selectedShape) price += selectedShape.priceMod;
+                if (selectedSize) price += (selectedSize.priceMod || 0);
+                if (selectedFlavor) price += (selectedFlavor.priceMod || 0);
+                if (selectedShape) price += (selectedShape.priceMod || 0);
 
                 setCurrentPrice(price);
             }
@@ -116,7 +135,15 @@ const ProductDetailsPage = () => {
     const handleAddToCart = () => {
         if (!product) return;
 
+        // Find the specific variant ID
+        const match = product.variants.original.find(v =>
+            v.size.label === size &&
+            v.shape.label === shape &&
+            v.flavor.label === flavor
+        );
+
         const variant = {
+            id: match ? match.id : null, // Pass the database ID of the variant
             size,
             flavor,
             shape,
@@ -126,17 +153,15 @@ const ProductDetailsPage = () => {
         addToCart(product, variant, quantity, instructions);
 
         // Feedback to user
-        // Using a simple alert for immediate feedback as requested, to verify functionality
         alert("Delicious choice! Added to your cart.");
 
-        // Small delay to ensure state propagates (though React handles this, it feels better UX-wise in lieu of animation)
         setTimeout(() => {
             navigate('/cart');
         }, 100);
     };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-    if (!product) return <div className="min-h-screen flex items-center justify-center">Product not found</div>;
+    if (!product) return <div className="min-h-screen flex items-center justify-center">Product not found. <button onClick={() => navigate(-1)} className='text-pink-500 ml-2'>Go Back</button></div>;
 
     return (
         <div className="bg-white min-h-screen font-sans pb-12">
@@ -177,7 +202,7 @@ const ProductDetailsPage = () => {
                                             : 'bg-white border border-gray-200 text-gray-700 hover:border-pink-300'
                                             }`}
                                     >
-                                        {s.label} {s.priceMod > 0 && `- +Rs.${s.priceMod}`}
+                                        {s.label}
                                     </button>
                                 ))}
                             </div>

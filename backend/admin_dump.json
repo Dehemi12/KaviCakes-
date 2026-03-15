@@ -1,0 +1,15 @@
+[
+  {
+    "id": "d85561da-009b-41a3-95b0-99423b7cbcdd",
+    "email": "nevilroshini1017@gmail.com",
+    "password": "$2b$10$AdtFN/Im6joPoMDdGhpVde1tS16QK7XvinuO5fKauAqOXwf.MzH/m",
+    "name": "Kavishi Amandi",
+    "role": "ADMIN",
+    "isActive": true,
+    "isVerified": true,
+    "otp": null,
+    "otpExpiresAt": null,
+    "createdAt": "2026-01-27T19:57:23.257Z",
+    "updatedAt": "2026-01-27T20:01:45.586Z"
+  }
+]

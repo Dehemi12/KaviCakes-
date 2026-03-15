@@ -8,49 +8,186 @@ datasource db {
 }
 
 model Admin {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String?
-  role      String   @default("ADMIN")
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String    @id @default(uuid())
+  email        String    @unique
+  password     String
+  name         String?
+  role         String    @default("ADMIN")
+  isActive     Boolean   @default(true)
+  isVerified   Boolean   @default(false)
+  otp          String?
+  otpExpiresAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model Customer {
-  id            String   @id @default(uuid())
-  displayId     String   @unique // C001, C002
-  name          String
-  email         String   @unique
-  password      String
-  phone         String?
-  address       String?
-  loyaltyPoints Int      @default(0)
-  isActive      Boolean  @default(true)
-  isVerified    Boolean  @default(false)
-  otp           String?
-  otpExpiresAt  DateTime?
-  orders        Order[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  feedbacks     Feedback[]
+  id                  String               @id @default(uuid())
+  displayId           String               @unique // C001, C002
+  name                String
+  email               String               @unique
+  password            String
+  phone               String?
+  address             String?
+  loyaltyPoints       Int                  @default(0)
+  isActive            Boolean              @default(true)
+  isVerified          Boolean              @default(false)
+  otp                 String?
+  otpExpiresAt        DateTime?
+  orders              Order[]
+  carts               Cart[]
+  loyaltyTransactions LoyaltyTransaction[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  feedbacks           Feedback[]
+  notifications       Notification[]
+}
+
+model LoyaltyTransaction {
+  id             Int      @id @default(autoincrement())
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  orderId        Int?
+  pointsEarned   Int      @default(0)
+  pointsRedeemed Int      @default(0)
+  createdAt      DateTime @default(now())
+}
+
+model Cart {
+  id         Int        @id @default(autoincrement())
+  customerId String
+  customer   Customer   @relation(fields: [customerId], references: [id])
+  status     String     @default("ACTIVE")
+  items      CartItem[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model CartItem {
+  id        Int         @id @default(autoincrement())
+  cartId    Int
+  cart      Cart        @relation(fields: [cartId], references: [id])
+  variantId Int
+  variant   CakeVariant @relation(fields: [variantId], references: [id])
+  quantity  Int
 }
 
 model Order {
-  id          Int      @id @default(autoincrement()) // Using Int for #1082 format
-  total       Decimal
-  status      String   @default("NEW") // NEW, CONFIRMED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
-  paymentStatus String @default("PENDING") // PENDING, PAID, REFUNDED
-  paymentMethod String @default("COD") // COD, CARD, BANK_TRANSFER
-  address     String   @default("")
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id])
-  items       Json?    // Array of objects: { name, quantity, price }
+  @@map("Orders")
+
+  id              Int     @id @default(autoincrement()) // Using Int for #1082 format
+  total           Decimal
+  loyaltyDiscount Decimal @default(0)
+  status          String  @default("NEW") // NEW/ORDER_PLACED, ADMIN_CONFIRMED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
+  orderType       String? // REGULAR, CUSTOM, BULK
+  specialNotes    String? @db.Text
+
+  paymentStatus String @default("PENDING") // PENDING, PAYMENT_PENDING, PAYMENT_APPROVED_BY_ADMIN, PAID, REFUNDED
+  paymentMethod String @default("COD") // COD (Balance only), ONLINE_PAYMENT (Full/Balance)
+
+  advanceAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  balanceAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  advanceStatus   String   @default("PENDING") // PENDING, UPLOADED, APPROVED, REJECTED
+
+  bankSlip      String? // URL or Path specifically for ONLINE_PAYMENT
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  items       OrderItem[]
+  delivery    Delivery?
+  payment     Payment?
+  invoice     Invoice?
+  customOrder CustomOrder?
+  bulkOrder   BulkOrder?
+  transactions Transaction[]
+
+  address      String    @default("") // Keep for backward compatibility or simple orders
   deliveryDate DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  feedback    Feedback?
+  isEdited     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  feedback     Feedback?
+}
+
+model OrderItem {
+  id            Int          @id @default(autoincrement())
+  orderId       Int
+  order         Order        @relation(fields: [orderId], references: [id])
+  variantId     Int?
+  variant       CakeVariant? @relation(fields: [variantId], references: [id])
+  quantity      Int
+  unitPrice     Decimal
+  
+  // Snapshots for Custom Orders & History
+  name          String?
+  image         String?
+  description   String?
+  customDetails Json?
+
+  rating        ItemRating?
+}
+
+model CustomOrder {
+  id                  Int      @id @default(autoincrement())
+  orderId             Int      @unique
+  order               Order    @relation(fields: [orderId], references: [id])
+  sizeId              Int?
+  flavorId            Int?
+  shapeId             Int?
+  quantity            Int?
+  specialInstructions String?  @db.Text
+  calculatedPrice     Decimal?
+}
+
+model BulkOrder {
+  id           Int     @id @default(autoincrement())
+  orderId      Int     @unique
+  order        Order   @relation(fields: [orderId], references: [id])
+  eventName    String?
+  organization String?
+  quantity     Int?
+  notes        String? @db.Text
+}
+
+model Delivery {
+  id             Int      @id @default(autoincrement())
+  orderId        Int      @unique
+  order          Order    @relation(fields: [orderId], references: [id])
+  recipientName  String?
+  phoneNumber    String?
+  email          String?
+  address        String   @db.Text
+  deliveryMethod String?
+  distanceKm     Decimal? @db.Decimal(6, 2)
+  deliveryFee    Decimal? @default(0)
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  orderId       Int           @unique
+  order         Order         @relation(fields: [orderId], references: [id])
+  paymentMethod String?
+  paymentStatus String?
+  proofImage    String?
+  verifiedAt    DateTime?
+  transactions  Transaction[]
+}
+
+model Invoice {
+  id            Int      @id @default(autoincrement())
+  orderId       Int      @unique
+  order         Order    @relation(fields: [orderId], references: [id])
+  invoiceNumber String?
+  issuedAt      DateTime @default(now())
+}
+
+model ItemRating {
+  id          Int       @id @default(autoincrement())
+  orderItemId Int       @unique
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+  stars       Int
+  createdAt   DateTime  @default(now())
 }
 
 model Feedback {
@@ -65,6 +202,8 @@ model Feedback {
   order      Order    @relation(fields: [orderId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  reply      String?  @db.Text
+  replyAt    DateTime?
 }
 
 model Notification {
@@ -73,16 +212,20 @@ model Notification {
   message   String
   type      String   @default("SYSTEM") // SYSTEM, ORDER, PAYMENT, DELIVERY
   isRead    Boolean  @default(false)
-  metadata  Json?    // { orderId: 1, slipUrl: '...' }
+  metadata  Json? // { orderId: 1, slipUrl: '...' }
+  customerId String?
+  customer  Customer? @relation(fields: [customerId], references: [id])
   createdAt DateTime @default(now())
 }
 
 model NotificationTemplate {
-  id        Int      @id @default(autoincrement())
-  title     String
-  category  String   // Order, Payment, Promotion, Customer
-  body      String   @db.Text
-  lastUsed  DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  name         String?  @unique
+  title        String
+  category     String // Order, Payment, Promotion, Customer
+  body         String   @db.Text
+  actionButton String?
+  lastUsed     DateTime @default(now())
 }
 
 // --- Master Data ---
@@ -109,88 +252,115 @@ model CakeFlavor {
 }
 
 model CakeCategory {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique // e.g. "Wedding Cakes", "Birthday Cakes"
-  basePrice Decimal  @default(0)
+  id        Int     @id @default(autoincrement())
+  name      String  @unique // e.g. "Wedding Cakes", "Birthday Cakes"
+  basePrice Decimal @default(0)
+  imageUrl  String? // URL for category card on home page
   cakes     Cake[]
+}
+
+model SiteSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique // e.g. "HOME_HERO_TITLE", "HOME_HERO_IMAGE"
+  value     String?  @db.Text
+  group     String?  // e.g. "HOME_PAGE", "CONTACT_INFO"
+  updatedAt DateTime @updatedAt
 }
 
 // --- Product Catalog ---
 
 model Cake {
-  id           Int           @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   name         String
-  description  String?       @db.Text
+  description  String? @db.Text
   // basePrice removed - now inherited from CakeCategory
-  availability Boolean       @default(true)
-  ingredients  String?       @db.Text
+  availability Boolean @default(true)
+  ingredients  String? @db.Text
   imageUrl     String?
-  
-  categoryId   Int
-  category     CakeCategory  @relation(fields: [categoryId], references: [id])
-  
-  variants     CakeVariant[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+
+  categoryId Int
+  category   CakeCategory @relation(fields: [categoryId], references: [id])
+
+  variants  CakeVariant[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 }
 
 model CakeVariant {
-  id        Int         @id @default(autoincrement())
-  price     Decimal     // This might be redundant if basePrice is in category, but maybe keeps total variant price? 
-                      // actually user said "store base price there [category]", so variant price might be modifier?
-                      // The original schema had price in CakeVariant AND basePrice in Product.
-                      // Let's keep 'price' here but maybe it represents the final price or just modifier?
-                      // The previous logic was base + modifiers. 
-                      // If user wants base price in category, then CakeVariant might just link 
-                      // attributes.
-                      // However, let's keep 'price' as the "Calculated Price" or "Specific Price" for safety,
-                      // or just use modifiers.
-                      // Wait, the previous schema had `price Decimal` in ProductVariant.
-                      // Let's keep it for now to avoid breaking too much logic, but keys change.
-  
-  cakeId    Int
-  cake      Cake        @relation(fields: [cakeId], references: [id], onDelete: Cascade)
-  
-  sizeId    Int?
-  size      CakeSize?   @relation(fields: [sizeId], references: [id])
-  shapeId   Int?
-  shape     CakeShape?  @relation(fields: [shapeId], references: [id])
-  flavorId  Int?
-  flavor    CakeFlavor? @relation(fields: [flavorId], references: [id])
-  
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id    Int     @id @default(autoincrement())
+  price Decimal // Final calculated price
+
+  cakeId Int
+  cake   Cake @relation(fields: [cakeId], references: [id], onDelete: Cascade)
+
+  sizeId   Int
+  size     CakeSize   @relation(fields: [sizeId], references: [id])
+  shapeId  Int
+  shape    CakeShape  @relation(fields: [shapeId], references: [id])
+  flavorId Int
+  flavor   CakeFlavor @relation(fields: [flavorId], references: [id])
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([cakeId, sizeId, flavorId, shapeId])
+}
+
+model CashBook {
+  id             Int           @id @default(autoincrement())
+  date           DateTime      @db.Date
+  openingBalance Decimal?      @db.Decimal(10, 2)
+  closingBalance Decimal?      @db.Decimal(10, 2)
+  totalIncome    Decimal       @default(0) @db.Decimal(10, 2)
+  totalExpense   Decimal       @default(0) @db.Decimal(10, 2)
+  transactions   Transaction[]
 }
 
 model Transaction {
-  id          Int      @id @default(autoincrement())
-  type        String   // INCOME, EXPENSE
-  category    String   // Rent, Salary, Utilities, Other, Manual_Income
-  amount      Decimal
+  id          Int     @id @default(autoincrement())
+  type        String // INCOME, EXPENSE
+  category    String? // Rent, Salary, Utilities, Other, Manual_Income
+  amount      Decimal @db.Decimal(10, 2)
   description String?
-  date        DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  paymentMode String? @default("Cash") // Cash, Bank, Online, etc.
+  billUrl     String? // For storing links to uploaded bills/receipts
+
+  cashBookId Int?
+  cashBook   CashBook? @relation(fields: [cashBookId], references: [id])
+
+  paymentId Int?
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+
+  orderId   Int?
+  order     Order? @relation(fields: [orderId], references: [id])
+
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Event {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   title       String
   description String?
   startTime   DateTime
   endTime     DateTime?
-  type        String   // MANUAL, PRODUCTION, ORDER_DELIVERY (virtual)
-  category    String?  // Delivery, Restock, Meeting, Production
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  type        String // MANUAL, PRODUCTION, ORDER_DELIVERY (virtual)
+  category    String? // Delivery, Restock, Meeting, Production
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model BulkPricing {
-  id              Int      @id @default(autoincrement())
-  categoryLabel   String   @unique // e.g. "Cupcakes", "Jar Cakes"
-  basePrice       Decimal  // Price per unit (e.g. 250)
-  bulkPrice       Decimal  // Discounted price per unit (e.g. 220)
-  bulkThreshold   Int      @default(100) // Quantity to trigger discount
-  minOrderQty     Int      @default(50)  // Minimum limit
-  updatedAt       DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  categoryLabel String   @unique // e.g. "Cupcakes", "Jar Cakes"
+  basePrice     Decimal // Price per unit (e.g. 250)
+  bulkPrice     Decimal // Discounted price per unit (e.g. 220)
+  bulkThreshold Int      @default(100) // Quantity to trigger discount
+  minOrderQty   Int      @default(50) // Minimum limit
+  updatedAt     DateTime @updatedAt
 }

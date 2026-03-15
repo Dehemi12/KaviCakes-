@@ -25,7 +25,7 @@ const OrderSuccessPage = () => {
                         <CheckCircle className="w-10 h-10 text-green-500" />
                     </div>
 
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Placed!</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">{location.state?.message || "Order Placed!"}</h1>
                     <p className="text-gray-600 mb-8">
                         Thank you for your order. We've received your request and will process it shortly.
                     </p>

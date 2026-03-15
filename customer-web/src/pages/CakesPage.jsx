@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import api from '../services/api';
 import { Filter, ChevronDown } from 'lucide-react';
-import { docData } from '../data/dummyData';
+
 
 const CakesPage = () => {
     const location = useLocation();
@@ -15,14 +15,30 @@ const CakesPage = () => {
     const [category, setCategory] = useState(categoryParam);
     const [priceRange, setPriceRange] = useState(5000);
     const [sortBy, setSortBy] = useState('featured');
+    const [categories, setCategories] = useState(['All']);
 
     // Sync category state with URL params
     useEffect(() => {
         setCategory(categoryParam);
     }, [categoryParam]);
 
-    // Data from dummyData
-    const categories = ['All', ...docData.masterData.categories.map(c => c.name)];
+    // Fetch categories from API
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await api.get('/public/cakes/master-data');
+                // Backend returns { sizes, shapes, flavors, categories: [...] }
+                if (res.data && res.data.categories) {
+                    const apiCategories = res.data.categories.map(c => c.name);
+                    setCategories(['All', ...apiCategories]);
+                }
+            } catch (err) {
+                console.error("Failed to fetch categories:", err);
+                setCategories(['All']);
+            }
+        };
+        fetchCategories();
+    }, []);
 
     useEffect(() => {
         fetchProducts();
@@ -34,21 +50,23 @@ const CakesPage = () => {
             // Fetch from API with current filters
             // Note: For now fetching all and filtering locally or fetching by category if simple
             // Building query string
-            let url = `http://localhost:5000/api/cakes?`;
+            // Fetch from API with current filters
+            // Note: For now fetching all and filtering locally or fetching by category if simple
+            // Building query string
+            let url = `/public/cakes?`;
             if (category !== 'All') url += `categoryName=${encodeURIComponent(category)}`;
 
-            const res = await fetch(url);
-            if (res.ok) {
-                const data = await res.json();
+            const res = await api.get(url);
+            if (res.status === 200) {
+                const data = res.data;
                 setProducts(data);
             } else {
                 // Fallback to dummy
-                console.error("Failed to fetch products");
-                setProducts(docData.cakes.map(c => ({ ...c, price: c.basePrice }))); // Fallback
+                setProducts([]);
             }
         } catch (err) {
             console.error(err);
-            setProducts(docData.cakes.map(c => ({ ...c, price: c.basePrice }))); // Fallback
+            setProducts([]);
         }
         setLoading(false);
     };
@@ -170,7 +188,7 @@ const CakesPage = () => {
                                                 <p className="text-sm text-gray-500 line-clamp-2 mb-4">{product.description || 'Delicious handcrafted cake.'}</p>
 
                                                 <div className="flex items-center justify-between mt-auto">
-                                                    <span className="text-lg font-bold text-pink-600">Rs. {product.basePrice || product.price}</span>
+                                                    <span className="text-lg font-bold text-pink-600">Rs. {product.price || product.basePrice}</span>
                                                     <Link to={`/cakes/${product.id}`} className="px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-lg hover:bg-pink-700 transition-colors shadow-sm hover:shadow-md">
                                                         View Details
                                                     </Link>

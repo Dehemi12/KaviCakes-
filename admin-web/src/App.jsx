@@ -2,6 +2,7 @@ import React from 'react';
 import { Layout, Menu, Avatar, Button, Typography, Space } from 'antd';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth, AuthProvider } from './context/AuthContext';
+import Register from './pages/Register';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import MainLayout from './layouts/MainLayout';
@@ -15,6 +16,9 @@ import Schedule from './pages/Schedule';
 import Settings from './pages/Settings';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Production from './pages/Production';
+import SiteContent from './pages/SiteContent';
+import Reports from './pages/Reports';
 
 const PrivateRoute = () => {
   const { user, loading } = useAuth();
@@ -37,6 +41,7 @@ const App = () => {
   return (
     <AuthProvider>
       <Routes>
+        <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -51,6 +56,9 @@ const App = () => {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/cashbook" element={<Cashbook />} />
           <Route path="/schedule" element={<Schedule />} />
+          <Route path="/production" element={<Production />} />
+          <Route path="/site-content" element={<SiteContent />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Dashboard />} /> {/* Added catch-all route */}
         </Route>

@@ -12,22 +12,100 @@ const Register = () => {
         password: '',
         confirmPassword: ''
     });
+    const [errors, setErrors] = useState({});
     const { register } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const [error, setError] = useState('');
+    const [generalError, setGeneralError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
+    const validateField = (name, value) => {
+        let error = '';
+        switch (name) {
+            case 'name':
+                if (!value.trim()) error = 'Full Name is required';
+                else if (value.trim().length < 3) error = 'Name must be at least 3 characters long';
+                else if (!/^[a-zA-Z\s]+$/.test(value)) error = 'Name must contain only letters and spaces';
+                break;
+            case 'email':
+                if (!value.trim()) error = 'Email is required';
+                else if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/.test(value)) error = 'Please enter a valid email address';
+                break;
+            case 'phone':
+                const phoneDigits = value.replace(/\D/g, '');
+                if (!value.trim()) error = 'Phone number is required';
+                else if (phoneDigits.length < 10) error = 'Phone number must have at least 10 digits';
+                else if (phoneDigits.length > 15) error = 'Phone number is too long (max 15 digits)';
+                // Basic format check: accepts optional +, parens, spaces, dashes
+                else if (!/^(\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4,}$/.test(value) && !/^\d+$/.test(value) && value.replace(/[^0-9+]/g, '').length < 10) {
+                    // Fallback for simple digit checks if complex regex fails but digits are valid
+                    if (phoneDigits.length < 10) error = 'Invalid phone number format';
+                }
+                break;
+            case 'password':
+                if (!value) error = 'Password is required';
+                else if (value.length < 8) error = 'Password must be at least 8 characters';
+                else if (!/(?=.*[a-z])/.test(value)) error = 'Password must contain at least one lowercase letter';
+                else if (!/(?=.*[A-Z])/.test(value)) error = 'Password must contain at least one uppercase letter';
+                else if (!/(?=.*\d)/.test(value)) error = 'Password must contain at least one number';
+                else if (!/(?=.*[@$!%*?&])/.test(value)) error = 'Password must contain at least one special character (@$!%*?&)';
+                break;
+            case 'confirmPassword':
+                if (!value) error = 'Please confirm your password';
+                else if (value !== formData.password) error = 'Passwords do not match';
+                break;
+            default:
+                break;
+        }
+        return error;
+    };
+
     const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setFormData({ ...formData, [name]: value });
+
+        // Clear specific error immediately when user types
+        if (errors[name]) {
+            setErrors({ ...errors, [name]: '' });
+        }
+    };
+
+    const handleBlur = (e) => {
+        const { name, value } = e.target;
+        const error = validateField(name, value);
+        if (error) {
+            setErrors(prev => ({ ...prev, [name]: error }));
+        }
+    };
+
+    const handlePhoneChange = (e) => {
+        const value = e.target.value;
+        // Allow digits, spaces, +, -, (, )
+        if (/^[0-9+\-()\s]*$/.test(value)) {
+            setFormData({ ...formData, phone: value });
+            if (errors.phone) {
+                setErrors({ ...errors, phone: '' });
+            }
+        }
+    };
+
+    const validateForm = () => {
+        const newErrors = {};
+        Object.keys(formData).forEach(key => {
+            if (key !== 'address') { // Address is optional
+                const error = validateField(key, formData[key]);
+                if (error) newErrors[key] = error;
+            }
+        });
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
+        setGeneralError('');
 
-        if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match');
+        if (!validateForm()) {
             return;
         }
 
@@ -44,7 +122,7 @@ const Register = () => {
                 }
             });
         } catch (err) {
-            setError(err.response?.data?.error || 'Failed to register. Please try again.');
+            setGeneralError(err.response?.data?.error || 'Failed to register. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -62,10 +140,10 @@ const Register = () => {
                     </p>
                 </div>
 
-                {error && (
+                {generalError && (
                     <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md flex items-center">
                         <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-                        <p className="text-sm text-red-700">{error}</p>
+                        <p className="text-sm text-red-700">{generalError}</p>
                     </div>
                 )}
 
@@ -80,13 +158,14 @@ const Register = () => {
                                 <input
                                     name="name"
                                     type="text"
-                                    required
-                                    className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm"
+                                    className={`appearance-none block w-full pl-10 px-3 py-2 border ${errors.name ? 'border-red-300' : 'border-gray-300'} rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm`}
                                     placeholder="John Doe"
                                     value={formData.name}
                                     onChange={handleChange}
+                                    onBlur={handleBlur}
                                 />
                             </div>
+                            {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name}</p>}
                         </div>
 
                         <div>
@@ -98,13 +177,14 @@ const Register = () => {
                                 <input
                                     name="email"
                                     type="email"
-                                    required
-                                    className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm"
+                                    className={`appearance-none block w-full pl-10 px-3 py-2 border ${errors.email ? 'border-red-300' : 'border-gray-300'} rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm`}
                                     placeholder="you@example.com"
                                     value={formData.email}
                                     onChange={handleChange}
+                                    onBlur={handleBlur}
                                 />
                             </div>
+                            {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
                         </div>
 
                         <div>
@@ -116,12 +196,14 @@ const Register = () => {
                                 <input
                                     name="phone"
                                     type="tel"
-                                    className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm"
+                                    className={`appearance-none block w-full pl-10 px-3 py-2 border ${errors.phone ? 'border-red-300' : 'border-gray-300'} rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm`}
                                     placeholder="+91 98765 43210"
                                     value={formData.phone}
-                                    onChange={handleChange}
+                                    onChange={handlePhoneChange}
+                                    onBlur={handleBlur}
                                 />
                             </div>
+                            {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
                         </div>
 
                         <div>
@@ -150,13 +232,14 @@ const Register = () => {
                                 <input
                                     name="password"
                                     type="password"
-                                    required
-                                    className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm"
+                                    className={`appearance-none block w-full pl-10 px-3 py-2 border ${errors.password ? 'border-red-300' : 'border-gray-300'} rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm`}
                                     placeholder="••••••••"
                                     value={formData.password}
                                     onChange={handleChange}
+                                    onBlur={handleBlur}
                                 />
                             </div>
+                            {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
                         </div>
 
                         <div>
@@ -168,13 +251,14 @@ const Register = () => {
                                 <input
                                     name="confirmPassword"
                                     type="password"
-                                    required
-                                    className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm"
+                                    className={`appearance-none block w-full pl-10 px-3 py-2 border ${errors.confirmPassword ? 'border-red-300' : 'border-gray-300'} rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm`}
                                     placeholder="••••••••"
                                     value={formData.confirmPassword}
                                     onChange={handleChange}
+                                    onBlur={handleBlur}
                                 />
                             </div>
+                            {errors.confirmPassword && <p className="mt-1 text-xs text-red-500">{errors.confirmPassword}</p>}
                         </div>
                     </div>
 

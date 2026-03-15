@@ -2,20 +2,37 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Star, ChevronRight, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { docData } from '../data/dummyData';
+import api from '../services/api';
 
 const Home = () => {
-    // Data from dummyData
-    const categories = docData.masterData.categories.map(c => ({
-        name: c.name,
-        // Map category ID/Name to representative images (hardcoded mapping for visuals)
-        image: c.name === 'Cakes' ? 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=400' :
-            c.name === 'Cupcakes' ? 'https://images.unsplash.com/photo-1599785209707-33b6a22f7907?auto=format&fit=crop&q=80&w=400' :
-                c.name === 'Dessert Jars' ? 'https://images.unsplash.com/photo-1563729768601-d6fa4805e9a1?auto=format&fit=crop&q=80&w=400' :
-                    c.name === 'Brownies' ? 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&q=80&w=400' :
-                        'https://placehold.co/400x400/fee2e2/ec4899?text=' + c.name,
-        link: `/cakes?category=${c.id}`
-    }));
+    const [categories, setCategories] = React.useState([]);
+
+    React.useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await api.get('/public/cakes/master-data');
+                if (res.data && res.data.categories) {
+                    const mapped = res.data.categories.map(c => ({
+                        name: c.name,
+                        image: c.imageUrl ? c.imageUrl :
+                            (c.name === 'Birthday' ? 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=400' :
+                                c.name === 'Cupcakes' ? 'https://images.unsplash.com/photo-1599785209707-33b6a22f7907?auto=format&fit=crop&q=80&w=400' :
+                                    c.name === 'Dessert Jars' ? 'https://images.unsplash.com/photo-1563729768601-d6fa4805e9a1?auto=format&fit=crop&q=80&w=400' :
+                                        c.name === 'Brownies' ? 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&q=80&w=400' :
+                                            c.name === 'Wedding' ? 'https://images.unsplash.com/photo-1535254973040-607b474cb50d?auto=format&fit=crop&q=80&w=400' :
+                                                'https://placehold.co/400x400/fee2e2/ec4899?text=' + c.name),
+                        link: `/cakes?category=${encodeURIComponent(c.name)}`
+                    }));
+                    console.log('Processed Categories:', mapped);
+                    setCategories(mapped);
+                }
+            } catch (err) {
+                console.error("Failed to fetch categories:", err);
+                setCategories([]);
+            }
+        };
+        fetchCategories();
+    }, []);
 
     const [featuredCakes, setFeaturedCakes] = React.useState([]);
 
@@ -23,9 +40,9 @@ const Home = () => {
         const fetchFeatured = async () => {
             try {
                 // Fetch latest 4 cakes
-                const res = await fetch('http://localhost:5000/api/cakes?limit=4');
-                if (res.ok) {
-                    const data = await res.json();
+                const res = await api.get('/public/cakes?limit=4');
+                if (res.status === 200) {
+                    const data = res.data;
                     setFeaturedCakes(data.map(c => ({
                         id: c.id,
                         name: c.name,
@@ -33,46 +50,82 @@ const Home = () => {
                         image: c.imageUrl,
                         description: c.description
                     })));
-                } else {
-                    // Fallback to dummy data if API fails
-                    setFeaturedCakes(docData.cakes.slice(0, 4).map(c => ({
-                        id: c.id,
-                        name: c.name,
-                        price: c.basePrice,
-                        image: c.imageUrl,
-                        description: c.description
-                    })));
                 }
             } catch (err) {
                 console.error("Failed to fetch featured cakes", err);
-                // Fallback
-                setFeaturedCakes(docData.cakes.slice(0, 4).map(c => ({
-                    id: c.id,
-                    name: c.name,
-                    price: c.basePrice,
-                    image: c.imageUrl,
-                    description: c.description
-                })));
+                setFeaturedCakes([]);
             }
         };
         fetchFeatured();
     }, []);
 
-    // Reuse cakes for best sellers (randomized or just next batch)
-    const bestSellers = docData.cakes.slice(0, 3).map(c => ({
-        id: c.id,
-        name: c.name,
-        price: c.basePrice,
-        rating: 5,
-        reviews: Math.floor(Math.random() * 100) + 20,
-        image: c.imageUrl
-    }));
+    const [bestSellers, setBestSellers] = React.useState([]);
 
-    const testimonials = [
-        { id: 1, name: 'Kasun Perera', text: 'The birthday cake I ordered for my daughter was absolutely beautiful and delicious. Everyone at the party loved it!', rating: 5 },
-        { id: 2, name: 'Dilshan De Silva', text: 'Excellent service and timely delivery. The custom design came out exactly as I imagined.', rating: 5 },
-        { id: 3, name: 'Amaya Fernando', text: 'Best red velvet cake I have ever tasted! Will definitely order again.', rating: 4 },
-    ];
+    React.useEffect(() => {
+        const fetchBestSellers = async () => {
+            try {
+                // Fetch random or specific cakes for best sellers (using limit and shuffle or just different limit)
+                // Since verified "Best Seller" logic isn't on backend yet, we'll fetch latest 3 for now.
+                const res = await api.get('/public/cakes?limit=3');
+                if (res.data) {
+                    setBestSellers(res.data.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        price: c.price,
+                        image: c.imageUrl
+                    })));
+                }
+            } catch (err) {
+                console.error("Failed to fetch best sellers", err);
+            }
+        };
+        fetchBestSellers();
+    }, []);
+
+    // Testimonials
+    const [testimonials, setTestimonials] = React.useState([]);
+
+    React.useEffect(() => {
+        const fetchTestimonials = async () => {
+            try {
+                const res = await api.get('/feedback/public');
+                // Map to UI format
+                // Backend: { id, rating, comment, customer: { name }, reply }
+                if (res.data) {
+                    setTestimonials(res.data.map(f => ({
+                        id: f.id,
+                        name: f.customer?.name || "Customer",
+                        text: f.comment,
+                        rating: f.rating,
+                        reply: f.reply
+                    })));
+                }
+            } catch (err) {
+                console.error("Failed to fetch testimonials", err);
+                // Fallback
+                setTestimonials([
+                    { id: 1, name: 'Kasun Perera', text: 'The birthday cake I ordered for my daughter was absolutely beautiful and delicious. Everyone at the party loved it!', rating: 5 },
+                    { id: 2, name: 'Dilshan De Silva', text: 'Excellent service and timely delivery. The custom design came out exactly as I imagined.', rating: 5 },
+                    { id: 3, name: 'Amaya Fernando', text: 'Best red velvet cake I have ever tasted! Will definitely order again.', rating: 4 },
+                ]);
+            }
+        };
+        fetchTestimonials();
+    }, []);
+
+    const [siteSettings, setSiteSettings] = React.useState({});
+
+    React.useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await api.get('/content/settings');
+                setSiteSettings(res.data);
+            } catch (err) {
+                console.error("Failed to fetch settings", err);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     return (
         <div className="font-sans">
@@ -86,7 +139,11 @@ const Home = () => {
                             transition={{ duration: 0.5 }}
                             className="text-4xl md:text-6xl font-extrabold text-gray-900 leading-tight mb-6"
                         >
-                            Delicious Cakes for <br /> <span className="text-pink-600">Every Occasion</span>
+                            {siteSettings.HOME_HERO_TITLE ? (
+                                <span dangerouslySetInnerHTML={{ __html: siteSettings.HOME_HERO_TITLE.replace(/\n/g, '<br/>') }} />
+                            ) : (
+                                <>Delicious Cakes for <br /> <span className="text-pink-600">Every Occasion</span></>
+                            )}
                         </motion.h1>
                         <motion.p
                             initial={{ opacity: 0, y: 20 }}
@@ -94,7 +151,7 @@ const Home = () => {
                             transition={{ duration: 0.5, delay: 0.2 }}
                             className="text-lg text-gray-600 mb-8 max-w-lg mx-auto md:mx-0"
                         >
-                            Handcrafted with love using the finest ingredients. Make your celebrations sweeter with KaviCakes.
+                            {siteSettings.HOME_HERO_SUBTITLE || "Handcrafted with love using the finest ingredients. Make your celebrations sweeter with KaviCakes."}
                         </motion.p>
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
@@ -115,7 +172,7 @@ const Home = () => {
                             initial={{ opacity: 0, scale: 0.8 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.5 }}
-                            src="https://placehold.co/600x400/5d4037/ffffff?text=Hero+Cake"
+                            src={siteSettings.HOME_HERO_IMAGE || "https://placehold.co/600x400/5d4037/ffffff?text=Hero+Cake"}
                             alt="Delicious Chocolate Cake"
                             className="rounded-2xl shadow-2xl w-full max-w-lg object-cover"
                         />
@@ -202,36 +259,40 @@ const Home = () => {
                             <h2 className="text-3xl font-bold text-gray-900">Best Sellers</h2>
                             <p className="mt-2 text-gray-600">Our most loved cakes by customers.</p>
                         </div>
-                        <Link to="/cakes?filter=best-seller" className="text-pink-600 font-semibold hover:text-pink-700 flex items-center group">
+                        <Link to="/cakes" className="text-pink-600 font-semibold hover:text-pink-700 flex items-center group">
                             View All <ArrowRight className="ml-2 h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
                         </Link>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {bestSellers.map((item) => (
+                        {bestSellers.length > 0 ? bestSellers.map((item) => (
                             <div key={item.id} className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex items-center space-x-4">
                                 <div className="w-32 h-32 flex-shrink-0 rounded-xl overflow-hidden">
-                                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                    <img src={item.image || 'https://placehold.co/128x128?text=Best+Seller'} alt={item.name} className="w-full h-full object-cover" />
                                 </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900">{item.name}</h3>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-lg font-bold text-gray-900 truncate">{item.name}</h3>
                                     <div className="flex items-center mt-1 mb-2">
                                         <div className="flex text-yellow-400">
                                             {[...Array(5)].map((_, i) => (
-                                                <Star key={i} className={`h-4 w-4 ${i < Math.floor(item.rating) ? 'fill-current' : 'text-gray-300'}`} />
+                                                <Star key={i} className={`h-4 w-4 ${i < 5 ? 'fill-current' : 'text-gray-300'}`} />
                                             ))}
                                         </div>
-                                        <span className="text-xs text-gray-400 ml-2">({item.reviews} Reviews)</span>
+                                        <span className="text-xs text-gray-400 ml-2">(Popular)</span>
                                     </div>
                                     <div className="flex items-center justify-between w-full">
                                         <span className="text-lg font-bold text-pink-600">Rs. {item.price}</span>
-                                        <button className="p-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 shadow-md">
-                                            <Check className="h-4 w-4" /> {/* Simple add icon or check */}
-                                        </button>
+                                        <Link to={`/cakes/${item.id}`} className="p-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 shadow-md">
+                                            <ArrowRight className="h-4 w-4" />
+                                        </Link>
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <div className="col-span-3 text-center text-gray-500 py-10">
+                                <p>Loading best sellers...</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>
@@ -298,6 +359,14 @@ const Home = () => {
                                         </span>
                                     </div>
                                 </div>
+                                {t.reply && (
+                                    <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50 -mx-8 -mb-8 p-6 rounded-b-2xl">
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-xs font-bold text-pink-600 uppercase tracking-wider shrink-0 mt-0.5">Response:</span>
+                                            <p className="text-sm text-gray-600 italic">"{t.reply}"</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

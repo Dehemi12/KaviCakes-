@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Select, Button, Steps, Space, Row, Col, Typography, message, Divider } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
+import { Upload } from 'antd';
+import { supabase } from '../api/supabase';
 import axios from 'axios';
-import { docData } from '../data/dummyData';
+
 
 const { Step } = Steps;
 const { Option } = Select;
@@ -14,6 +16,7 @@ const AddCakeModal = ({ open, onClose, onSuccess, cakeToEdit = null }) => {
     const [form] = Form.useForm();
     const [masterData, setMasterData] = useState({ sizes: [], shapes: [], flavors: [], categories: [] });
     const [variants, setVariants] = useState([]);
+    const [uploading, setUploading] = useState(false);
 
     // Inline Master Data Creation State
     const [isMiniModalOpen, setIsMiniModalOpen] = useState(false);
@@ -77,13 +80,21 @@ const AddCakeModal = ({ open, onClose, onSuccess, cakeToEdit = null }) => {
     }, [masterData, form]);
 
     const fetchMasterData = async () => {
-        // Hardcoded Master Data
-        setMasterData(docData.masterData);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get('http://localhost:5000/api/cakes/master-data', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setMasterData(res.data);
 
-        // If editing, find category price now that we have data
-        if (cakeToEdit) {
-            const cat = docData.masterData.categories.find(c => c.id === cakeToEdit.categoryId);
-            if (cat) setSelectedCategoryPrice(cat.basePrice);
+            // If editing, find category price now that we have data
+            if (cakeToEdit) {
+                const cat = res.data.categories.find(c => c.id === cakeToEdit.categoryId);
+                if (cat) setSelectedCategoryPrice(cat.basePrice);
+            }
+        } catch (error) {
+            console.error('Fetch Master Data Error:', error);
+            message.error("Failed to load options");
         }
     };
 
@@ -138,20 +149,53 @@ const AddCakeModal = ({ open, onClose, onSuccess, cakeToEdit = null }) => {
                 await axios.put(`http://localhost:5000/api/cakes/${cakeToEdit.id}`, payload, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                message.success('Cake updated successfully!');
+                message.success('Product updated successfully!');
             } else {
                 await axios.post('http://localhost:5000/api/cakes', payload, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                message.success('Cake created successfully!');
+                message.success('Product created successfully!');
             }
 
             onSuccess();
             onClose();
         } catch (error) {
-            console.error(error);
-            message.error(isEditMode ? 'Failed to update cake' : 'Failed to create cake');
+            console.error('Submit Error:', error);
+            const errorMsg = error.response?.data?.error || error.message || 'Unknown error occurred';
+            message.error(isEditMode ? `Failed to update: ${errorMsg}` : `Failed to create: ${errorMsg}`);
         }
+    };
+
+
+    // --- Image Upload Logic ---
+    const handleImageUpload = async (file) => {
+        try {
+            setUploading(true);
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { data, error } = await supabase.storage
+                .from('cakes')
+                .upload(filePath, file);
+
+            if (error) {
+                console.error('Supabase upload error:', error);
+                throw error;
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('cakes')
+                .getPublicUrl(filePath);
+
+            form.setFieldsValue({ imageUrl: publicUrl });
+            message.success('Image uploaded successfully');
+        } catch (error) {
+            message.error('Upload failed: ' + error.message);
+        } finally {
+            setUploading(false);
+        }
+        return false; // Prevent default upload behavior
     };
 
     // --- Master Data Creation Logic ---
@@ -226,7 +270,7 @@ const AddCakeModal = ({ open, onClose, onSuccess, cakeToEdit = null }) => {
                 open={open}
                 onCancel={onClose}
                 width={700}
-                title={isEditMode ? `Edit Cake: ${cakeToEdit.name}` : "Add New Cake"}
+                title={isEditMode ? `Edit Product: ${cakeToEdit.name}` : "Add New Product"}
                 footer={null}
             >
                 <Steps current={currentStep} style={{ marginBottom: 20 }}>
@@ -238,7 +282,7 @@ const AddCakeModal = ({ open, onClose, onSuccess, cakeToEdit = null }) => {
                     <div style={{ display: currentStep === 0 ? 'block' : 'none' }}>
                         <Row gutter={16}>
                             <Col span={12}>
-                                <Form.Item name="name" label="Cake Name" rules={[{ required: true }]}>
+                                <Form.Item name="name" label="Product Name" rules={[{ required: true }]}>
                                     <Input placeholder="e.g. Chocolate Cake" />
                                 </Form.Item>
                             </Col>
@@ -267,8 +311,30 @@ const AddCakeModal = ({ open, onClose, onSuccess, cakeToEdit = null }) => {
 
                         <Row gutter={16}>
                             <Col span={24}>
-                                <Form.Item name="imageUrl" label="Image URL">
-                                    <Input placeholder="https://..." />
+                                <Form.Item name="imageUrl" label="Product Image" rules={[{ required: true, message: 'Please upload an image' }]}>
+                                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                        <Input placeholder="Image URL will appear here" readOnly style={{ flex: 1 }} />
+                                        <Upload
+                                            beforeUpload={handleImageUpload}
+                                            showUploadList={false}
+                                            accept="image/*"
+                                        >
+                                            <Button icon={uploading ? <LoadingOutlined /> : <UploadOutlined />} loading={uploading}>
+                                                {uploading ? 'Uploading' : 'Upload'}
+                                            </Button>
+                                        </Upload>
+                                    </div>
+                                </Form.Item>
+                                {/* Preview */}
+                                <Form.Item noStyle shouldUpdate={(prev, current) => prev.imageUrl !== current.imageUrl}>
+                                    {({ getFieldValue }) => {
+                                        const img = getFieldValue('imageUrl');
+                                        return img ? (
+                                            <div style={{ marginTop: 10, marginBottom: 20, textAlign: 'center' }}>
+                                                <img src={img} alt="Preview" style={{ maxHeight: 150, borderRadius: 8, border: '1px solid #ddd' }} />
+                                            </div>
+                                        ) : null;
+                                    }}
                                 </Form.Item>
                             </Col>
                             {selectedCategoryPrice !== null && (
@@ -305,7 +371,7 @@ const AddCakeModal = ({ open, onClose, onSuccess, cakeToEdit = null }) => {
 
                     <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
                         <div style={{ marginBottom: 15 }}>
-                            <Title level={5}>Cake Variants</Title>
+                            <Title level={5}>Product Variants</Title>
                             <p>Manage sizes, shapes, and flavors. You can add new options directly from the dropdowns.</p>
                         </div>
 
@@ -387,7 +453,7 @@ const AddCakeModal = ({ open, onClose, onSuccess, cakeToEdit = null }) => {
 
                         <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between' }}>
                             <Button onClick={() => setCurrentStep(0)}>Back</Button>
-                            <Button type="primary" onClick={handleSubmit}>{isEditMode ? 'Update Cake' : 'Create Cake'}</Button>
+                            <Button type="primary" onClick={handleSubmit}>{isEditMode ? 'Update Product' : 'Create Product'}</Button>
                         </div>
                     </div>
                 </Form>

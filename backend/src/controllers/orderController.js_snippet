@@ -1,0 +1,52 @@
+
+// GET single order by ID
+exports.getOrderById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const orderId = parseInt(id);
+
+        const order = await prisma.order.findUnique({
+            where: { id: orderId },
+            include: {
+                customer: true,
+                items: {
+                    include: {
+                        variant: {
+                            include: {
+                                cake: true,
+                                size: true,
+                                shape: true,
+                                flavor: true
+                            }
+                        }
+                    }
+                },
+                delivery: true,
+                payment: true
+            }
+        });
+
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        // Format for frontend consistency
+        const formatted = {
+            ...order,
+            total: parseFloat(order.total),
+            items: order.items.map(item => ({
+                id: item.id,
+                quantity: item.quantity,
+                unitPrice: parseFloat(item.unitPrice),
+                name: item.variant?.cake?.name || 'Unknown Item',
+                image: item.variant?.cake?.imageUrl || 'https://via.placeholder.com/150',
+                variantDescription: item.variant ? `${item.variant.size.label}, ${item.variant.flavor.label}` : ''
+            }))
+        };
+
+        res.json(formatted);
+    } catch (error) {
+        console.error('[OrderController:getOrderById] Error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};

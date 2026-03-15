@@ -1,0 +1,208 @@
+🔐 Admin Authentication Plan – KaviCakes Order Management System
+1️⃣ Hard-coded credentials ❌ (NOT recommended)
+
+Do NOT hard-code admin username/password in the system.
+
+Why it’s bad:
+
+Password is exposed in source code
+
+Cannot change password without code changes
+
+Fails security best practices
+
+Panel members usually deduct marks for this
+
+✅ Correct approach:
+Store admin credentials in the database with proper hashing.
+
+2️⃣ Admin Registration (One-Time Setup) ✅
+
+Since there is only ONE admin, registration must be controlled, not open like customer signup.
+
+✔ Corrected Plan:
+
+Admin registration happens only once
+
+After registration:
+
+No new admins can register
+
+System blocks additional admin signups
+
+Registration Flow:
+
+Admin enters:
+
+Email
+
+Password
+
+Confirm password
+
+System validates:
+
+Email format is valid
+
+Password meets security rules
+
+System checks:
+
+Admin table is empty
+
+If admin already exists → block registration
+
+Password is:
+
+Hashed (e.g., bcrypt)
+
+Stored in database
+
+OTP sent to admin email
+
+Admin enters OTP
+
+OTP verified
+
+Admin account status = ACTIVE
+
+📌 Improvement:
+Add is_verified = true/false field in admin table.
+
+3️⃣ Admin Login (Sign In) 🔑
+Login Flow:
+
+Admin enters:
+
+Email
+
+Password
+
+System checks:
+
+Email exists in admin table
+
+Password hash matches
+
+Account status = ACTIVE
+
+If valid:
+
+Generate JWT token (role = ADMIN)
+
+Token is:
+
+Stored securely (HTTP-only cookie / local storage)
+
+Sent with every admin API request
+
+📌 System Check:
+Before accessing admin pages → system checks is admin logged in.
+
+4️⃣ Admin Route Protection 🛡️
+
+All admin APIs and pages must be protected.
+
+Validation Rules:
+
+JWT must exist
+
+Token must be valid
+
+Token role must be ADMIN
+
+Token must not be expired
+
+❌ Customers cannot access admin routes
+❌ Direct URL access is blocked
+
+5️⃣ Forgot Password (Improved Plan) 🔁
+
+Your idea is correct, just needs refinement.
+
+Password Reset Flow:
+
+Admin clicks Forgot Password
+
+Admin enters registered email
+
+System checks:
+
+Email exists
+
+Account is ACTIVE
+
+System generates:
+
+One-time reset token (time-limited)
+
+Password reset link sent to admin email
+
+Admin opens link
+
+Admin enters:
+
+New password
+
+Confirm password
+
+System:
+
+Hashes new password
+
+Updates database
+
+Invalidates reset token
+
+📌 Same flow as customer side (good consistency)
+
+6️⃣ Admin Password Change (While Logged In) 🔄
+
+Strongly recommended improvement
+
+Flow:
+
+Admin enters:
+
+Current password
+
+New password
+
+System validates:
+
+Current password matches DB
+
+New password rules satisfied
+
+System updates:
+
+New hashed password in DB
+
+Admin remains logged in (or forced re-login)
+
+7️⃣ OTP & Email Security Enhancements ✉️
+OTP Rules:
+
+OTP expires after 5–10 minutes
+
+Maximum retry attempts (e.g., 3)
+
+OTP stored temporarily (hashed)
+
+8️⃣ Admin Table Structure (Suggested) 🗄️
+Admin
+- admin_id
+- email
+- password_hash
+- is_verified
+- status (ACTIVE / INACTIVE)
+- created_at
+- updated_at
+
+✅ Final Verdict on Your Plan
+Area	Your Idea	Correction
+Admin credentials	Signup allowed	Allow only ONE admin
+Hard-coding	Unsure	❌ Not allowed
+OTP verification	✔ Correct	Add expiry & retries
+Forgot password	✔ Correct	Add token expiration
+DB updates	✔ Correct	Always required

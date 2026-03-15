@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, User, Menu, X, Search, Heart } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, Search, Heart, ChevronDown, ChevronRight } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
+import NotificationPanel from './NotificationPanel';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -12,6 +14,24 @@ const Navbar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [categories, setCategories] = useState([]);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await api.get('/public/cakes/master-data');
+                // Backend: { sizes, shapes, flavors, categories: [{id,name}, ...] }
+                if (res.data && res.data.categories) {
+                    setCategories(res.data.categories.map(c => c.name));
+                }
+            } catch (err) {
+                console.error("Failed to fetch nav categories", err);
+            }
+        };
+        fetchCategories();
+    }, []);
+
+    // navItems replaced by static structure in render for better control
 
     const handleLogout = () => {
         logout();
@@ -60,8 +80,11 @@ const Navbar = () => {
                         </Link>
 
                         {user ? (
-                            <div className="relative group">
-                                <button className="flex flex-col items-center text-gray-500 hover:text-pink-600 focus:outline-none">
+                            <div className="flex items-center space-x-6">
+                                <NotificationPanel />
+                                
+                                <div className="relative group">
+                                    <button className="flex flex-col items-center text-gray-500 hover:text-pink-600 focus:outline-none">
                                     <User className="h-6 w-6" />
                                     <span className="hidden lg:block text-[10px] font-medium mt-0.5">{user.name.split(' ')[0]}</span>
                                 </button>
@@ -73,6 +96,7 @@ const Navbar = () => {
                                     <div className="border-t border-gray-100 py-1">
                                         <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-600">Logout</button>
                                     </div>
+                                </div>
                                 </div>
                             </div>
                         ) : (
@@ -97,27 +121,38 @@ const Navbar = () => {
             {/* Secondary Navigation (Categories) */}
             <div className="hidden md:block border-t border-gray-100 bg-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-center space-x-8 py-3 overflow-x-auto">
-                        {['Home', 'Birthday Cakes', 'Wedding Cakes', 'Anniversary Cakes', 'Custom Orders', 'Bulk Orders', 'Cupcakes'].map((item) => {
-                            let path = '/';
-                            if (item === 'Home') path = '/';
-                            else if (item === 'Custom Orders') path = '/custom-orders';
-                            else if (item === 'Bulk Orders') path = '/bulk-orders';
-                            else path = `/cakes?category=${item.toLowerCase().replace(' cakes', '').replace(' ', '-')}`;
+                    <div className="flex justify-center space-x-10 py-3">
+                        <Link to="/" className={`text-xs font-bold transition-colors uppercase tracking-wider relative group ${location.pathname === '/' ? 'text-pink-600' : 'text-gray-500 hover:text-pink-600'}`}>
+                            Home
+                            <span className={`absolute -bottom-3 left-0 h-0.5 bg-pink-600 transition-all ${location.pathname === '/' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                        </Link>
 
-                            const isActive = location.pathname === path || (path.includes('?category=') && location.search.includes(item.toLowerCase().replace(' cakes', '').replace(' ', '-')));
+                        {/* Categories Dropdown */}
+                        <div className="relative group">
+                            <button className={`flex items-center text-xs font-bold transition-colors uppercase tracking-wider outline-none ${location.pathname.includes('/cakes') ? 'text-pink-600' : 'text-gray-500 hover:text-pink-600'}`}>
+                                Categories <ChevronDown className="ml-1 h-3 w-3" />
+                            </button>
+                            <div className="absolute left-1/2 transform -translate-x-1/2 top-full pt-3 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                <div className="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden py-1">
+                                    <Link to="/cakes" className="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600">All Cakes</Link>
+                                    {categories.map(cat => (
+                                        <Link key={cat} to={`/cakes?category=${encodeURIComponent(cat)}`} className="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600">
+                                            {cat}
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
 
-                            return (
-                                <Link
-                                    key={item}
-                                    to={path}
-                                    className={`text-xs font-bold transition-colors uppercase tracking-wider relative group whitespace-nowrap ${isActive ? 'text-pink-600' : 'text-gray-500 hover:text-pink-600'}`}
-                                >
-                                    {item}
-                                    <span className={`absolute -bottom-3 left-0 h-0.5 bg-pink-600 transition-all ${isActive ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
-                                </Link>
-                            )
-                        })}
+                        <Link to="/custom-orders" className={`text-xs font-bold transition-colors uppercase tracking-wider relative group ${location.pathname === '/custom-orders' ? 'text-pink-600' : 'text-gray-500 hover:text-pink-600'}`}>
+                            Custom Cakes
+                            <span className={`absolute -bottom-3 left-0 h-0.5 bg-pink-600 transition-all ${location.pathname === '/custom-orders' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                        </Link>
+
+                        <Link to="/bulk-orders" className={`text-xs font-bold transition-colors uppercase tracking-wider relative group ${location.pathname === '/bulk-orders' ? 'text-pink-600' : 'text-gray-500 hover:text-pink-600'}`}>
+                            Bulk Orders
+                            <span className={`absolute -bottom-3 left-0 h-0.5 bg-pink-600 transition-all ${location.pathname === '/bulk-orders' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -137,16 +172,29 @@ const Navbar = () => {
                         </div>
                     </div>
                     <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 max-h-[calc(100vh-200px)] overflow-y-auto">
-                        {['Home', 'Birthday Cakes', 'Wedding Cakes', 'Anniversary Cakes', 'Custom Orders', 'Cupcakes'].map((item) => (
-                            <Link
-                                key={item}
-                                to={item === 'Home' ? '/' : `/cakes?category=${item.toLowerCase().replace(' ', '-')}`}
-                                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-pink-600 hover:bg-pink-50"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                {item}
-                            </Link>
-                        ))}
+                        <Link to="/" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-pink-600 hover:bg-pink-50" onClick={() => setIsMenuOpen(false)}>
+                            Home
+                        </Link>
+
+                        <div className="px-3 py-2">
+                            <div className="text-base font-medium text-gray-900 mb-2">Categories</div>
+                            <div className="pl-4 space-y-2 border-l-2 border-pink-100">
+                                <Link to="/cakes" className="block text-sm text-gray-600 hover:text-pink-600" onClick={() => setIsMenuOpen(false)}>All Cakes</Link>
+                                {categories.map(cat => (
+                                    <Link key={cat} to={`/cakes?category=${encodeURIComponent(cat)}`} className="block text-sm text-gray-600 hover:text-pink-600" onClick={() => setIsMenuOpen(false)}>
+                                        {cat}
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+
+                        <Link to="/custom-orders" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-pink-600 hover:bg-pink-50" onClick={() => setIsMenuOpen(false)}>
+                            Custom Cakes
+                        </Link>
+
+                        <Link to="/bulk-orders" className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-pink-600 hover:bg-pink-50" onClick={() => setIsMenuOpen(false)}>
+                            Bulk Orders
+                        </Link>
 
                         <div className="border-t border-gray-100 my-2 pt-2"></div>
 

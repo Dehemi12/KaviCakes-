@@ -29,7 +29,7 @@ async function main() {
     await prisma.admin.upsert({
         where: { email },
         update: {},
-        create: { email, password: hashedPassword, name: 'Super Admin' },
+        create: { email, password: hashedPassword, name: 'Super Admin', isVerified: true },
     });
 
     // 2. Master Data
@@ -163,8 +163,8 @@ async function main() {
 
     // 5. Templates (Matching Screenshot)
     const templates = [
-        { title: 'Request Order Confirmation', category: 'Order', body: 'Kavicakes Order #{{order_id}}: Final confirmation needed for your delivery on {{date}}.' },
-        { title: 'Edit order', category: 'Order', body: 'Kavicakes Reminder: Hi {{name}}, we are getting ready to bake your order.' },
+        { title: 'Payment Required: Confirm Order (Full/Advance)', category: 'Payment', body: 'Your order #{{order_id}} is scheduled for delivery on {{date}}. To confirm preparation, payment must be completed 2 days before delivery. Please complete your payment to avoid cancellation.' },
+        { title: 'Payment Received: Preparation Starting Soon', category: 'Order', body: 'Hi {{name}}, we have received your payment for order #{{order_id}}. We are about to start preparation for your delivery on {{delivery_date}}.' },
         { title: 'Out for Delivery', category: 'Order', body: 'Your order #{{order_id}} is out for delivery.' },
         { title: 'Order Delivered', category: 'Order', body: 'Your order #{{order_id}} has been delivered. Enjoy your treats!' },
         { title: 'Payment Confirmation', category: 'Payment', body: 'Your payment of {{amount}} for order #{{order_id}} has been received. Thank you!' },

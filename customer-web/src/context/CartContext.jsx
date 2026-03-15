@@ -55,9 +55,14 @@ export const CartProvider = ({ children }) => {
                     productName: product.name,
                     productImage: product.image || product.imageUrl, // Handle both naming conventions
                     variant,
-                    price: variant.price || 0,
+                    price: (variant && variant.price !== undefined) ? variant.price : (product.price || 0),
                     quantity,
-                    instructions: instructions || ''
+                    instructions: instructions || '',
+                    // Preserve Metadata
+                    isCustom: product.isCustom || false,
+                    customDetails: product.customDetails || null,
+                    isBulk: variant?.isBulk || product.isBulk || false,
+                    bulkDetails: variant?.bulkDetails || product.bulkDetails || null
                 }];
             }
         });
@@ -78,10 +83,7 @@ export const CartProvider = ({ children }) => {
 
     const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
 
-    const clearCart = () => {
-        setCart([]);
-        setLoyaltyDiscount(0);
-    };
+
 
     const safeCart = Array.isArray(cart) ? cart : [];
 
@@ -93,6 +95,34 @@ export const CartProvider = ({ children }) => {
     }, 0);
     const finalTotal = Math.max(0, cartTotal - loyaltyDiscount);
 
+    // Editing State (Persisted)
+    const [editingOrderId, setEditingOrderId] = useState(() => {
+        try {
+            return localStorage.getItem('kavicakes_editing_order_id') || null;
+        } catch { return null; }
+    });
+
+    useEffect(() => {
+        if (editingOrderId) {
+            localStorage.setItem('kavicakes_editing_order_id', editingOrderId);
+        } else {
+            localStorage.removeItem('kavicakes_editing_order_id');
+        }
+    }, [editingOrderId]);
+
+    const replaceCart = (items, orderId = null) => {
+        if (Array.isArray(items)) {
+            setCart(items);
+            if (orderId) setEditingOrderId(orderId);
+        }
+    };
+
+    const clearCart = () => {
+        setCart([]);
+        setLoyaltyDiscount(0);
+        setEditingOrderId(null); // Clear edit mode on checkout complete
+    };
+
     return (
         <CartContext.Provider value={{
             cart,
@@ -100,11 +130,14 @@ export const CartProvider = ({ children }) => {
             removeFromCart,
             updateQuantity,
             clearCart,
+            replaceCart,
             cartCount,
             cartTotal,
             loyaltyDiscount,
             setLoyaltyDiscount,
-            finalTotal
+            finalTotal,
+            editingOrderId,
+            setEditingOrderId
         }}>
             {children}
         </CartContext.Provider>

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Avatar, Typography, Button, Space, Card, Tag, Input, Row, Col } from 'antd';
+import { Table, Avatar, Typography, Button, Space, Card, Tag, Input, Row, Col, Modal } from 'antd';
 import { UserOutlined, MailOutlined, PhoneOutlined, FilterOutlined } from '@ant-design/icons';
 import axios from 'axios';
-import { docData } from '../data/dummyData';
 
 const { Title, Text } = Typography;
 
@@ -12,22 +11,34 @@ const Customers = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('All'); // 'All', 'HighLoyalty', 'Feedbacks'
 
+    // Reply State
+    const [replyModalOpen, setReplyModalOpen] = useState(false);
+    const [selectedFeedbackId, setSelectedFeedbackId] = useState(null);
+    const [replyText, setReplyText] = useState('');
+
     const fetchData = async () => {
         setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const config = { headers: { Authorization: `Bearer ${token}` } };
 
-        // Simulate network delay
-        setTimeout(() => {
             if (filter === 'Feedbacks') {
-                setFeedbacks(docData.feedbacks);
+                const res = await axios.get('http://localhost:5000/api/feedback', config);
+                setFeedbacks(res.data);
             } else {
-                let filtered = docData.customers;
+                const res = await axios.get('http://localhost:5000/api/customers', config);
+                let data = res.data;
                 if (filter === 'HighLoyalty') {
-                    filtered = filtered.filter(c => c.loyaltyPoints >= 1000);
+                    data = data.filter(c => c.loyaltyPoints >= 1000);
                 }
-                setCustomers(filtered);
+                setCustomers(data);
             }
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            alert('Failed to fetch data: ' + (error.response?.data?.error || error.message));
+        } finally {
             setLoading(false);
-        }, 300);
+        }
     };
 
     useEffect(() => {
@@ -42,7 +53,30 @@ const Customers = () => {
             });
             fetchData(); // Refresh
         } catch (error) {
-            console.error('Action failed');
+            console.error('Action failed', error);
+            alert('Action failed: ' + (error.response?.data?.error || error.message));
+        }
+    };
+
+    const handleOpenReply = (id) => {
+        setSelectedFeedbackId(id);
+        const fb = feedbacks.find(f => f.id === id);
+        setReplyText(fb.reply || '');
+        setReplyModalOpen(true);
+    };
+
+    const handleSendReply = async () => {
+        if (!replyText.trim()) return;
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`http://localhost:5000/api/feedback/${selectedFeedbackId}/reply`,
+                { reply: replyText },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setReplyModalOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error('Reply failed', error);
         }
     };
 
@@ -134,6 +168,9 @@ const Customers = () => {
                                 <div>
                                     <Title level={4} style={{ margin: 0 }}>{fb.customer?.name || 'Unknown'}</Title>
                                     <Space style={{ marginTop: 5 }}>
+                                        <Tag color={fb.status === 'APPROVED' ? 'success' : fb.status === 'HIDDEN' ? 'default' : 'warning'}>
+                                            {fb.status}
+                                        </Tag>
                                         <Tag color="#FFD6E7" style={{ color: '#E91E63', borderRadius: 10 }}>
                                             Loyalty points {fb.customer?.loyaltyPoints || 0}
                                         </Tag>
@@ -141,9 +178,15 @@ const Customers = () => {
                                     </Space>
                                 </div>
                                 <Space>
-                                    <Button type={fb.status === 'APPROVED' ? 'primary' : 'default'} style={{ backgroundColor: '#A5D6A7', color: '#1B5E20', border: 'none' }} onClick={() => handleFeedbackAction(fb.id, 'APPROVED')}>Approve</Button>
-                                    <Button style={{ backgroundColor: '#BBDEFB', color: '#0D47A1', border: 'none' }}>Reply</Button>
-                                    <Button style={{ backgroundColor: '#FFF59D', color: '#F57F17', border: 'none' }} onClick={() => handleFeedbackAction(fb.id, 'HIDDEN')}>Hide</Button>
+                                    {fb.status !== 'APPROVED' && (
+                                        <Button type="primary" style={{ backgroundColor: '#A5D6A7', color: '#1B5E20', border: 'none' }} onClick={() => handleFeedbackAction(fb.id, 'APPROVED')}>Approve</Button>
+                                    )}
+                                    <Button style={{ backgroundColor: '#BBDEFB', color: '#0D47A1', border: 'none' }} onClick={() => handleOpenReply(fb.id)}>
+                                        {fb.reply ? 'Edit Reply' : 'Reply'}
+                                    </Button>
+                                    {fb.status !== 'HIDDEN' && (
+                                        <Button style={{ backgroundColor: '#FFF59D', color: '#F57F17', border: 'none' }} onClick={() => handleFeedbackAction(fb.id, 'HIDDEN')}>Hide</Button>
+                                    )}
                                 </Space>
                             </div>
                             <div>
@@ -154,6 +197,13 @@ const Customers = () => {
                                     <Text strong style={{ marginLeft: 10 }}>{fb.title}</Text>
                                 </div>
                                 <Text style={{ color: '#666', marginTop: 8, display: 'block' }}>"{fb.comment}"</Text>
+
+                                {fb.reply && (
+                                    <div style={{ marginTop: 15, padding: 15, background: '#f5f5f5', borderRadius: 8, borderLeft: '3px solid #E91E63' }}>
+                                        <Text strong style={{ color: '#E91E63', display: 'block', marginBottom: 5 }}>Admin Reply</Text>
+                                        <Text>{fb.reply}</Text>
+                                    </div>
+                                )}
                             </div>
                         </Card>
                     ))}
@@ -167,6 +217,23 @@ const Customers = () => {
                     pagination={{ pageSize: 8, showSizeChanger: false }}
                 />
             )}
+
+            {/* Reply Modal */}
+            <Modal
+                title="Reply to Feedback"
+                open={replyModalOpen}
+                onCancel={() => setReplyModalOpen(false)}
+                onOk={handleSendReply}
+                okText="Send Reply"
+                okButtonProps={{ style: { backgroundColor: '#E91E63', borderColor: '#E91E63' } }}
+            >
+                <Input.TextArea
+                    rows={4}
+                    value={replyText}
+                    onChange={e => setReplyText(e.target.value)}
+                    placeholder="Write your reply here..."
+                />
+            </Modal>
         </div>
     );
 };

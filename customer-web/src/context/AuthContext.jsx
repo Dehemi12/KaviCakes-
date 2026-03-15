@@ -11,17 +11,17 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const loadUser = async () => {
-            const token = localStorage.getItem('customerToken');
+            const token = localStorage.getItem('token');
             if (token) {
                 try {
-                    const storedUser = localStorage.getItem('customerData');
+                    const storedUser = localStorage.getItem('user');
                     if (storedUser) {
                         setUser(JSON.parse(storedUser));
                     }
                 } catch (error) {
                     console.error("Failed to load user", error);
-                    localStorage.removeItem('customerToken');
-                    localStorage.removeItem('customerData');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
                 }
             }
             setLoading(false);
@@ -35,8 +35,8 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/login', { email, password, role: 'CUSTOMER' });
             const { token, user } = response.data;
 
-            localStorage.setItem('customerToken', token);
-            localStorage.setItem('customerData', JSON.stringify(user));
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user));
             setUser(user);
             return user;
         } catch (error) {
@@ -46,9 +46,11 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        localStorage.removeItem('customerToken');
-        localStorage.removeItem('customerData');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setUser(null);
+        // Force reload to clear any memory states in other components if needed
+        window.location.href = '/login';
     };
 
     const register = async (userData) => {
@@ -56,12 +58,25 @@ export const AuthProvider = ({ children }) => {
         return response.data;
     };
 
+    const refreshUser = async () => {
+        try {
+            const res = await api.get('/auth/profile');
+            const updatedUser = res.data;
+            setUser(updatedUser);
+            localStorage.setItem('user', JSON.stringify(updatedUser)); // Keep strictly in sync
+            return updatedUser;
+        } catch (error) {
+            console.error("Failed to refresh user:", error);
+        }
+    };
+
     const value = {
         user,
         loading,
         login,
         logout,
-        register
+        register,
+        refreshUser
     };
 
     return (

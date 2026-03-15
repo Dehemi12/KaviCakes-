@@ -10,62 +10,84 @@ exports.getAllTransactions = async (req, res) => {
             dateFilter.lte = new Date(endDate);
         }
 
-        // 1. Fetch Manual Transactions
+        // 1. Fetch Manual Transactions (excluding those already linked to orders to avoid double counting)
         const transactions = await prisma.transaction.findMany({
-            where: startDate ? { date: dateFilter } : {},
+            where: {
+                ...(startDate ? { date: dateFilter } : {}),
+                orderId: null // Only fetch manual entries NOT tied to orders
+            },
             orderBy: { date: 'desc' }
         });
 
-        // 2. Fetch Orders (Automated Income)
-        // We consider CONFIRMED, OUT_FOR_DELIVERY, DELIVERED as 'valid' for cashbook viewing? 
-        // Or strictly 'PAID'? User said "orders are automatically added into transaction". 
-        // Usually, we track generated revenue regardless of payment status for "Sales", 
-        // but for "Cashbook" strictly it should be PAID orders.
-        // However, for simplicity and common bakery workflow, we often treat CONFIRMED orders as expected income.
-        // Let's stick to status not CANCELLED for broader view, or maybe filter by paymentStatus = 'PAID'?
-        // The user prompt: "in cashbook dash board there are some analyses, it should calculated by orders."
-        // Let's assume all non-cancelled orders count towards Sales/Income for the dashboard.
-
-        const orders = await prisma.order.findMany({
+        // 2. Fetch all non-cancelled orders
+        const allOrders = await prisma.order.findMany({
             where: {
                 status: { not: 'CANCELLED' },
                 ...(startDate ? { createdAt: dateFilter } : {})
             },
-            select: {
-                id: true,
-                total: true, // Decimal
-                createdAt: true,
-                status: true,
-                paymentStatus: true,
-                customer: { select: { name: true } }
-            }
+            include: { customer: { select: { name: true } } }
         });
 
         // 3. Normalize & Merge
-        const orderTransactions = orders.map(o => ({
-            id: `ORD-${o.id}`,
-            date: o.createdAt,
-            type: 'INCOME',
-            category: 'Order Sales',
-            amount: parseFloat((o.total || 0).toString()), // Robust conversion
-            description: `Order #${o.id} - ${o.customer.name} (${o.status}, ${o.paymentStatus})`,
-            isOrder: true,
-            status: o.status
-        }));
-
-        const manualTransactions = transactions.map(t => ({
+        const trxs = transactions.map(t => ({
             id: `TRX-${t.id}`,
             date: t.date,
             type: t.type,
             category: t.category,
-            amount: parseFloat((t.amount || 0).toString()), // Robust conversion
+            amount: parseFloat((t.amount || 0).toString()),
             description: t.description,
-            isOrder: false
+            isOrder: false,
+            paymentMode: t.paymentMode || 'Cash',
+            billUrl: t.billUrl
         }));
 
-        const combined = [...orderTransactions, ...manualTransactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const automatedTrxs = allOrders.map(o => ({
+            id: `ORD-${o.id}`,
+            date: o.createdAt,
+            type: 'INCOME',
+            category: 'Order Sales',
+            amount: parseFloat((o.total || 0).toString()), // Always show full price
+            description: `Order Sales #${o.id} - ${o.customer?.name || 'Customer'}`,
+            isOrder: true,
+            orderId: o.id,
+            paymentMode: o.paymentMethod === 'ONLINE_PAYMENT' ? 'Bank' : 'Cash',
+            billUrl: null
+        }));
 
-        res.json(combined);
+        const combined = [...trxs, ...automatedTrxs].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        // 4. Calculate Opening Balance for Running Total
+        const previousTransactions = await prisma.transaction.findMany({
+            where: {
+                date: { lt: startDate ? new Date(startDate) : new Date(0) }
+            },
+            select: { type: true, amount: true, orderId: true }
+        });
+
+        const previousOrders = await prisma.order.findMany({
+            where: {
+                status: { not: 'CANCELLED' },
+                createdAt: { lt: startDate ? new Date(startDate) : new Date(0) }
+            }
+        });
+
+        const existingPrevTrxOrderIds = new Set(previousTransactions.filter(t => t.orderId).map(t => t.orderId));
+
+        let openingBalance = previousTransactions.reduce((acc, t) => {
+            const val = parseFloat(t.amount.toString());
+            return t.type === 'INCOME' ? acc + val : acc - val;
+        }, 0);
+
+        previousOrders.forEach(o => {
+            if (!existingPrevTrxOrderIds.has(o.id)) {
+                openingBalance += parseFloat(o.total.toString());
+            }
+        });
+
+        res.json({
+            transactions: combined,
+            openingBalance
+        });
 
     } catch (error) {
         console.error('[TransactionController:getAllTransactions] Error:', error);
@@ -75,14 +97,16 @@ exports.getAllTransactions = async (req, res) => {
 
 exports.addTransaction = async (req, res) => {
     try {
-        const { type, category, amount, description, date } = req.body;
+        const { type, category, amount, description, date, paymentMode, billUrl } = req.body;
         const transaction = await prisma.transaction.create({
             data: {
                 type,
                 category,
                 amount,
                 description,
-                date: new Date(date)
+                paymentMode: paymentMode || 'Cash',
+                billUrl: billUrl,
+                date: date ? new Date(date) : new Date()
             }
         });
         res.json(transaction);
@@ -115,69 +139,63 @@ exports.getFinancialSummary = async (req, res) => {
             ' – ' +
             end.toLocaleDateString('default', { month: 'long', day: 'numeric', year: 'numeric' });
 
-        // Fetch Orders for the month
-        const orders = await prisma.order.findMany({
-            where: {
-                status: { not: 'CANCELLED' },
-                createdAt: {
-                    gte: start,
-                    lte: end
-                }
-            }
+        // Fetch ALL non-cancelled orders for All-Time Income
+        const allOrders = await prisma.order.findMany({
+            where: { status: { not: 'CANCELLED' } }
         });
-        console.log('Orders found:', orders.length);
+        const totalOrderRevenue = allOrders.reduce((acc, o) => acc + parseFloat(o.total.toString()), 0);
 
-        // Fetch Transactions for the month
-        const transactions = await prisma.transaction.findMany({
-            where: {
-                date: {
-                    gte: start,
-                    lte: end
-                }
-            }
-        });
-        console.log('Transactions found:', transactions.length);
+        // Fetch ALL transactions for All-Time Income/Expense
+        const allTransactions = await prisma.transaction.findMany({});
+        const totalManualIncome = allTransactions.filter(t => t.type === 'INCOME' && !t.orderId)
+            .reduce((acc, t) => acc + parseFloat(t.amount.toString()), 0);
+        const totalAllTimeExpenses = allTransactions.filter(t => t.type === 'EXPENSE')
+            .reduce((acc, t) => acc + parseFloat(t.amount.toString()), 0);
 
-        // Helper to sum
-        const sum = (arr) => arr.reduce((acc, curr) => acc + parseFloat((curr.amount || curr.total || 0).toString()), 0);
+        const absoluteTotalIncome = totalOrderRevenue + totalManualIncome;
+        const finalNetBalance = absoluteTotalIncome - totalAllTimeExpenses;
 
-        // --- Breakdown Calculation ---
+        // --- Period Specific Calculations (For Breakdowns) ---
+        const transactionsInPeriod = allTransactions.filter(t => 
+            t.date >= start && t.date <= end
+        );
+        const ordersInPeriod = allOrders.filter(o => 
+            o.createdAt >= start && o.createdAt <= end
+        );
 
-        // 1. Income Breakdown
-        const onlineOrderTotal = sum(orders);
-        const manualIncomeTrx = transactions.filter(t => t.type === 'INCOME');
-        const manualIncomeTotal = sum(manualIncomeTrx);
+        const periodIncomeVal = ordersInPeriod.reduce((acc, o) => acc + parseFloat(o.total.toString()), 0) +
+            transactionsInPeriod.filter(t => t.type === 'INCOME' && !t.orderId)
+            .reduce((acc, t) => acc + parseFloat(t.amount.toString()), 0);
 
-        // Group Manual Income by Category
-        const manualIncomeByCat = manualIncomeTrx.reduce((acc, t) => {
-            const val = parseFloat((t.amount || 0).toString());
-            acc[t.category] = (acc[t.category] || 0) + val;
-            return acc;
-        }, {});
+        const periodExpenseVal = transactionsInPeriod.filter(t => t.type === 'EXPENSE')
+            .reduce((acc, t) => acc + parseFloat(t.amount.toString()), 0);
 
         const incomeBreakdown = [
-            { category: 'Online Orders (Automated)', amount: onlineOrderTotal },
-            ...Object.entries(manualIncomeByCat).map(([cat, amt]) => ({ category: cat, amount: amt }))
-        ];
+            { category: 'Order Sales (This Period)', amount: ordersInPeriod.reduce((acc, o) => acc + parseFloat(o.total.toString()), 0) },
+            ...Object.entries(transactionsInPeriod.filter(t => t.type === 'INCOME' && !t.orderId).reduce((acc, t) => {
+                acc[t.category || 'Other'] = (acc[t.category || 'Other'] || 0) + parseFloat(t.amount.toString());
+                return acc;
+            }, {})).map(([category, amount]) => ({ category, amount }))
+        ].filter(i => i.amount > 0);
 
-        // 2. Expense Breakdown
-        const expenseTrx = transactions.filter(t => t.type === 'EXPENSE');
-        const expenseTotal = sum(expenseTrx);
-
-        const expenseByCat = expenseTrx.reduce((acc, t) => {
-            const val = parseFloat((t.amount || 0).toString());
-            acc[t.category] = (acc[t.category] || 0) + val;
+        const expenseBreakdown = Object.entries(transactionsInPeriod.filter(t => t.type === 'EXPENSE').reduce((acc, t) => {
+            acc[t.category || 'Other'] = (acc[t.category || 'Other'] || 0) + parseFloat(t.amount.toString());
             return acc;
-        }, {});
+        }, {})).map(([category, amount]) => ({ category, amount }));
 
-        const expenseBreakdown = Object.entries(expenseByCat).map(([cat, amt]) => ({ category: cat, amount: amt }));
+        // Receivables (Unpaid balances from active orders in period)
+        const pendingReceivables = ordersInPeriod.reduce((acc, o) => acc + parseFloat(o.balanceAmount.toString()), 0);
 
         res.json({
             period: periodString,
-            totalIncome: onlineOrderTotal + manualIncomeTotal,
-            totalExpenses: expenseTotal,
-            netProfit: (onlineOrderTotal + manualIncomeTotal) - expenseTotal,
-            totalOrders: orders.length,
+            totalIncome: absoluteTotalIncome, // Total Cash In (All Time)
+            totalExpenses: totalAllTimeExpenses, // Total Cash Out (All Time)
+            netBalance: finalNetBalance, // Final Wallet Balance
+            periodIncome: periodIncomeVal,
+            periodExpenses: periodExpenseVal,
+            periodNet: periodIncomeVal - periodExpenseVal,
+            pendingReceivables,
+            totalOrders: allOrders.length,
             incomeBreakdown,
             expenseBreakdown
         });

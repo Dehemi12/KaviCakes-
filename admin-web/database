@@ -1,0 +1,180 @@
+-- Database Implementation Query List
+-- Based on Prisma Schema (backend/prisma/schema.prisma)
+
+-- 1. Admin Table
+CREATE TABLE Admin (
+    id VARCHAR(191) PRIMARY KEY,
+    email VARCHAR(191) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    name VARCHAR(191),
+    role VARCHAR(50) DEFAULT 'ADMIN',
+    isActive BOOLEAN DEFAULT TRUE,
+    isVerified BOOLEAN DEFAULT FALSE,
+    otp VARCHAR(191),
+    otpExpiresAt DATETIME,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME
+);
+
+-- 2. Customer Table
+CREATE TABLE Customer (
+    id VARCHAR(191) PRIMARY KEY,
+    displayId VARCHAR(191) UNIQUE NOT NULL,
+    name VARCHAR(191) NOT NULL,
+    email VARCHAR(191) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    phone VARCHAR(191),
+    address VARCHAR(191),
+    loyaltyPoints INT DEFAULT 0,
+    isActive BOOLEAN DEFAULT TRUE,
+    isVerified BOOLEAN DEFAULT FALSE,
+    otp VARCHAR(191),
+    otpExpiresAt DATETIME,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME
+);
+
+-- 3. CakeCategory Table
+CREATE TABLE CakeCategory (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(191) UNIQUE NOT NULL,
+    basePrice DECIMAL(10, 2) DEFAULT 0
+);
+
+-- 4. Cake Table
+CREATE TABLE Cake (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(191) NOT NULL,
+    description TEXT,
+    availability BOOLEAN DEFAULT TRUE,
+    ingredients TEXT,
+    imageUrl VARCHAR(191),
+    categoryId INT NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME,
+    FOREIGN KEY (categoryId) REFERENCES CakeCategory(id)
+);
+
+-- 5. CakeSize Table
+CREATE TABLE CakeSize (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    label VARCHAR(191) UNIQUE NOT NULL,
+    price DECIMAL(10, 2) DEFAULT 0
+);
+
+-- 6. CakeShape Table
+CREATE TABLE CakeShape (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    label VARCHAR(191) UNIQUE NOT NULL,
+    price DECIMAL(10, 2) DEFAULT 0
+);
+
+-- 7. CakeFlavor Table
+CREATE TABLE CakeFlavor (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    label VARCHAR(191) UNIQUE NOT NULL,
+    price DECIMAL(10, 2) DEFAULT 0
+);
+
+-- 8. CakeVariant Table
+CREATE TABLE CakeVariant (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    price DECIMAL(10, 2) NOT NULL,
+    cakeId INT NOT NULL,
+    sizeId INT,
+    shapeId INT,
+    flavorId INT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME,
+    FOREIGN KEY (cakeId) REFERENCES Cake(id) ON DELETE CASCADE,
+    FOREIGN KEY (sizeId) REFERENCES CakeSize(id) ON DELETE SET NULL,
+    FOREIGN KEY (shapeId) REFERENCES CakeShape(id) ON DELETE SET NULL,
+    FOREIGN KEY (flavorId) REFERENCES CakeFlavor(id) ON DELETE SET NULL
+);
+
+-- 9. Order Table
+CREATE TABLE `Order` (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    total DECIMAL(10, 2) NOT NULL,
+    status VARCHAR(191) DEFAULT 'NEW',
+    paymentStatus VARCHAR(191) DEFAULT 'PENDING',
+    paymentMethod VARCHAR(191) DEFAULT 'COD',
+    address VARCHAR(255) DEFAULT '',
+    customerId VARCHAR(191) NOT NULL,
+    items JSON,
+    deliveryDate DATETIME,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME,
+    FOREIGN KEY (customerId) REFERENCES Customer(id)
+);
+
+-- 10. Feedback Table
+CREATE TABLE Feedback (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    rating INT NOT NULL,
+    title VARCHAR(191),
+    comment TEXT,
+    status VARCHAR(191) DEFAULT 'PENDING',
+    customerId VARCHAR(191) NOT NULL,
+    orderId INT UNIQUE NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME,
+    FOREIGN KEY (customerId) REFERENCES Customer(id),
+    FOREIGN KEY (orderId) REFERENCES `Order`(id)
+);
+
+-- 11. Notification Table
+CREATE TABLE Notification (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(191) NOT NULL,
+    message VARCHAR(191) NOT NULL,
+    type VARCHAR(191) DEFAULT 'SYSTEM',
+    isRead BOOLEAN DEFAULT FALSE,
+    metadata JSON,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 12. NotificationTemplate Table
+CREATE TABLE NotificationTemplate (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(191) NOT NULL,
+    category VARCHAR(191) NOT NULL,
+    body TEXT NOT NULL,
+    lastUsed DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 13. Transaction Table
+CREATE TABLE Transaction (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    type VARCHAR(191) NOT NULL,
+    category VARCHAR(191) NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    description VARCHAR(255),
+    date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME
+);
+
+-- 14. Event Table
+CREATE TABLE Event (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(191) NOT NULL,
+    description VARCHAR(255),
+    startTime DATETIME NOT NULL,
+    endTime DATETIME,
+    type VARCHAR(191) NOT NULL,
+    category VARCHAR(191),
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updatedAt DATETIME
+);
+
+-- 15. BulkPricing Table
+CREATE TABLE BulkPricing (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    categoryLabel VARCHAR(191) UNIQUE NOT NULL,
+    basePrice DECIMAL(10, 2) NOT NULL,
+    bulkPrice DECIMAL(10, 2) NOT NULL,
+    bulkThreshold INT DEFAULT 100,
+    minOrderQty INT DEFAULT 50,
+    updatedAt DATETIME
+);

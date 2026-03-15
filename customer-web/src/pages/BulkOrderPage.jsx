@@ -15,17 +15,59 @@ const BulkOrderPage = () => {
         quantity: 200,
         cakeType: 'Cupcakes',
         cakeFlavor: 'Chocolate',
-        instructions: 'Use Blue and white Color theme'
+        instructions: '',
+        colorTheme: '',
+        packingInstructions: ''
     });
+
+    // Image Upload States
+    const [referenceImageUrl, setReferenceImageUrl] = useState('');
+    const [packingImageUrl, setPackingImageUrl] = useState('');
+    const [uploadingRef, setUploadingRef] = useState(false);
+    const [uploadingPack, setUploadingPack] = useState(false);
+
+    const handleFileUpload = async (file, setUrl, setUploading) => {
+        if (!file) return;
+        setUploading(true);
+        const uploadData = new FormData();
+        uploadData.append('file', file);
+
+        try {
+            // Use env or default
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+            const res = await fetch(`${baseUrl}/upload`, {
+                method: 'POST',
+                body: uploadData
+            });
+            const data = await res.json();
+            if (data.url) {
+                setUrl(data.url);
+            } else {
+                alert('Upload failed');
+            }
+        } catch (error) {
+            console.error("Upload error:", error);
+            alert('Image upload failed');
+        } finally {
+            setUploading(false);
+        }
+    };
 
     // Fetch Bulk Pricing on Mount
     React.useEffect(() => {
         const fetchPricing = async () => {
             try {
+                // Use relative path if proxy is set or absolute if configured in api service
+                // Assuming api service logic for now or keeping simple fetch if public
                 const res = await fetch('http://localhost:5000/api/bulk-pricing');
                 if (res.ok) {
                     const data = await res.json();
                     setPricingRules(data);
+
+                    // Set default type if available
+                    if (data.length > 0 && !formData.cakeType) {
+                        setFormData(prev => ({ ...prev, cakeType: data[0].categoryLabel }));
+                    }
                 }
             } catch (err) {
                 console.error("Failed to fetch bulk pricing:", err);
@@ -33,6 +75,29 @@ const BulkOrderPage = () => {
         };
         fetchPricing();
     }, []);
+
+    // Live Price Calculation
+    const calculatePrice = () => {
+        if (!formData.cakeType) return { unit: 0, total: 0 };
+
+        let unitPrice = 0;
+        const rule = pricingRules.find(r => r.categoryLabel === formData.cakeType);
+
+        if (rule) {
+            if (formData.quantity >= rule.bulkThreshold) {
+                unitPrice = parseFloat(rule.bulkPrice);
+            } else {
+                unitPrice = parseFloat(rule.basePrice);
+            }
+        } else {
+            // Fallback
+            unitPrice = (formData.quantity >= 100) ? 220 : 250;
+        }
+
+        return { unit: unitPrice, total: unitPrice * formData.quantity };
+    };
+
+    const { unit, total } = calculatePrice();
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -44,38 +109,32 @@ const BulkOrderPage = () => {
 
         // Basic Validation
         if (formData.quantity < 50) {
-            alert("Minimum order quantity is 50.");
+            alert("The minimum order quantity for bulk orders is 50 items. Please increase your quantity.");
             return;
         }
 
         // Calculate Price based on rules or fallback
-        let unitPrice = 250;
-        const rule = pricingRules.find(r => r.categoryLabel === formData.cakeType);
+        const { unit, total } = calculatePrice();
+        const totalPrice = total;
 
-        if (rule) {
-            // Apply Database Logic
-            if (formData.quantity >= rule.bulkThreshold) {
-                unitPrice = parseFloat(rule.bulkPrice);
-            } else {
-                unitPrice = parseFloat(rule.basePrice);
-            }
-        } else {
-            // Fallback Logic
-            if (formData.quantity >= 100) unitPrice = 220;
-        }
 
-        const totalPrice = unitPrice * formData.quantity;
 
         const bulkItem = {
             id: 'BULK-' + Date.now(),
             name: `Bulk Order: ${formData.cakeType}`,
             description: `${formData.eventName} (${formData.quantity} items) - ${formData.cakeFlavor}`,
             price: totalPrice,
-            image: 'https://images.unsplash.com/photo-1612203985729-ca8a88d7ad56?auto=format&fit=crop&q=80&w=300',
+            image: referenceImageUrl || 'https://images.unsplash.com/photo-1612203985729-ca8a88d7ad56?auto=format&fit=crop&q=80&w=300',
             quantity: 1
         };
 
-        addToCart(bulkItem, { label: 'Bulk', isBulk: true, bulkDetails: formData }, 1);
+        const bulkDetailsPayload = {
+            ...formData,
+            referenceImage: referenceImageUrl,
+            packingImage: packingImageUrl
+        };
+
+        addToCart(bulkItem, { label: 'Bulk', isBulk: true, bulkDetails: bulkDetailsPayload }, 1);
         navigate('/checkout');
     };
 
@@ -147,10 +206,18 @@ const BulkOrderPage = () => {
                                     onChange={handleChange}
                                     className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900"
                                 >
-                                    <option>Cupcakes</option>
-                                    <option>Mini Cakes</option>
-                                    <option>Jar Cakes</option>
-                                    <option>Brownies</option>
+                                    {pricingRules.length > 0 ? (
+                                        pricingRules.map(rule => (
+                                            <option key={rule.id} value={rule.categoryLabel}>{rule.categoryLabel}</option>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <option>Cupcakes</option>
+                                            <option>Mini Cakes</option>
+                                            <option>Jar Cakes</option>
+                                            <option>Brownies</option>
+                                        </>
+                                    )}
                                 </select>
                             </div>
 
@@ -179,8 +246,97 @@ const BulkOrderPage = () => {
                                     onChange={handleChange}
                                     rows="1"
                                     className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900 resize-none"
-                                    placeholder="Any specific theme or branding requirements..."
+                                    placeholder="Any specific instructions..."
                                 ></textarea>
+                            </div>
+
+                            {/* New Fields Section */}
+                            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-gray-100 pt-8 mt-4">
+
+                                {/* Color Theme */}
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-500 mb-2">Color Theme</label>
+                                    <input
+                                        type="text"
+                                        name="colorTheme"
+                                        value={formData.colorTheme}
+                                        onChange={handleChange}
+                                        className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900"
+                                        placeholder="e.g. Royal Blue & Gold"
+                                    />
+                                </div>
+
+                                {/* Reference Image Upload */}
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-500 mb-2">Reference Image (Design/Color)</label>
+                                    <div className="flex items-center gap-4">
+                                        <input
+                                            type="file"
+                                            onChange={(e) => handleFileUpload(e.target.files[0], setReferenceImageUrl, setUploadingRef)}
+                                            className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
+                                            accept="image/*"
+                                        />
+                                        {uploadingRef && <span className="text-xs text-pink-500">Uploading...</span>}
+                                        {referenceImageUrl && <span className="text-xs text-green-500">✓ Uploaded</span>}
+                                    </div>
+                                    {referenceImageUrl && (
+                                        <div className="mt-2 w-16 h-16 rounded overflow-hidden border">
+                                            <img src={referenceImageUrl} alt="Reference" className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Packing Instructions */}
+                                <div className="md:col-span-2">
+                                    <h3 className="text-sm font-bold text-gray-900 mb-4">Packing Details</h3>
+                                </div>
+
+                                <div className="md:col-span-1">
+                                    <label className="block text-xs font-medium text-gray-500 mb-2">Packing Preferences</label>
+                                    <textarea
+                                        name="packingInstructions"
+                                        value={formData.packingInstructions}
+                                        onChange={handleChange}
+                                        rows="2"
+                                        className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900 resize-none"
+                                        placeholder="Explain how you want them packed (e.g., Individual boxes, Trays...)"
+                                    ></textarea>
+                                </div>
+
+                                {/* Packing Reference Image */}
+                                <div className="md:col-span-1">
+                                    <label className="block text-xs font-medium text-gray-500 mb-2">Packing Reference Image (Optional)</label>
+                                    <div className="flex items-center gap-4">
+                                        <input
+                                            type="file"
+                                            onChange={(e) => handleFileUpload(e.target.files[0], setPackingImageUrl, setUploadingPack)}
+                                            className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+                                            accept="image/*"
+                                        />
+                                        {uploadingPack && <span className="text-xs text-pink-500">Uploading...</span>}
+                                        {packingImageUrl && <span className="text-xs text-green-500">✓ Uploaded</span>}
+                                    </div>
+                                    {packingImageUrl && (
+                                        <div className="mt-2 w-16 h-16 rounded overflow-hidden border">
+                                            <img src={packingImageUrl} alt="Packing Ref" className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
+                                </div>
+
+                            </div>
+                        </div>
+
+                        {/* Price Display */}
+                        <div className="bg-pink-50 p-6 rounded-xl flex justify-between items-center">
+                            <div>
+                                <p className="text-sm text-gray-500 mb-1">Estimated Unit Price: <span className="font-semibold text-gray-900">Rs. {unit}</span></p>
+                                <p className="text-xs text-gray-500">
+                                    {formData.quantity >= 100 ? '🎉 Bulk discount applied!' : 'Order 100+ for bulk pricing'}
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-sm text-gray-500">Total Price</p>
+                                <p className="text-3xl font-bold text-pink-600">Rs. {total.toLocaleString()}</p>
                             </div>
                         </div>
 
@@ -194,8 +350,8 @@ const BulkOrderPage = () => {
                         </div>
                     </form>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

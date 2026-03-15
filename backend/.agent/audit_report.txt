@@ -1,0 +1,35 @@
+AUDIT REPORT
+========================================
+Total Customers: 4
+Total Orders: 23
+
+CUSTOMERS:
+[2c3de5f3-4fe5-4167-b740-ab8e310b4e29] woofydehemi@gmail.com (Active: true)
+[40fe36da-0efb-4e70-8933-512251fd95f5] cringeland2223@gmail.com (Active: true)
+[6fc82f9d-9f8a-4b01-9f53-4cc0be5266ee] saranimshara@gmail.com (Active: true)
+[bbd95d4c-1da8-4891-a8e8-47e1c44fcc76] pasindudinuwan2020@gmail.com (Active: true)
+
+ORDERS:
+[Order #7] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #8] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #9] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #10] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #11] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #12] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #13] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #14] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #15] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #16] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #17] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #18] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #19] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #20] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #21] Status: CONFIRMED | CustomerID: 2c3de5f3-4fe5-4167-b740-ab8e310b4e29 | OwnerFound: YES (woofydehemi@gmail.com)
+[Order #22] Status: CONFIRMED | CustomerID: bbd95d4c-1da8-4891-a8e8-47e1c44fcc76 | OwnerFound: YES (pasindudinuwan2020@gmail.com)
+[Order #23] Status: CONFIRMED | CustomerID: bbd95d4c-1da8-4891-a8e8-47e1c44fcc76 | OwnerFound: YES (pasindudinuwan2020@gmail.com)
+[Order #24] Status: CONFIRMED | CustomerID: bbd95d4c-1da8-4891-a8e8-47e1c44fcc76 | OwnerFound: YES (pasindudinuwan2020@gmail.com)
+[Order #25] Status: CONFIRMED | CustomerID: bbd95d4c-1da8-4891-a8e8-47e1c44fcc76 | OwnerFound: YES (pasindudinuwan2020@gmail.com)
+[Order #26] Status: CONFIRMED | CustomerID: bbd95d4c-1da8-4891-a8e8-47e1c44fcc76 | OwnerFound: YES (pasindudinuwan2020@gmail.com)
+[Order #27] Status: CONFIRMED | CustomerID: bbd95d4c-1da8-4891-a8e8-47e1c44fcc76 | OwnerFound: YES (pasindudinuwan2020@gmail.com)
+[Order #28] Status: PREPARING | CustomerID: bbd95d4c-1da8-4891-a8e8-47e1c44fcc76 | OwnerFound: YES (pasindudinuwan2020@gmail.com)
+[Order #29] Status: NEW | CustomerID: 40fe36da-0efb-4e70-8933-512251fd95f5 | OwnerFound: YES (cringeland2223@gmail.com)

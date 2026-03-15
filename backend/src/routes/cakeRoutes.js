@@ -14,6 +14,8 @@ router.put('/:id', cakeController.updateCake); // New Endpoint for Edit
 
 // Master Data Management Routes
 router.post('/categories', cakeController.createCategory);
+router.put('/categories/:id', cakeController.updateCategory);
+router.delete('/categories/:id', cakeController.deleteCategory);
 router.post('/sizes', cakeController.createSize);
 router.post('/shapes', cakeController.createShape);
 router.post('/flavors', cakeController.createFlavor);

@@ -62,8 +62,8 @@ async function main() {
             categoryId: catBirthday.id,
             variants: {
                 create: [
-                    { sizeId: size1kg.id, shapeId: shapeRound.id, flavorId: flavorChoc.id, price: 0 },
-                    { sizeId: size2kg.id, shapeId: shapeSquare.id, flavorId: flavorChoc.id, price: 500 } // Example variant override
+                    { sizeId: size1kg.id, shapeId: shapeRound.id, flavorId: flavorChoc.id, price: 1200.00 },
+                    { sizeId: size2kg.id, shapeId: shapeSquare.id, flavorId: flavorChoc.id, price: 2200.00 }
                 ]
             }
         }
@@ -78,7 +78,7 @@ async function main() {
             categoryId: catCupcakes.id,
             variants: {
                 create: [
-                    { sizeId: size1kg.id, shapeId: shapeRound.id, flavorId: flavorVan.id, price: 0 }
+                    { sizeId: size1kg.id, shapeId: shapeRound.id, flavorId: flavorVan.id, price: 950.00 }
                 ]
             }
         }
@@ -93,7 +93,7 @@ async function main() {
             categoryId: catAnniversary.id,
             variants: {
                 create: [
-                    { sizeId: size1kg.id, shapeId: shapeHeart.id, flavorId: flavorRV.id, price: 0 }
+                    { sizeId: size1kg.id, shapeId: shapeHeart.id, flavorId: flavorRV.id, price: 1600.00 }
                 ]
             }
         }
@@ -108,7 +108,7 @@ async function main() {
             categoryId: catWedding.id,
             variants: {
                 create: [
-                    { sizeId: size3kg.id, shapeId: shapeRound.id, flavorId: flavorVan.id, price: 0 }
+                    { sizeId: size3kg.id, shapeId: shapeRound.id, flavorId: flavorVan.id, price: 5000.00 }
                 ]
             }
         }

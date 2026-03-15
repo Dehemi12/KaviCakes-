@@ -36,6 +36,10 @@ exports.register = async (req, res) => {
     try {
         const { password, name, phone, address } = req.body;
 
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+        }
+
         if (role === 'CUSTOMER') {
             console.log(`[Registration] Checking if customer exists...`);
             let customer = await prisma.customer.findUnique({ where: { email } });
@@ -81,15 +85,24 @@ exports.register = async (req, res) => {
 
             return res.status(201).json({ message: 'Registration successful. OTP sent to email.' });
         } else {
-            console.log(`[Registration] Checking if admin exists...`);
+            console.log(`[Registration] Checking Admin count...`);
+            const adminCount = await prisma.admin.count();
+            if (adminCount > 0) {
+                console.warn(`[Registration] Admin setup blocked: Admin already exists.`);
+                return res.status(403).json({ error: 'Admin setup already completed. Only one admin allowed.' });
+            }
+
+            // Double check email specific (though count blocks it first)
             let user = await prisma.admin.findUnique({ where: { email } });
             if (user) {
-                console.warn(`[Registration] Admin already exists: ${email}`);
                 return res.status(400).json({ error: 'User already exists' });
             }
 
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(password, salt);
+
+            const otp = Math.floor(100000 + Math.random() * 900000).toString();
+            const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
             console.log(`[Registration] Creating admin user...`);
             user = await prisma.admin.create({
@@ -97,11 +110,22 @@ exports.register = async (req, res) => {
                     email,
                     password: hashedPassword,
                     name,
+                    isVerified: false,
+                    otp,
+                    otpExpiresAt
                 },
             });
             console.log(`[Registration] Admin created successfully: ${email}`);
 
-            return res.status(201).json({ message: 'Admin registered successfully' });
+            // Send OTP
+            try {
+                await sendEmail(email, 'KaviCakes - Admin Verification', `Your verification code is: ${otp}`);
+                console.log(`[Registration] OTP Email sent successfully to: ${email}`);
+            } catch (emailError) {
+                console.error(`[Registration] ERROR: Failed to send email to ${email}:`, emailError.message);
+            }
+
+            return res.status(201).json({ message: 'Admin registration successful. OTP sent to email.' });
         }
     } catch (error) {
         console.error(`[Registration] CRITICAL ERROR for ${email}:`, error);
@@ -112,28 +136,39 @@ exports.register = async (req, res) => {
 exports.verifyOTP = async (req, res) => {
     try {
         const { email, otp } = req.body;
-        const customer = await prisma.customer.findUnique({ where: { email } });
 
-        if (!customer) return res.status(400).json({ error: 'User not found' });
-        if (customer.isVerified) return res.status(400).json({ error: 'User already verified' });
+        // Check verification for both roles
+        let userCategory = 'CUSTOMER';
+        let user = await prisma.customer.findUnique({ where: { email } });
 
-        if (!customer.otp || customer.otp !== otp) {
+        if (!user) {
+            user = await prisma.admin.findUnique({ where: { email } });
+            userCategory = 'ADMIN';
+        }
+
+        if (!user) return res.status(400).json({ error: 'User not found' });
+        if (user.isVerified) return res.status(400).json({ error: 'User already verified' });
+
+        if (!user.otp || user.otp !== otp) {
             return res.status(400).json({ error: 'Invalid OTP' });
         }
 
-        if (new Date() > customer.otpExpiresAt) {
+        if (new Date() > user.otpExpiresAt) {
             return res.status(400).json({ error: 'OTP expired' });
         }
 
         // Verify user
-        await prisma.customer.update({
-            where: { id: customer.id },
-            data: {
-                isVerified: true,
-                otp: null,
-                otpExpiresAt: null
-            }
-        });
+        if (userCategory === 'CUSTOMER') {
+            await prisma.customer.update({
+                where: { id: user.id },
+                data: { isVerified: true, otp: null, otpExpiresAt: null }
+            });
+        } else {
+            await prisma.admin.update({
+                where: { id: user.id },
+                data: { isVerified: true, otp: null, otpExpiresAt: null }
+            });
+        }
 
         res.json({ message: 'Email verified successfully. You can now login.' });
 
@@ -146,18 +181,26 @@ exports.verifyOTP = async (req, res) => {
 exports.resendOTP = async (req, res) => {
     try {
         const { email } = req.body;
-        const customer = await prisma.customer.findUnique({ where: { email } });
 
-        if (!customer) return res.status(400).json({ error: 'User not found' });
-        if (customer.isVerified) return res.status(400).json({ error: 'User already verified' });
+        let userCategory = 'CUSTOMER';
+        let user = await prisma.customer.findUnique({ where: { email } });
+
+        if (!user) {
+            user = await prisma.admin.findUnique({ where: { email } });
+            userCategory = 'ADMIN';
+        }
+
+        if (!user) return res.status(400).json({ error: 'User not found' });
+        if (user.isVerified) return res.status(400).json({ error: 'User already verified' });
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-        await prisma.customer.update({
-            where: { id: customer.id },
-            data: { otp, otpExpiresAt }
-        });
+        if (userCategory === 'CUSTOMER') {
+            await prisma.customer.update({ where: { id: user.id }, data: { otp, otpExpiresAt } });
+        } else {
+            await prisma.admin.update({ where: { id: user.id }, data: { otp, otpExpiresAt } });
+        }
 
         await sendEmail(email, 'KaviCakes - New OTP', `Your new verification code is: ${otp}`);
 
@@ -189,7 +232,7 @@ exports.login = async (req, res) => {
             const token = jwt.sign(
                 { id: customer.id, role: 'CUSTOMER' },
                 process.env.JWT_SECRET,
-                { expiresIn: '1d' }
+                { expiresIn: '7d' }
             );
 
             return res.json({
@@ -199,7 +242,8 @@ exports.login = async (req, res) => {
                     name: customer.name,
                     email: customer.email,
                     role: 'CUSTOMER',
-                    phone: customer.phone
+                    phone: customer.phone,
+                    loyaltyPoints: customer.loyaltyPoints // Include Points
                 },
             });
 
@@ -209,6 +253,11 @@ exports.login = async (req, res) => {
             if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
             if (!user.isActive) return res.status(403).json({ error: 'Account is inactive' });
+
+            // Verification Check for Admin
+            if (!user.isVerified) {
+                return res.status(403).json({ error: 'Please verify your email first.', needsVerification: true });
+            }
 
             // Check password
             const isMatch = await bcrypt.compare(password, user.password);
@@ -311,5 +360,90 @@ exports.resetPassword = async (req, res) => {
     } catch (error) {
         console.error('[AuthController:resetPassword] Error:', error);
         return res.status(400).json({ error: 'Invalid or expired token' });
+    }
+};
+
+exports.updateProfile = async (req, res) => {
+    try {
+        const { id, role } = req.user;
+        const { name } = req.body;
+
+        if (role === 'CUSTOMER') {
+            await prisma.customer.update({
+                where: { id },
+                data: { name }
+            });
+        } else {
+            await prisma.admin.update({
+                where: { id },
+                data: { name }
+            });
+        }
+
+        res.json({ message: 'Profile updated successfully' });
+    } catch (error) {
+        console.error('[AuthController:updateProfile] Error:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+};
+
+exports.changePassword = async (req, res) => {
+    try {
+        const { id, role } = req.user;
+        const { currentPassword, newPassword } = req.body;
+
+        let user;
+        if (role === 'CUSTOMER') {
+            user = await prisma.customer.findUnique({ where: { id } });
+        } else {
+            user = await prisma.admin.findUnique({ where: { id } });
+        }
+
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) return res.status(400).json({ error: 'Incorrect current password' });
+
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        if (role === 'CUSTOMER') {
+            await prisma.customer.update({
+                where: { id },
+                data: { password: hashedPassword }
+            });
+        } else {
+            await prisma.admin.update({
+                where: { id },
+                data: { password: hashedPassword }
+            });
+        }
+
+        res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+        console.error('[AuthController:changePassword] Error:', error);
+        res.status(500).json({ error: 'Failed to change password' });
+    }
+};
+
+exports.getProfile = async (req, res) => {
+    try {
+        const { id, role } = req.user;
+        let user;
+        if (role === 'CUSTOMER') {
+            user = await prisma.customer.findUnique({
+                where: { id },
+                select: { id: true, name: true, email: true, phone: true, address: true, loyaltyPoints: true, displayId: true }
+            });
+        } else {
+            user = await prisma.admin.findUnique({
+                where: { id },
+                select: { id: true, name: true, email: true, role: true }
+            });
+        }
+        res.json(user);
+    } catch (error) {
+        console.error('[AuthController:getProfile] Error:', error);
+        res.status(500).json({ error: 'Failed to fetch profile' });
     }
 };

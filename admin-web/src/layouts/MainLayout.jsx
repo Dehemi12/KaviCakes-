@@ -9,7 +9,10 @@ import {
     CalendarOutlined,
     DollarOutlined,
     SettingOutlined,
-    CodeSandboxOutlined
+    CodeSandboxOutlined,
+    BuildOutlined,
+    FileImageOutlined,
+    AreaChartOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -25,11 +28,14 @@ const MainLayout = () => {
     const menuItems = [
         { key: '/', icon: <AppstoreOutlined />, label: 'Dashboard' },
         { key: '/orders', icon: <ShoppingOutlined />, label: 'Orders' },
-        { key: '/cakes', icon: <CodeSandboxOutlined />, label: 'Cakes' },
+        { key: '/production', icon: <BuildOutlined />, label: 'Production' },
+        { key: '/schedule', icon: <CalendarOutlined />, label: 'Schedule' },
+        { key: '/cakes', icon: <CodeSandboxOutlined />, label: 'Products' },
         { key: '/customers', icon: <UserOutlined />, label: 'Customers' },
         { key: '/notifications', icon: <BellOutlined />, label: 'Notifications' },
         { key: '/cashbook', icon: <DollarOutlined />, label: 'Cashbook' },
-        { key: '/schedule', icon: <CalendarOutlined />, label: 'Schedule' },
+        { key: '/reports', icon: <AreaChartOutlined />, label: 'Reports' },
+        { key: '/site-content', icon: <FileImageOutlined />, label: 'Site Content' },
         { type: 'divider' }, // Visual separator
         { key: '/settings', icon: <SettingOutlined />, label: 'Settings' },
         { key: 'logout', icon: <LogoutOutlined />, label: 'Logout', danger: true },

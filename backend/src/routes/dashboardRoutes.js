@@ -8,5 +8,6 @@ router.use(authMiddleware);
 
 router.get('/stats', dashboardController.getStats);
 router.get('/recent-orders', dashboardController.getRecentOrders);
+router.get('/monthly-analysis', dashboardController.getMonthlyAnalysis);
 
 module.exports = router;
