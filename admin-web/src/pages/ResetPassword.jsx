@@ -40,7 +40,7 @@ const ResetPassword = () => {
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f0f2f5' }}>
             <Card style={{ width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                 <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                    <Title level={3} style={{ color: '#E91E63' }}>Reset Password</Title>
+                    <Title level={3} style={{ color: '#be185d' }}>Reset Password</Title>
                     <Text type="secondary">Enter your new password below.</Text>
                 </div>
                 <Form layout="vertical" onFinish={onFinish}>
@@ -73,7 +73,7 @@ const ResetPassword = () => {
                         <Input.Password prefix={<LockOutlined />} placeholder="Confirm Password" size="large" />
                     </Form.Item>
                     <Form.Item>
-                        <Button type="primary" htmlType="submit" block size="large" loading={loading} style={{ background: '#E91E63', borderColor: '#E91E63' }}>
+                        <Button type="primary" htmlType="submit" block size="large" loading={loading} style={{ background: '#be185d', borderColor: '#be185d' }}>
                             Reset Password
                         </Button>
                     </Form.Item>

@@ -14,12 +14,19 @@ async function main() {
 
     console.log(`Found customer: ${customer.name}`);
 
+    const deliveryDate = new Date();
+    deliveryDate.setDate(deliveryDate.getDate() + 7);
+
+    const total = Math.floor(Math.random() * 5000) + 1000;
+    
     // Create a new random order
     const newOrder = await prisma.order.create({
         data: {
             customerId: customer.id,
-            total: Math.floor(Math.random() * 5000) + 1000,
+            total: total,
+            balanceAmount: total,
             status: 'NEW',
+            deliveryDate: deliveryDate,
             createdAt: new Date(),
         }
     });

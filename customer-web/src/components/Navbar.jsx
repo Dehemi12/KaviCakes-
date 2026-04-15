@@ -129,12 +129,13 @@ const Navbar = () => {
 
                         {/* Categories Dropdown */}
                         <div className="relative group">
-                            <button className={`flex items-center text-xs font-bold transition-colors uppercase tracking-wider outline-none ${location.pathname.includes('/cakes') ? 'text-pink-600' : 'text-gray-500 hover:text-pink-600'}`}>
+                            <Link to="/cakes" className={`flex items-center text-xs font-bold transition-colors uppercase tracking-wider outline-none ${location.pathname.includes('/categories') || location.pathname.includes('/cakes') ? 'text-pink-600' : 'text-gray-500 hover:text-pink-600'}`}>
                                 Categories <ChevronDown className="ml-1 h-3 w-3" />
-                            </button>
+                                <span className={`absolute -bottom-3 left-0 h-0.5 bg-pink-600 transition-all ${(location.pathname.includes('/categories') || location.pathname.includes('/cakes')) && location.pathname !== '/' ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
+                            </Link>
                             <div className="absolute left-1/2 transform -translate-x-1/2 top-full pt-3 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                                 <div className="bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden py-1">
-                                    <Link to="/cakes" className="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600">All Cakes</Link>
+                                    <Link to="/cakes" className="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600 font-bold border-b border-gray-50">All Cakes</Link>
                                     {categories.map(cat => (
                                         <Link key={cat} to={`/cakes?category=${encodeURIComponent(cat)}`} className="block px-4 py-2 text-sm text-gray-700 hover:bg-pink-50 hover:text-pink-600">
                                             {cat}
@@ -177,9 +178,9 @@ const Navbar = () => {
                         </Link>
 
                         <div className="px-3 py-2">
-                            <div className="text-base font-medium text-gray-900 mb-2">Categories</div>
-                            <div className="pl-4 space-y-2 border-l-2 border-pink-100">
-                                <Link to="/cakes" className="block text-sm text-gray-600 hover:text-pink-600" onClick={() => setIsMenuOpen(false)}>All Cakes</Link>
+                            <Link to="/cakes" className="text-base font-medium text-gray-900 mb-2 hover:text-pink-600 block" onClick={() => setIsMenuOpen(false)}>Categories</Link>
+                            <div className="pl-4 space-y-2 border-l-2 border-pink-100 hover:border-pink-200">
+                                <Link to="/cakes" className="block text-sm font-bold text-gray-600 hover:text-pink-600" onClick={() => setIsMenuOpen(false)}>All Cakes</Link>
                                 {categories.map(cat => (
                                     <Link key={cat} to={`/cakes?category=${encodeURIComponent(cat)}`} className="block text-sm text-gray-600 hover:text-pink-600" onClick={() => setIsMenuOpen(false)}>
                                         {cat}

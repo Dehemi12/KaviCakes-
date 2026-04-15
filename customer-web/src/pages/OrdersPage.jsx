@@ -213,12 +213,12 @@ const OrdersPage = () => {
                                     {/* Left Info */}
                                     <div className="flex-1 space-y-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center">
-                                                <Clock className="w-4 h-4 text-orange-500" />
+                                            <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                                                <Package className="w-4 h-4 text-pink-600" />
                                             </div>
                                             <div>
-                                                <span className="font-bold text-gray-900 block">Order #{order.id}</span>
-                                                <span className="text-xs text-gray-500">{order.date}</span>
+                                                <span className="font-bold text-gray-900 block">{order.items[0]?.name || 'Cake Order'}</span>
+                                                <span className="text-xs text-gray-500">Placed on {order.date}</span>
                                             </div>
                                         </div>
 

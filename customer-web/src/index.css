@@ -9,3 +9,16 @@
 body {
   @apply bg-gray-50 text-gray-900;
 }
+
+/* 
+  Suppression of browser extension injections (like Adobe Sign / Acrobat) 
+  that may appear on specific pages like Checkout.
+*/
+[id*='adobe'], [class*='adobe'], [id*='acrobat'], [class*='acrobat'], 
+iframe[src*='adobe'], 
+.adobe-sign-widget {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}

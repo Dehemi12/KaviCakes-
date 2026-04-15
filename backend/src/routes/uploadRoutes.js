@@ -1,56 +1,32 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
+const upload = require('../middlewares/uploadMiddleware');
 
-// Storage Configuration
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, 'uploads/');
-    },
-    filename: function (req, file, cb) {
-        // Unique filename: fieldname-timestamp.ext
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+const BASE_URL = process.env.BACKEND_URL || 'http://localhost:5000';
 
-const upload = multer({
-    storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-    fileFilter: (req, file, cb) => {
-        const filetypes = /jpeg|jpg|png|pdf/;
-        const mimetype = filetypes.test(file.mimetype);
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+// POST /api/upload          → cakes folder (default for product images)
+// POST /api/upload/site     → site folder (hero banner, category images)
+// POST /api/upload/slip     → slips folder (bank payment slips)
 
-        if (mimetype && extname) {
-            return cb(null, true);
+router.post('/', upload.single('file'), handleUpload('cakes'));
+router.post('/site', upload.single('file'), handleUpload('site'));
+router.post('/slip', upload.single('file'), handleUpload('slips'));
+
+function handleUpload(folder) {
+    return (req, res) => {
+        try {
+            if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+            const fileUrl = `${BASE_URL}/uploads/${folder}/${req.file.filename}`;
+            res.json({
+                message: 'File uploaded successfully',
+                url: fileUrl,
+                filename: req.file.filename,
+                folder
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
         }
-        cb(new Error('Only images and PDFs are allowed!'));
-    }
-});
-
-// Upload Route
-router.post('/', upload.single('file'), (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
-
-        // Construct public URL (Assuming server runs on localhost:5000)
-        // In prod, use env variable for base URL
-        const protocol = req.protocol;
-        const host = req.get('host');
-        const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
-
-        res.json({
-            message: 'File uploaded successfully',
-            url: fileUrl,
-            filename: req.file.filename
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+    };
+}
 
 module.exports = router;

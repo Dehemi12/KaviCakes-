@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, InputNumber, Select, Button, Steps, Space, Row, Col, Typography, message, Divider } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import { Upload } from 'antd';
-import { supabase } from '../api/supabase';
+// Supabase removed: image uploads now go to the local backend
 import axios from 'axios';
 
 
@@ -167,35 +167,30 @@ const AddCakeModal = ({ open, onClose, onSuccess, cakeToEdit = null }) => {
     };
 
 
-    // --- Image Upload Logic ---
+    // --- Image Upload Logic (Local Backend) ---
     const handleImageUpload = async (file) => {
         try {
             setUploading(true);
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}.${fileExt}`;
-            const filePath = `${fileName}`;
+            const token = localStorage.getItem('token');
 
-            const { data, error } = await supabase.storage
-                .from('cakes')
-                .upload(filePath, file);
+            const formData = new FormData();
+            formData.append('file', file);
 
-            if (error) {
-                console.error('Supabase upload error:', error);
-                throw error;
-            }
+            const { data } = await axios.post('http://localhost:5000/api/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${token}`
+                }
+            });
 
-            const { data: { publicUrl } } = supabase.storage
-                .from('cakes')
-                .getPublicUrl(filePath);
-
-            form.setFieldsValue({ imageUrl: publicUrl });
+            form.setFieldsValue({ imageUrl: data.url });
             message.success('Image uploaded successfully');
         } catch (error) {
-            message.error('Upload failed: ' + error.message);
+            message.error('Upload failed: ' + (error.response?.data?.error || error.message));
         } finally {
             setUploading(false);
         }
-        return false; // Prevent default upload behavior
+        return false; // Prevent default antd upload behavior
     };
 
     // --- Master Data Creation Logic ---

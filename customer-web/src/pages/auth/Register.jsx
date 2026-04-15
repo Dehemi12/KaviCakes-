@@ -92,10 +92,8 @@ const Register = () => {
     const validateForm = () => {
         const newErrors = {};
         Object.keys(formData).forEach(key => {
-            if (key !== 'address') { // Address is optional
-                const error = validateField(key, formData[key]);
-                if (error) newErrors[key] = error;
-            }
+            const error = validateField(key, formData[key]);
+            if (error) newErrors[key] = error;
         });
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -158,8 +156,9 @@ const Register = () => {
                                 <input
                                     name="name"
                                     type="text"
+                                    required
                                     className={`appearance-none block w-full pl-10 px-3 py-2 border ${errors.name ? 'border-red-300' : 'border-gray-300'} rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm`}
-                                    placeholder="John Doe"
+                                    placeholder="Example: Kasun Perera"
                                     value={formData.name}
                                     onChange={handleChange}
                                     onBlur={handleBlur}
@@ -177,8 +176,9 @@ const Register = () => {
                                 <input
                                     name="email"
                                     type="email"
+                                    required
                                     className={`appearance-none block w-full pl-10 px-3 py-2 border ${errors.email ? 'border-red-300' : 'border-gray-300'} rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm`}
-                                    placeholder="you@example.com"
+                                    placeholder="kasun@example.com"
                                     value={formData.email}
                                     onChange={handleChange}
                                     onBlur={handleBlur}
@@ -196,8 +196,9 @@ const Register = () => {
                                 <input
                                     name="phone"
                                     type="tel"
+                                    required
                                     className={`appearance-none block w-full pl-10 px-3 py-2 border ${errors.phone ? 'border-red-300' : 'border-gray-300'} rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm`}
-                                    placeholder="+91 98765 43210"
+                                    placeholder="0711515580"
                                     value={formData.phone}
                                     onChange={handlePhoneChange}
                                     onBlur={handleBlur}
@@ -207,7 +208,7 @@ const Register = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Address (Optional)</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <MapPin className="h-5 w-5 text-gray-400" />
@@ -215,12 +216,15 @@ const Register = () => {
                                 <input
                                     name="address"
                                     type="text"
-                                    className="appearance-none block w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm"
-                                    placeholder="Street, City, Zip"
+                                    required
+                                    className={`appearance-none block w-full pl-10 px-3 py-2 border ${errors.address ? 'border-red-300' : 'border-gray-300'} rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm`}
+                                    placeholder="e.g., 123 Main St, Colombo"
                                     value={formData.address}
                                     onChange={handleChange}
+                                    onBlur={handleBlur}
                                 />
                             </div>
+                            {errors.address && <p className="mt-1 text-xs text-red-500">{errors.address}</p>}
                         </div>
 
                         <div>
@@ -232,6 +236,7 @@ const Register = () => {
                                 <input
                                     name="password"
                                     type="password"
+                                    required
                                     className={`appearance-none block w-full pl-10 px-3 py-2 border ${errors.password ? 'border-red-300' : 'border-gray-300'} rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm`}
                                     placeholder="••••••••"
                                     value={formData.password}
@@ -251,6 +256,7 @@ const Register = () => {
                                 <input
                                     name="confirmPassword"
                                     type="password"
+                                    required
                                     className={`appearance-none block w-full pl-10 px-3 py-2 border ${errors.confirmPassword ? 'border-red-300' : 'border-gray-300'} rounded-lg placeholder-gray-400 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm`}
                                     placeholder="••••••••"
                                     value={formData.confirmPassword}

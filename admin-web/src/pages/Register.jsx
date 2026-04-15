@@ -72,7 +72,7 @@ const Register = () => {
 
                 <div style={{ textAlign: 'center', marginBottom: 40 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-                        <span style={{ fontSize: 32, color: '#E91E63', marginRight: 10 }}>🔐</span>
+                        <span style={{ fontSize: 32, color: '#be185d', marginRight: 10 }}>🔐</span>
                         <Title level={2} style={{ margin: 0, fontWeight: 800, color: '#424242' }}>KaviCakes Admin</Title>
                     </div>
                     <Title level={3} style={{ margin: 0, fontWeight: 700, color: '#000' }}>
@@ -81,7 +81,7 @@ const Register = () => {
                     {step === 1 && <Text type="secondary">Create the master admin account.</Text>}
                 </div>
 
-                <ConfigProvider theme={{ token: { colorPrimary: '#E91E63' } }}>
+                <ConfigProvider theme={{ token: { colorPrimary: '#be185d' } }}>
                     {step === 1 ? (
                         <Form name="register" onFinish={onFinish} layout="vertical" size="large">
                             {/* Name */}
@@ -122,7 +122,7 @@ const Register = () => {
                             </Form.Item>
 
                             <div style={{ textAlign: 'center' }}>
-                                <Link to="/login" style={{ color: '#E91E63' }}>Already have an account? Login</Link>
+                                <Link to="/login" style={{ color: '#be185d' }}>Already have an account? Login</Link>
                             </div>
                         </Form>
                     ) : (

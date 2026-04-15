@@ -1,9 +1,8 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Trash2, Plus, Minus, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Trash2, Plus, Minus, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import api from '../services/api';
 
 const CartPage = () => {
     const cartContext = useCart();
@@ -13,41 +12,10 @@ const CartPage = () => {
         return <div className="p-8 text-center text-red-600">Error: Cart Context connection failed. Please refresh.</div>;
     }
 
-    const { cart, removeFromCart, updateQuantity, cartTotal, clearCart, loyaltyDiscount, setLoyaltyDiscount } = cartContext;
+    const { cart, removeFromCart, updateQuantity, cartTotal, clearCart, loyaltyDiscount } = cartContext;
     const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const [pointsToBurn, setPointsToBurn] = React.useState(loyaltyDiscount || 0);
-    const [fetchedUser, setFetchedUser] = React.useState(null);
-
-    // Cap discount if cart total drops
-    React.useEffect(() => {
-        if (loyaltyDiscount > cartTotal) {
-            setLoyaltyDiscount(cartTotal);
-        }
-    }, [cartTotal, loyaltyDiscount, setLoyaltyDiscount]);
-
-    // Fetch fresh profile data on mount to get accurate points
-    React.useEffect(() => {
-        if (user) {
-            api.get('/auth/profile')
-                .then(res => setFetchedUser(res.data))
-                .catch(err => console.error('Failed to fetch profile', err));
-        }
-    }, [user]);
-
-    const activeUser = fetchedUser || user;
-    const availablePoints = activeUser?.loyaltyPoints || 0;
-
-    // Toggle Handler
-    const handleLoyaltyToggle = () => {
-        if (loyaltyDiscount > 0) {
-            setLoyaltyDiscount(0);
-        } else {
-            const maxPoints = Math.min(availablePoints, cartTotal);
-            setLoyaltyDiscount(maxPoints);
-        }
-    };
 
 
     // Debugging
@@ -144,51 +112,11 @@ const CartPage = () => {
                                     <span>Rs.{cartTotal.toLocaleString()}</span>
                                 </div>
 
-                                {loyaltyDiscount > 0 && (
-                                    <div className="flex justify-between text-green-600">
-                                        <span>Loyalty Discount</span>
-                                        <span>-Rs.{loyaltyDiscount.toLocaleString()}</span>
-                                    </div>
-                                )}
-
                                 <div className="h-px bg-gray-100 my-4"></div>
                                 <div className="flex justify-between text-xl font-bold text-gray-900">
                                     <span>Total</span>
-                                    <span className="text-pink-600">Rs.{(cartTotal - loyaltyDiscount).toLocaleString()}</span>
+                                    <span className="text-pink-600">Rs.{cartTotal.toLocaleString()}</span>
                                 </div>
-                            </div>
-
-                            {/* Loyalty Points Section */}
-                            <div className="mb-6 bg-pink-50 p-4 rounded-xl border border-pink-100">
-                                <h3 className="font-bold text-gray-900 mb-2 flex items-center text-sm">
-                                    <span className="mr-2">💎</span> Loyalty Points
-                                </h3>
-
-                                {user ? (
-                                    availablePoints > 0 ? (
-                                        <div className="flex items-center justify-between">
-                                            <div className="text-sm text-gray-700">
-                                                <p className="font-medium">Redeem Points</p>
-                                                <p className="text-xs text-gray-500">Available: <strong>{availablePoints}</strong> (Rs. {availablePoints})</p>
-                                            </div>
-
-                                            <button
-                                                onClick={handleLoyaltyToggle}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 ${loyaltyDiscount > 0 ? 'bg-pink-600' : 'bg-gray-200'}`}
-                                            >
-                                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${loyaltyDiscount > 0 ? 'translate-x-6' : 'translate-x-1'}`} />
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <p className="text-xs text-gray-600">
-                                            You have 0 loyalty points. Earn points with this order!
-                                        </p>
-                                    )
-                                ) : (
-                                    <div className="text-xs text-gray-600">
-                                        <Link to="/login" className="font-bold text-pink-600 hover:underline">Log in</Link> to redeem loyalty points.
-                                    </div>
-                                )}
                             </div>
 
                             <button

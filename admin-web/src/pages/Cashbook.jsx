@@ -150,7 +150,7 @@ const Cashbook = () => {
             dataIndex: 'billUrl',
             key: 'bill',
             align: 'center',
-            render: url => url ? <a href={url} target="_blank" rel="noreferrer"><FileTextOutlined style={{ color: '#E91E63' }} /></a> : '-'
+            render: url => url ? <a href={url} target="_blank" rel="noreferrer"><FileTextOutlined style={{ color: '#be185d' }} /></a> : '-'
         },
         {
             title: 'Amount',
@@ -180,7 +180,7 @@ const Cashbook = () => {
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
                         <Title level={2} style={{ marginBottom: 0 }}>Cashbook</Title>
                         <Tag color="geekblue" style={{ borderRadius: '4px', padding: '0 8px' }}>
-                            Gross Balance: Rs. {(summary?.netBalance || 0).toLocaleString()}
+                            Gross Balance: Rs. {(summary?.netBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Tag>
                     </div>
                     <Text type="secondary">Financial accounts and daily transaction logs</Text>
@@ -217,7 +217,7 @@ const Cashbook = () => {
                             </div>
                             <div>
                                 <Text type="secondary" className="card-label">Cash In</Text>
-                                <div className="card-value">Rs. {(summary?.totalIncome || 0).toLocaleString()}</div>
+                                <div className="card-value">Rs. {(summary?.totalIncome || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                             </div>
                         </Space>
                     </Card>
@@ -230,7 +230,7 @@ const Cashbook = () => {
                             </div>
                             <div>
                                 <Text type="secondary" className="card-label">Cash Out</Text>
-                                <div className="card-value">Rs. {(summary?.totalExpenses || 0).toLocaleString()}</div>
+                                <div className="card-value">Rs. {(summary?.totalExpenses || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                             </div>
                         </Space>
                     </Card>
@@ -244,7 +244,7 @@ const Cashbook = () => {
                             <div>
                                 <Text type="secondary" className="card-label">Net Balance</Text>
                                 <div className="card-value">
-                                    Rs. {(summary?.netBalance || 0).toLocaleString()}
+                                    Rs. {(summary?.netBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </div>
                             </div>
                         </Space>

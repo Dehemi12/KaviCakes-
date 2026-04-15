@@ -73,7 +73,7 @@ const Settings = () => {
                         <Form.Item name="email" label="Email Address" rules={[{ required: true, type: 'email' }]}>
                             <Input disabled help="Email cannot be changed easily for security reasons (optional restriction)" />
                         </Form.Item>
-                        <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading} style={{ background: '#E91E63', borderColor: '#E91E63' }}>
+                        <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading} style={{ background: '#be185d', borderColor: '#be185d' }}>
                             Save Changes
                         </Button>
                     </Form>
@@ -110,28 +110,13 @@ const Settings = () => {
                         >
                             <Input.Password prefix={<LockOutlined />} />
                         </Form.Item>
-                        <Button type="primary" htmlType="submit" loading={loading} style={{ background: '#E91E63', borderColor: '#E91E63' }}>
+                        <Button type="primary" htmlType="submit" loading={loading} style={{ background: '#be185d', borderColor: '#be185d' }}>
                             Change Password
                         </Button>
                     </Form>
                 </div>
             )
         },
-        {
-            key: '3',
-            label: <span><InfoCircleOutlined /> About</span>,
-            children: (
-                <div style={{ padding: 20 }}>
-                    <Descriptions title="Application Information" bordered>
-                        <Descriptions.Item label="App Name">KaviCakes Admin Panel</Descriptions.Item>
-                        <Descriptions.Item label="Version">1.0.0</Descriptions.Item>
-                        <Descriptions.Item label="Status"><Badge status="processing" text="Running" /></Descriptions.Item>
-                        <Descriptions.Item label="Developer">Antigravity Agent</Descriptions.Item>
-                        <Descriptions.Item label="Last Updated">October 2025</Descriptions.Item>
-                    </Descriptions>
-                </div>
-            )
-        }
     ];
 
     return (

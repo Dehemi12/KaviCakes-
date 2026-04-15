@@ -35,6 +35,9 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/login', { email, password, role: 'CUSTOMER' });
             const { token, user } = response.data;
 
+            // Prevent cart bleed-over between accounts by wiping local cache boundary
+            localStorage.removeItem('kavicakes_cart');
+
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(user));
             setUser(user);
@@ -48,6 +51,7 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('kavicakes_cart'); // Wipe cart on logout
         setUser(null);
         // Force reload to clear any memory states in other components if needed
         window.location.href = '/login';

@@ -12,7 +12,10 @@ import {
     CodeSandboxOutlined,
     BuildOutlined,
     FileImageOutlined,
-    AreaChartOutlined
+    AreaChartOutlined,
+    CheckCircleOutlined,
+    SafetyCertificateOutlined,
+    HistoryOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -27,14 +30,22 @@ const MainLayout = () => {
 
     const menuItems = [
         { key: '/', icon: <AppstoreOutlined />, label: 'Dashboard' },
-        { key: '/orders', icon: <ShoppingOutlined />, label: 'Orders' },
-        { key: '/production', icon: <BuildOutlined />, label: 'Production' },
-        { key: '/schedule', icon: <CalendarOutlined />, label: 'Schedule' },
+        {
+            key: 'order-management',
+            icon: <ShoppingOutlined />,
+            label: 'Order Management',
+            children: [
+                { key: '/order-confirmation', icon: <CheckCircleOutlined />, label: 'Order Confirmation' },
+                { key: '/orders', icon: <SafetyCertificateOutlined />, label: 'Payment Confirmation' },
+                { key: '/production', icon: <BuildOutlined />, label: 'Production Queue' },
+                { key: '/schedule', icon: <CalendarOutlined />, label: 'Delivery Schedule' },
+                { key: '/order-log', icon: <HistoryOutlined />, label: 'Order Log' },
+            ],
+        },
         { key: '/cakes', icon: <CodeSandboxOutlined />, label: 'Products' },
         { key: '/customers', icon: <UserOutlined />, label: 'Customers' },
         { key: '/notifications', icon: <BellOutlined />, label: 'Notifications' },
         { key: '/cashbook', icon: <DollarOutlined />, label: 'Cashbook' },
-        { key: '/reports', icon: <AreaChartOutlined />, label: 'Reports' },
         { key: '/site-content', icon: <FileImageOutlined />, label: 'Site Content' },
         { type: 'divider' }, // Visual separator
         { key: '/settings', icon: <SettingOutlined />, label: 'Settings' },
@@ -60,6 +71,7 @@ const MainLayout = () => {
 
                 <Menu
                     mode="inline"
+                    defaultOpenKeys={['order-management']}
                     selectedKeys={[location.pathname]}
                     items={menuItems}
                     onClick={handleMenuClick}
@@ -78,7 +90,7 @@ const MainLayout = () => {
                         </Badge>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <Avatar style={{ backgroundColor: '#E91E63' }} icon={<UserOutlined />} />
+                            <Avatar style={{ backgroundColor: '#be185d' }} icon={<UserOutlined />} />
                             <Text strong>{user?.name || 'Admin User'}</Text>
                         </div>
                     </div>

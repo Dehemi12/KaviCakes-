@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Card, Form, Input, Button, Upload, Row, Col, message, Divider, List, Avatar, Spin } from 'antd';
 import { UploadOutlined, SaveOutlined, LoadingOutlined } from '@ant-design/icons';
-import { supabase } from '../api/supabase';
 import axios from 'axios';
 
 const { Title, Text } = Typography;
@@ -73,33 +72,29 @@ const SiteContent = () => {
             if (updateType === 'HERO') setUploadingHero(true);
             else setUploadingCategory(categoryId);
 
-            const fileExt = file.name.split('.').pop();
-            const fileName = `site-content/${Date.now()}.${fileExt}`; // Organize in folder? Supabase might need folder to exist or just works.
-            // Let's use 'site' folder key if possible, or just root like before to be safe.
-            // AddCakeModal used just filename. I'll stick to simple filename to avoid folder permission issues if buckets are flat.
-            const filePath = `site_${Date.now()}.${fileExt}`;
+            const token = localStorage.getItem('token');
+            const formData = new FormData();
+            formData.append('file', file);
 
-            const { data, error } = await supabase.storage
-                .from('cakes') // Reusing 'cakes' bucket as it's likely public and configured
-                .upload(filePath, file);
+            const { data } = await axios.post('http://localhost:5000/api/upload/site', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    Authorization: `Bearer ${token}`
+                }
+            });
 
-            if (error) throw error;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('cakes')
-                .getPublicUrl(filePath);
+            const publicUrl = data.url;
 
             if (updateType === 'HERO') {
                 heroForm.setFieldsValue({ HOME_HERO_IMAGE: publicUrl });
                 message.success('Image uploaded. Click Save to apply.');
             } else if (updateType === 'CATEGORY' && categoryId) {
-                // Immediately save category update
                 await updateCategoryImage(categoryId, publicUrl);
             }
 
         } catch (error) {
             console.error('Upload error:', error);
-            message.error('Upload failed');
+            message.error('Upload failed: ' + (error.response?.data?.error || error.message));
         } finally {
             setUploadingHero(false);
             setUploadingCategory(null);
@@ -185,7 +180,7 @@ const SiteContent = () => {
                             </Form.Item>
                         </Col>
                     </Row>
-                    <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading} style={{ background: '#E91E63', borderColor: '#E91E63' }}>
+                    <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading} style={{ background: '#be185d', borderColor: '#be185d' }}>
                         Save Banner Settings
                     </Button>
                 </Form>

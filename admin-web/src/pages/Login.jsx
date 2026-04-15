@@ -56,7 +56,7 @@ const Login = () => {
                 {/* Header Section */}
                 <div style={{ textAlign: 'center', marginBottom: 40 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-                        <span style={{ fontSize: 32, color: '#E91E63', marginRight: 10 }}>🧁</span>
+                        <span style={{ fontSize: 32, color: '#be185d', marginRight: 10 }}>🧁</span>
                         {/* Using emoji for now, user can replace with SVg */}
                         <Title level={2} style={{ margin: 0, fontWeight: 800, color: '#424242' }}>KaviCakes</Title>
                     </div>
@@ -66,7 +66,7 @@ const Login = () => {
                 <ConfigProvider
                     theme={{
                         token: {
-                            colorPrimary: '#E91E63',
+                            colorPrimary: '#be185d',
                         },
                     }}
                 >
@@ -111,7 +111,7 @@ const Login = () => {
                         </div>
 
                         <div style={{ textAlign: 'right', marginBottom: 20 }}>
-                            <a href="/forgot-password" style={{ color: '#E91E63' }}>Forgot Password?</a>
+                            <a href="/forgot-password" style={{ color: '#be185d' }}>Forgot Password?</a>
                         </div>
 
                         <Form.Item style={{ marginTop: 20 }}>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Badge, Button, Typography, Card, Row, Col, Segmented, Tag, List, message, Descriptions, Modal, Empty, Divider, Table, Space, Image } from 'antd';
-import { CarOutlined, ShopOutlined, CheckCircleOutlined, ClockCircleOutlined, UserOutlined, PhoneOutlined, EnvironmentOutlined, CalendarOutlined, DollarOutlined } from '@ant-design/icons';
+import { Typography, Segmented, Row, Col, Empty, message, Tag, Spin } from 'antd';
+import { CarOutlined, ShopOutlined, CheckCircleOutlined, ClockCircleOutlined, UserOutlined, PhoneOutlined, EnvironmentOutlined, CalendarOutlined, DollarOutlined, ExceptionOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import axios from 'axios';
 import ReceivePaymentModal from '../components/ReceivePaymentModal';
@@ -10,10 +10,7 @@ const { Title, Text } = Typography;
 const Schedule = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [viewMode, setViewMode] = useState('List'); // 'List', 'Calendar', or 'Table'
-    const [selectedDate, setSelectedDate] = useState(dayjs());
     const [activeTab, setActiveTab] = useState('Delivery');
-    const [currentOrder, setCurrentOrder] = useState(null); // For detail modal
     const [paymentModalOrder, setPaymentModalOrder] = useState(null);
 
     const fetchLogisticsOrders = async () => {
@@ -24,13 +21,19 @@ const Schedule = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
-            // Filter strictly for Ready (Production Done) or Out for Delivery
             const logistics = res.data.filter(o =>
-                ['READY', 'OUT_FOR_DELIVERY'].includes(o.status.toUpperCase())
+                o.status && ['READY', 'OUT_FOR_DELIVERY'].includes(o.status.toUpperCase())
             ).sort((a, b) => {
-                const dateA = a.deliveryDate ? new Date(a.deliveryDate) : new Date(8640000000000000);
-                const dateB = b.deliveryDate ? new Date(b.deliveryDate) : new Date(8640000000000000);
-                return dateA - dateB;
+                // Determine full Date objects taking time into account for sorting
+                const dateAStr = a.deliveryDate ? new Date(a.deliveryDate).toISOString().split('T')[0] : '9999-12-31';
+                const timeAStr = a.delivery?.approximateDeliveryTime || '23:59';
+                const dateTimeA = new Date(`${dateAStr}T${timeAStr}:00`);
+
+                const dateBStr = b.deliveryDate ? new Date(b.deliveryDate).toISOString().split('T')[0] : '9999-12-31';
+                const timeBStr = b.delivery?.approximateDeliveryTime || '23:59';
+                const dateTimeB = new Date(`${dateBStr}T${timeBStr}:00`);
+                
+                return dateTimeA - dateTimeB;
             });
 
             setOrders(logistics);
@@ -70,139 +73,65 @@ const Schedule = () => {
 
     const displayOrders = getFilteredOrders();
 
-    const dateCellRender = (value) => {
-        const listData = displayOrders.filter(o => o.deliveryDate && dayjs(o.deliveryDate).isSame(value, 'day'));
-        return (
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-                {listData.map(item => (
-                    <li key={item.id}>
-                        <Badge status={item.status === 'OUT_FOR_DELIVERY' ? 'processing' : 'success'} text={`#${item.id}`} />
-                    </li>
-                ))}
-            </ul>
-        );
+    const theme = {
+        pageBg: '#f8fafc',
+        cardBg: '#ffffff',
+        border: '#e2e8f0',
+        textMain: '#0f172a',
+        textSec: '#64748b',
+        accentBg: '#2563eb',
+        warningBg: '#d97706',
+        dangerBg: '#dc2626',
+        successBg: '#10b981',
+        sectionBg: '#f1f5f9',
     };
 
-    const tableColumns = [
-        { title: 'Order ID', dataIndex: 'id', key: 'id', render: id => <b>#{id}</b> },
-        { title: 'Customer', dataIndex: 'customer', key: 'customer', render: c => c?.name || 'N/A' },
-        {
-            title: 'Delivery Date',
-            dataIndex: 'deliveryDate',
-            key: 'deliveryDate',
-            render: d => dayjs(d).format('MMM D, YYYY')
-        },
-        {
-            title: 'Payment Method',
-            dataIndex: 'paymentMethod',
-            key: 'paymentMethod',
-            render: m => <Tag>{m}</Tag>
-        },
-        {
-            title: 'Balance to Collect',
-            dataIndex: 'balanceAmount',
-            key: 'balanceAmount',
-            render: (bal, record) => {
-                const balance = Number(bal);
-                if (balance > 0) {
-                    return (
-                        <Space direction="vertical" size={0}>
-                            <Text type="danger" strong>Rs.{balance.toLocaleString()}</Text>
-                            {record.paymentMethod === 'COD' && (
-                                <Tag color="volcano" style={{ fontSize: '10px' }}>COLLECT ON DELIVERY</Tag>
-                            )}
-                        </Space>
-                    );
-                }
-                return <Text type="success">Rs.0 (Fully Paid)</Text>;
-            }
-        },
-        {
-            title: 'Payment Status',
-            dataIndex: 'paymentStatus',
-            key: 'paymentStatus',
-            render: (status, record) => {
-                const balance = Number(record.balanceAmount || 0);
-                let tag = <Tag color="error">PENDING</Tag>;
-                if (balance <= 0) tag = <Tag color="success">PAID</Tag>;
-                else if (Number(record.advanceAmount) > 0) tag = <Tag color="warning">PARTIAL</Tag>;
-                
-                return (
-                    <Space direction="vertical" size={4}>
-                        {tag}
-                        {record.bankSlip && (
-                            <Image 
-                                src={record.bankSlip} 
-                                width={36} 
-                                height={36} 
-                                className="rounded" 
-                                style={{ 
-                                    objectFit: 'cover', 
-                                    borderRadius: '4px', 
-                                    border: '1px solid #eee',
-                                    display: 'block'
-                                }} 
-                                alt="Slip"
-                            />
-                        )}
-                    </Space>
-                );
-            }
-        },
-        {
-            title: 'Actions',
-            key: 'actions',
-            render: (_, record) => {
-                const balance = Number(record.balanceAmount || 0);
-                const isDelivered = record.status === 'DELIVERED';
-
-                if (isDelivered) return <Tag color="success">COMPLETED</Tag>;
-
-                return (
-                    <Space>
-                        {balance > 0 ? (
-                            <Button
-                                size="small"
-                                type="primary"
-                                icon={<DollarOutlined />}
-                                style={{ backgroundColor: '#1890ff' }}
-                                onClick={() => setPaymentModalOrder(record)}
-                            >
-                                Deliver & Complete Payment
-                            </Button>
-                        ) : (
-                            <Button
-                                size="small"
-                                type="primary"
-                                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-                                onClick={() => updateStatus(record.id, 'DELIVERED')}
-                            >
-                                {activeTab === 'Delivery' ? 'Mark Delivered' : 'Mark Picked Up'}
-                            </Button>
-                        )}
-                    </Space>
-                );
-            }
-        }
-    ];
-
     return (
-        <div style={{ padding: 0 }}>
-            <div style={{ marginBottom: 20, background: '#fff', padding: 24, borderBottom: '1px solid #f0f0f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                    <div>
-                        <Title level={2} style={{ margin: 0 }}>Logistics & Schedule</Title>
-                        <Text type="secondary">Manage Pickups and Deliveries • {orders.length} Active</Text>
-                    </div>
-                    <Segmented
-                        options={['List', 'Table', 'Calendar']}
-                        value={viewMode}
-                        onChange={setViewMode}
-                    />
+        <div style={{ padding: '24px', backgroundColor: theme.pageBg, minHeight: '100vh', color: theme.textMain }}>
+            <style>{`
+                .premium-card {
+                    background: ${theme.cardBg};
+                    border: 1px solid ${theme.border};
+                    border-radius: 12px;
+                    transition: all 0.2s ease-in-out;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+                }
+                .card-section {
+                    background: ${theme.sectionBg};
+                    padding: 16px;
+                    border-radius: 8px;
+                    margin-bottom: 12px;
+                }
+                .action-btn {
+                    width: 100%;
+                    height: 52px;
+                    border-radius: 8px;
+                    font-size: 15px;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    cursor: pointer;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    gap: 8px;
+                    border: none;
+                    transition: all 0.2s;
+                    margin-top: auto;
+                }
+                .btn-warning { background: ${theme.warningBg}; color: white; }
+                .btn-success { background: ${theme.successBg}; color: white; }
+            `}</style>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
+                <div>
+                    <Title level={2} style={{ margin: 0, fontWeight: 800, color: theme.textMain, letterSpacing: '-0.5px' }}>Delivery Schedule</Title>
+                    <Text style={{ fontSize: '15px', color: theme.textSec }}>Logistics overview • Active {activeTab}s ({displayOrders.length})</Text>
                 </div>
 
                 <Segmented
-                    block
                     options={[
                         { label: 'DELIVERIES', value: 'Delivery', icon: <CarOutlined /> },
                         { label: 'PICKUPS', value: 'Pickup', icon: <ShopOutlined /> }
@@ -213,99 +142,133 @@ const Schedule = () => {
                 />
             </div>
 
-            <div style={{ padding: 24 }}>
-                {viewMode === 'Calendar' ? (
-                    <Card>
-                        <Calendar cellRender={(current, info) => {
-                            if (info.type === 'date') return dateCellRender(current);
-                            return info.originNode;
-                        }} />
-                    </Card>
-                ) : viewMode === 'Table' ? (
-                    <Card bodyStyle={{ padding: 0 }}>
-                        <Table
-                            columns={tableColumns}
-                            dataSource={displayOrders}
-                            rowKey="id"
-                            loading={loading}
-                            pagination={{ pageSize: 15 }}
-                        />
-                    </Card>
-                ) : (
-                    <Row gutter={[16, 16]}>
-                        {displayOrders.length === 0 ? (
-                            <Col span={24}><Empty description="No active tasks in this view" /></Col>
-                        ) : (
-                            displayOrders.map(order => {
-                                const isOut = order.status === 'OUT_FOR_DELIVERY';
-                                const balance = Number(order.balanceAmount || 0);
-                                return (
-                                    <Col xs={24} md={12} lg={8} key={order.id}>
-                                        <Card
-                                            hoverable
-                                            title={
-                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                    <span>#{order.id} - {order.customer?.name}</span>
-                                                    <Tag color={isOut ? "processing" : "success"}>{order.status.replace(/_/g, ' ')}</Tag>
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '60px 0' }}><Spin size="large" /></div>
+            ) : (
+                <Row gutter={[24, 24]}>
+                    {displayOrders.length === 0 ? (
+                        <Col span={24}>
+                            <div className="premium-card" style={{ padding: '40px', textAlign: 'center' }}>
+                                <Empty description={<span style={{ color: theme.textSec }}>No active schedules found.</span>} />
+                            </div>
+                        </Col>
+                    ) : (
+                        displayOrders.map(order => {
+                            const isOut = order.status === 'OUT_FOR_DELIVERY';
+                            const balance = Number(order.balanceAmount || 0);
+
+                            return (
+                                <Col xs={24} md={12} lg={12} xl={8} key={order.id} style={{ display: 'flex' }}>
+                                    <div className="premium-card" style={{ width: '100%', overflow: 'hidden' }}>
+                                        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff' }}>
+                                            <div>
+                                                <Text style={{ color: theme.textSec, fontSize: '12px', fontWeight: 700, letterSpacing: '1px' }}>ORDER ID</Text><br/>
+                                                <Text style={{ color: theme.textMain, fontSize: '18px', fontWeight: 900 }}>#{order.id}</Text>
+                                            </div>
+                                            <Tag color={isOut ? "blue" : "green"} style={{ margin: 0, fontWeight: 800, borderRadius: '4px' }}>
+                                                {isOut ? "TRANSIT" : "READY"}
+                                            </Tag>
+                                        </div>
+
+                                        <div style={{ padding: '20px', backgroundColor: '#ffffff' }}>
+                                            <div className="card-section">
+                                                <Text style={{ color: theme.accentBg, fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Customer Information</Text>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                                    <UserOutlined style={{ color: theme.textSec }} />
+                                                    <Text style={{ color: theme.textMain, fontWeight: 700, fontSize: '15px' }}>{order.customer?.name || 'Guest'}</Text>
                                                 </div>
-                                            }
-                                            actions={[
-                                                balance > 0 ? (
-                                                    <Button type="primary" icon={<DollarOutlined />} onClick={() => setPaymentModalOrder(order)}>
-                                                        Deliver & Complete Payment
-                                                    </Button>
-                                                ) : (
-                                                    <Button type="primary" style={{ background: '#52c41a', borderColor: '#52c41a' }} onClick={() => updateStatus(order.id, 'DELIVERED')}>
-                                                        {activeTab === 'Delivery' ? 'Delivered' : 'Picked Up'}
-                                                    </Button>
-                                                )
-                                            ]}
-                                        >
-                                            <Descriptions column={1} size="small">
-                                                <Descriptions.Item label="Due"><CalendarOutlined /> {dayjs(order.deliveryDate).format('MMM D, YYYY')}</Descriptions.Item>
-                                                <Descriptions.Item label="Payment">
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                                                        <Space>
-                                                            <Tag color={balance > 0 ? "warning" : "success"}>
-                                                                {balance > 0 ? "PARTIAL" : "PAID"}
-                                                            </Tag>
-                                                            {balance > 0 && <Text type="danger" strong>Rs.{balance.toLocaleString()}</Text>}
-                                                        </Space>
-                                                        {order.bankSlip && (
-                                                            <Image 
-                                                                src={order.bankSlip} 
-                                                                width={36} 
-                                                                height={36} 
-                                                                style={{ 
-                                                                    objectFit: 'cover', 
-                                                                    borderRadius: '4px', 
-                                                                    border: '1px solid #eee' 
-                                                                }} 
-                                                                alt="Slip" 
-                                                            />
-                                                        )}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <PhoneOutlined style={{ color: theme.successBg }} />
+                                                    <Text style={{ color: theme.textMain, fontWeight: 700 }}>
+                                                        {order.customer?.phone || 'N/A'}
+                                                    </Text>
+                                                </div>
+                                            </div>
+
+                                            <div className="card-section" style={{ borderLeft: `3px solid ${theme.accentBg}` }}>
+                                                <Text style={{ color: theme.textMain, fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Schedule Details</Text>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', backgroundColor: '#fffbeb', padding: '12px', borderRadius: '8px', border: '1px solid #fde68a' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                        <Text style={{ color: '#b45309', fontSize: '12px', fontWeight: 800 }}>DATE</Text>
+                                                        <Text style={{ color: '#92400e', fontSize: '16px', fontWeight: 900 }}>{dayjs(order.deliveryDate).format('DD MMM YYYY')}</Text>
                                                     </div>
-                                                </Descriptions.Item>
-                                                <Descriptions.Item label="Contact"><PhoneOutlined /> {order.customer?.phone || 'N/A'}</Descriptions.Item>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                        <Text style={{ color: '#b45309', fontSize: '12px', fontWeight: 800 }}>TIME</Text>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#92400e', fontWeight: 900, fontSize: '18px' }}>
+                                                            <ClockCircleOutlined />
+                                                            {order.delivery?.approximateDeliveryTime || 'N/A'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
                                                 {activeTab === 'Delivery' && (
-                                                    <Descriptions.Item label="Address"><EnvironmentOutlined /> {order.delivery?.address || order.address}</Descriptions.Item>
+                                                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${theme.border}` }}>
+                                                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                                            <EnvironmentOutlined style={{ color: theme.dangerBg, marginTop: '4px' }} />
+                                                            <Text style={{ color: theme.textMain, fontWeight: 600, fontSize: '14px', lineHeight: '1.4' }}>
+                                                                {order.delivery?.address || order.address || 'Address not provided'}
+                                                            </Text>
+                                                        </div>
+                                                    </div>
                                                 )}
-                                                <Descriptions.Item label="Items">
-                                                    <ul style={{ paddingLeft: 20, margin: 0 }}>
-                                                        {order.items?.map(i => (
-                                                            <li key={i.id}>{i.quantity}x {i.name}</li>
-                                                        ))}
-                                                    </ul>
-                                                </Descriptions.Item>
-                                            </Descriptions>
-                                        </Card>
-                                    </Col>
-                                );
-                            })
-                        )}
-                    </Row>
-                )}
-            </div>
+                                            </div>
+
+                                            <div className="card-section">
+                                                <Text style={{ color: theme.textMain, fontWeight: 800, fontSize: '11px', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Order Contents</Text>
+                                                <ul style={{ paddingLeft: '20px', margin: 0, color: theme.textMain, fontSize: '14px', fontWeight: 600 }}>
+                                                    {order.items?.map((i, idx) => (
+                                                        <li key={idx} style={{ marginBottom: '6px' }}><span style={{ color: theme.textSec }}>{i.quantity}x</span> {i.name}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+
+                                            {order.specialNotes && (
+                                                <div style={{ padding: '12px', backgroundColor: '#fff7ed', border: '1px solid #ffedd5', borderRadius: '8px', marginBottom: '12px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                                        <ExceptionOutlined style={{ color: '#ea580c' }} />
+                                                        <Text style={{ color: '#ea580c', fontWeight: 800, fontSize: '11px', textTransform: 'uppercase' }}>Attention: Special Notes</Text>
+                                                    </div>
+                                                    <Text style={{ color: '#ea580c', fontSize: '14px', fontStyle: 'italic' }}>{order.specialNotes}</Text>
+                                                </div>
+                                            )}
+
+                                            {balance > 0 && (
+                                                <div style={{ padding: '16px', backgroundColor: '#fef3c7', border: `1px solid #fde68a`, borderRadius: '8px', textAlign: 'center', marginBottom: '12px' }}>
+                                                    <Text style={{ color: theme.warningBg, fontWeight: 900, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Cash to Collect (COD)</Text><br/>
+                                                    <Text style={{ color: theme.warningBg, fontSize: '24px', fontWeight: 900 }}>Rs.{balance.toLocaleString()}</Text>
+                                                </div>
+                                            )}
+                                            {balance <= 0 && (
+                                                <div style={{ padding: '12px', backgroundColor: '#d1fae5', border: `1px solid #a7f3d0`, borderRadius: '8px', textAlign: 'center', marginBottom: '12px' }}>
+                                                    <Text style={{ color: theme.successBg, fontWeight: 800, fontSize: '14px' }}>PAID IN FULL</Text>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div style={{ padding: '0 20px 20px 20px', marginTop: 'auto', backgroundColor: '#ffffff' }}>
+                                            {balance > 0 ? (
+                                                <button 
+                                                    className="action-btn btn-warning" 
+                                                    onClick={() => setPaymentModalOrder(order)}
+                                                >
+                                                    <DollarOutlined /> Collect Rs.{balance.toLocaleString()} & Complete
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    className="action-btn btn-success" 
+                                                    onClick={() => updateStatus(order.id, 'DELIVERED')}
+                                                >
+                                                    <CheckCircleOutlined /> {activeTab === 'Delivery' ? 'Mark Delivered' : 'Mark Picked Up'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </Col>
+                            );
+                        })
+                    )}
+                </Row>
+            )}
 
             <ReceivePaymentModal
                 open={!!paymentModalOrder}

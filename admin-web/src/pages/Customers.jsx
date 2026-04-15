@@ -89,7 +89,7 @@ const Customers = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
                     <Avatar
                         size={48}
-                        style={{ backgroundColor: '#FFD6E7', color: '#E91E63', fontWeight: 'bold' }}
+                        style={{ backgroundColor: '#FFD6E7', color: '#be185d', fontWeight: 'bold' }}
                     >
                         {record.name?.charAt(0)}
                     </Avatar>
@@ -130,21 +130,21 @@ const Customers = () => {
                             <Button
                                 type={filter === 'All' ? 'primary' : 'default'}
                                 onClick={() => setFilter('All')}
-                                style={filter === 'All' ? { background: '#E91E63', borderColor: '#E91E63' } : {}}
+                                style={filter === 'All' ? { background: '#be185d', borderColor: '#be185d' } : {}}
                             >
                                 All Customers
                             </Button>
                             <Button
                                 type={filter === 'HighLoyalty' ? 'primary' : 'default'}
                                 onClick={() => setFilter('HighLoyalty')}
-                                style={filter === 'HighLoyalty' ? { background: '#E91E63', borderColor: '#E91E63' } : {}}
+                                style={filter === 'HighLoyalty' ? { background: '#be185d', borderColor: '#be185d' } : {}}
                             >
                                 Customers above Loyalty points 1000
                             </Button>
                             <Button
                                 type={filter === 'Feedbacks' ? 'primary' : 'default'}
                                 onClick={() => setFilter('Feedbacks')}
-                                style={filter === 'Feedbacks' ? { background: '#E91E63', borderColor: '#E91E63' } : {}}
+                                style={filter === 'Feedbacks' ? { background: '#be185d', borderColor: '#be185d' } : {}}
                             >
                                 Feedbacks
                             </Button>
@@ -171,7 +171,7 @@ const Customers = () => {
                                         <Tag color={fb.status === 'APPROVED' ? 'success' : fb.status === 'HIDDEN' ? 'default' : 'warning'}>
                                             {fb.status}
                                         </Tag>
-                                        <Tag color="#FFD6E7" style={{ color: '#E91E63', borderRadius: 10 }}>
+                                        <Tag color="#FFD6E7" style={{ color: '#be185d', borderRadius: 10 }}>
                                             Loyalty points {fb.customer?.loyaltyPoints || 0}
                                         </Tag>
                                         <Text type="secondary" style={{ fontSize: 12 }}>For: Order #{fb.orderId}</Text>
@@ -199,8 +199,8 @@ const Customers = () => {
                                 <Text style={{ color: '#666', marginTop: 8, display: 'block' }}>"{fb.comment}"</Text>
 
                                 {fb.reply && (
-                                    <div style={{ marginTop: 15, padding: 15, background: '#f5f5f5', borderRadius: 8, borderLeft: '3px solid #E91E63' }}>
-                                        <Text strong style={{ color: '#E91E63', display: 'block', marginBottom: 5 }}>Admin Reply</Text>
+                                    <div style={{ marginTop: 15, padding: 15, background: '#f5f5f5', borderRadius: 8, borderLeft: '3px solid #be185d' }}>
+                                        <Text strong style={{ color: '#be185d', display: 'block', marginBottom: 5 }}>Admin Reply</Text>
                                         <Text>{fb.reply}</Text>
                                     </div>
                                 )}
@@ -225,7 +225,7 @@ const Customers = () => {
                 onCancel={() => setReplyModalOpen(false)}
                 onOk={handleSendReply}
                 okText="Send Reply"
-                okButtonProps={{ style: { backgroundColor: '#E91E63', borderColor: '#E91E63' } }}
+                okButtonProps={{ style: { backgroundColor: '#be185d', borderColor: '#be185d' } }}
             >
                 <Input.TextArea
                     rows={4}

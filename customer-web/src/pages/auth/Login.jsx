@@ -152,7 +152,7 @@ const Login = () => {
                             state={{ from: location.state?.from }}
                             className="font-medium text-pink-600 hover:text-pink-500"
                         >
-                            Create a free account
+                            Create an account
                         </Link>
                     </div>
                 </div>

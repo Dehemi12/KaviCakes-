@@ -3,13 +3,25 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { Check, Calendar, MapPin, CreditCard, ChevronRight, Truck } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import api from '../services/api';
 
 const CheckoutPage = () => {
     // Destructure editingOrderId from CartContext
-    const { cart, cartTotal, clearCart, loyaltyDiscount, setLoyaltyDiscount, editingOrderId, setEditingOrderId } = useCart();
+    // Check if we are passing a direct bulk order via state
+    const location = useLocation();
+    const isDirectBulk = !!location.state?.bulkOrder;
+
+    const { cart: contextCart, cartTotal: contextTotal, clearCart, loyaltyDiscount: contextLoyalty, setLoyaltyDiscount: setContextLoyalty, editingOrderId, setEditingOrderId } = useCart();
     const { user, loading, refreshUser } = useAuth();
     const navigate = useNavigate();
+
+    const cart = isDirectBulk ? location.state.bulkOrder.cart : contextCart;
+    const cartTotal = isDirectBulk ? location.state.bulkOrder.cartTotal : contextTotal;
+    
+    const [localLoyaltyDiscount, setLocalLoyaltyDiscount] = useState(0);
+    const loyaltyDiscount = isDirectBulk ? localLoyaltyDiscount : contextLoyalty;
+    const setLoyaltyDiscount = isDirectBulk ? setLocalLoyaltyDiscount : setContextLoyalty;
 
     // Fresh User Profile for Points
     const [userProfile, setUserProfile] = useState(null);
@@ -28,22 +40,45 @@ const CheckoutPage = () => {
     const currentUser = userProfile || user;
     const availablePointsRaw = currentUser?.loyaltyPoints || 0;
 
+    // Points logic is computed below after state declarations (isUrgentOrder, formData)
+    // (see pointsAvailableForDiscount calculation near deliveryFee logic)
+
     // ... (rest of state)
 
     const [step, setStep] = useState(1);
     const [paymentType, setPaymentType] = useState('advance'); // Default 'advance' for COD. Will switch to 'full' for Online.
     const [formData, setFormData] = useState({
         deliveryDate: '',
+        deliveryTime: '',
         deliveryType: 'pickup', // pickup or delivery
         address: '',
         distance: '',
         deliveryInstructions: '',
-        contactName: 'Dehemi Nimshara',
-        contactPhone: '077 123 4567',
-        contactEmail: 'deheminimshara@gmail.com',
+        contactName: '',
+        contactPhone: '',
+        contactEmail: '',
         paymentMethod: 'cod',
         bankSlip: '' // URL of uploaded slip
     });
+
+    // Auto-fill delivery details when user profile is loaded
+    useEffect(() => {
+        if (userProfile) {
+            setFormData(prev => ({
+                ...prev,
+                contactName: userProfile.name || prev.contactName,
+                contactEmail: userProfile.email || prev.contactEmail,
+                contactPhone: userProfile.phone || prev.contactPhone,
+                address: userProfile.address || prev.address,
+            }));
+        } else if (user) {
+            setFormData(prev => ({
+                ...prev,
+                contactName: user.name || prev.contactName,
+                contactEmail: user.email || prev.contactEmail,
+            }));
+        }
+    }, [userProfile, user]);
 
     const [isUrgentOrder, setIsUrgentOrder] = useState(false);
     const [agreeUrgent, setAgreeUrgent] = useState(false);
@@ -73,7 +108,7 @@ const CheckoutPage = () => {
         if (!file) return;
 
         if (file.size > 5 * 1024 * 1024) {
-            alert('File size exceeds 5MB');
+            toast.error('File size exceeds 5MB');
             return;
         }
 
@@ -98,7 +133,7 @@ const CheckoutPage = () => {
             setFormData(prev => ({ ...prev, bankSlip: data.url }));
         } catch (error) {
             console.error('Upload Error:', error);
-            alert('Failed to upload slip. please try again.');
+            toast.error('Failed to upload slip. please try again.');
         } finally {
             setIsUploading(false);
         }
@@ -197,51 +232,67 @@ const CheckoutPage = () => {
     const deliveryFee = calculateDeliveryFee();
 
     // Available Points logic:
-    // Total - Discount Used in Cart = Remaining pts for Urgent Fee
-    // Note: If toggle is ON, loyaltyDiscount is > 0.
-    const availablePointsForUrgent = availablePointsRaw - loyaltyDiscount;
+    // Points reserved for urgent fee = 500 pts if urgent order selected
+    const urgentFeePoints = isUrgentOrder ? 500 : 0;
+    // Points usable for DISCOUNT = available - urgentFeePoints (reserved for urgent)
+    const pointsAvailableForDiscount = Math.max(0, availablePointsRaw - urgentFeePoints);
 
     // Validate inputs 
-    const canAffordUrgent = availablePointsForUrgent >= URGENT_ORDER_THRESHOLD;
+    // Can afford urgent if total available points (without discount applied) >= 500
+    const canAffordUrgent = availablePointsRaw >= URGENT_ORDER_THRESHOLD;
 
-    const finalTotal = cartTotal + deliveryFee - loyaltyDiscount;
+    // Real delivery fee (synchronised with formData)
+    const currentDeliveryFee = formData.deliveryType === 'delivery'
+        ? (() => {
+            const dist = parseFloat(formData.distance) || 0;
+            return 300 + (dist > 5 ? (dist - 5) * 30 : 0);
+        })()
+        : 0;
 
-    // Toggle Handler
+    // RULE: Discount capped at 30% of order gross total
+    const LOYALTY_DISCOUNT_CAP_PERCENT = 0.30;
+    const orderGross = cartTotal + currentDeliveryFee;
+    const maxAllowedDiscount = Math.floor(orderGross * LOYALTY_DISCOUNT_CAP_PERCENT);
+
+    const finalTotal = Math.max(0, orderGross - loyaltyDiscount);
+
+    // Toggle Handler — caps discount at 30% of order gross AND available-after-urgent-reservation
     const handleLoyaltyToggle = () => {
         if (loyaltyDiscount > 0) {
             setLoyaltyDiscount(0);
         } else {
-            const maxDiscount = Math.min(availablePointsRaw, cartTotal);
-            setLoyaltyDiscount(maxDiscount);
+            // The actual discount = min of: (points available), (30% cap of order)
+            const maxDiscount = Math.min(pointsAvailableForDiscount, maxAllowedDiscount);
+            setLoyaltyDiscount(Math.max(0, maxDiscount));
         }
     };
 
     // Check for Bulk items
     const hasBulkItem = cart.some(item => item.variant?.isBulk || item.isBulk);
 
-    // Minimum date logic
-    // Bulk: 30 days
-    // Standard: 5 days
-    // Urgent: 2 days (Not applicable for Bulk)
-    const getMinDateStandard = () => {
+    // Helper to get tomorrow's date in local timezone format
+    const getTomorrowLocalDateString = () => {
         const date = new Date();
-        // If bulk, add 30 days. Else add 5 days.
-        const daysToAdd = hasBulkItem ? 30 : 5;
-        date.setDate(date.getDate() + daysToAdd);
+        date.setDate(date.getDate() + 1);
+        const offset = date.getTimezoneOffset();
+        const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+        return localDate.toISOString().split('T')[0];
+    };
 
-        // Use local timezone offset adjustment
+    const getMinDateStandard = () => {
+        return getTomorrowLocalDateString();
+    };
+
+    const getMinDateBulk = () => {
+        const date = new Date();
+        date.setDate(date.getDate() + 14);
         const offset = date.getTimezoneOffset();
         const localDate = new Date(date.getTime() - (offset * 60 * 1000));
         return localDate.toISOString().split('T')[0];
     };
 
     const getMinDateUrgent = () => {
-        if (hasBulkItem) return null; // No urgent for bulk
-        const date = new Date();
-        date.setDate(date.getDate() + 2);
-        const offset = date.getTimezoneOffset();
-        const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-        return localDate.toISOString().split('T')[0];
+        return getTomorrowLocalDateString();
     };
 
     const isUrgentDate = (dateString) => {
@@ -273,7 +324,7 @@ const CheckoutPage = () => {
 
         // Bulk logic
         if (hasBulkItem) {
-            return formData.deliveryDate >= minStandard;
+            return formData.deliveryDate >= getMinDateBulk();
         }
 
         const minUrgent = getMinDateUrgent();
@@ -296,11 +347,25 @@ const CheckoutPage = () => {
         return phoneRegex.test(strippedPhone);
     };
 
+    const isDetailsValidTime = (timeStr) => {
+        if (!timeStr) return false;
+        const timeParts = timeStr.split(':');
+        if (timeParts.length === 2) {
+            const hours = parseInt(timeParts[0], 10);
+            const minutes = parseInt(timeParts[1], 10);
+            if (hours < 6 || hours > 22 || (hours === 22 && minutes > 0)) {
+                return false;
+            }
+        }
+        return true;
+    };
+
     const isDetailsValid = () => {
-        const { contactName, contactPhone, contactEmail, deliveryType, address } = formData;
-        if (!contactName || !contactPhone || !contactEmail) return false;
+        const { contactName, contactPhone, contactEmail, deliveryType, address, deliveryTime } = formData;
+        if (!contactName || !contactPhone || !contactEmail || !deliveryTime) return false;
         
         if (!isValidPhone(contactPhone)) return false;
+        if (!isDetailsValidTime(deliveryTime)) return false;
 
         if (deliveryType === 'delivery' && !address) return false;
         return true;
@@ -314,7 +379,7 @@ const CheckoutPage = () => {
 
     const handleSubmitOrder = async () => {
         if (!user) {
-            alert("You must be logged in to place an order.");
+            toast.error("You must be logged in to place an order.");
             navigate('/login', { state: { from: '/checkout' } });
             return;
         }
@@ -330,6 +395,7 @@ const CheckoutPage = () => {
                 address: formData.address,
                 method: formData.deliveryType === 'delivery' ? 'Standard' : 'Pickup',
                 deliveryDate: formData.deliveryDate,
+                deliveryTime: formData.deliveryTime,
                 email: formData.contactEmail,
                 instructions: formData.deliveryInstructions
             };
@@ -373,16 +439,21 @@ const CheckoutPage = () => {
             if (res.status === 201 || res.status === 200) {
                 const newOrder = res.data.order;
 
-                // Sync User State (Points Deducted)
+                // Sync User State (Points Deducted) — re-fetch profile for real-time balance
                 await refreshUser();
+                // Also refresh local profile state so points show correct live value
+                try {
+                    const freshProfile = await api.get('/auth/profile');
+                    setUserProfile(freshProfile.data);
+                } catch (_) { /* non-critical */ }
 
                 // Navigation Logic
                 if (hasBulkItem) {
-                    navigate('/order-success', { state: { order: newOrder, type: 'bulk', message: editingOrderId ? 'Order updated successfully' : 'Order placed successfully' } });
+                    navigate('/order-success', { state: { order: newOrder, type: 'bulk', message: editingOrderId ? 'Order updated successfully' : 'Bulk order placed successfully!' } });
                 } else {
                     navigate('/order-success', { state: { order: newOrder, message: editingOrderId ? 'Order updated successfully' : 'Order placed successfully' } });
                 }
-                clearCart();
+                if (!isDirectBulk) clearCart();
                 // Clear edit state
                 if (editingOrderId) {
                     setEditingOrderId(null);
@@ -396,7 +467,7 @@ const CheckoutPage = () => {
                 return;
             }
             const errorMsg = e.response?.data?.error || "Failed to place order. Please try again.";
-            alert(errorMsg);
+            toast.error(errorMsg);
             setIsSubmitting(false);
         }
     };
@@ -467,22 +538,34 @@ const CheckoutPage = () => {
                                     <div className="relative">
                                         <input
                                             type="date"
-                                            min={new Date().toISOString().split('T')[0]}
+                                            min={hasBulkItem ? getMinDateBulk() : getTomorrowLocalDateString()}
                                             value={formData.deliveryDate}
                                             onChange={handleDateChange}
                                             className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-pink-500 focus:border-pink-500 text-gray-900"
                                         />
                                         <Calendar className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
                                     </div>
-                                    <p className="text-xs text-gray-500 mt-3 leading-relaxed">
-                                        Please note: We require at least 5 days notice for all cake orders.
-                                        {hasBulkItem && (
-                                            <span className="block text-pink-600 font-bold mt-1">
-                                                Bulk orders require at least 30 days notice.
-                                            </span>
-                                        )}
-                                        {!hasBulkItem && canAffordUrgent && " If you have 500 loyalty points, you can place order within 5 days ( use 500 points )"}
-                                    </p>
+                                    <div className="mt-4 p-4 rounded-xl border-l-4 border-pink-500 bg-pink-50 text-pink-700 shadow-sm font-medium">
+                                        <p className="text-base font-bold text-gray-900 mb-1">
+                                            Important Delivery Notice
+                                        </p>
+                                        <p className="text-sm">
+                                            {hasBulkItem ? (
+                                                <span className="block text-red-600 font-bold mt-2">
+                                                    ⚠️ Bulk orders require at least 14 days notice.
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    Please note: We require at least <strong className="font-bold underline">5 days notice</strong> for all standard cake orders.
+                                                    {canAffordUrgent && (
+                                                        <span className="block mt-2 font-medium text-pink-600">
+                                                            If you need it sooner... If you have 500 loyalty points, you can place this order within 5 days.
+                                                        </span>
+                                                    )}
+                                                </>
+                                            )}
+                                        </p>
+                                    </div>
                                 </div>
 
                                 {isUrgentOrder && (
@@ -510,7 +593,7 @@ const CheckoutPage = () => {
                                     <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-xs flex items-center">
                                         <span className="mr-2">⚠️</span>
                                         {hasBulkItem
-                                            ? "Bulk orders require at least 30 days notice."
+                                            ? "Bulk orders require at least 14 days notice."
                                             : "Please select a date at least 5 days from today."
                                         }
                                     </div>
@@ -596,6 +679,46 @@ const CheckoutPage = () => {
                                     </div>
                                 </div>
 
+                                <div className="mt-8 space-y-6">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-3">
+                                            Preferred {formData.deliveryType === 'delivery' ? 'Delivery' : 'Pickup'} Time
+                                        </label>
+                                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                            {[
+                                                { label: '8:00 AM',  value: '08:00' },
+                                                { label: '9:00 AM',  value: '09:00' },
+                                                { label: '10:00 AM', value: '10:00' },
+                                                { label: '11:00 AM', value: '11:00' },
+                                                { label: '12:00 PM', value: '12:00' },
+                                                { label: '1:00 PM',  value: '13:00' },
+                                                { label: '2:00 PM',  value: '14:00' },
+                                                { label: '3:00 PM',  value: '15:00' },
+                                                { label: '4:00 PM',  value: '16:00' },
+                                                { label: '5:00 PM',  value: '17:00' },
+                                                { label: '6:00 PM',  value: '18:00' },
+                                                { label: '7:00 PM',  value: '19:00' },
+                                            ].map(slot => (
+                                                <button
+                                                    key={slot.value}
+                                                    type="button"
+                                                    onClick={() => setFormData({ ...formData, deliveryTime: slot.value })}
+                                                    className={`py-2 px-1 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                                                        formData.deliveryTime === slot.value
+                                                            ? 'bg-pink-600 text-white border-pink-600 shadow-sm shadow-pink-200'
+                                                            : 'bg-white text-gray-600 border-gray-200 hover:border-pink-300 hover:text-pink-600'
+                                                    }`}
+                                                >
+                                                    {slot.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {!formData.deliveryTime && (
+                                            <p className="text-[10px] text-gray-400 mt-2">Select a preferred time slot above</p>
+                                        )}
+                                    </div>
+                                </div>
+
                                 {formData.deliveryType === 'delivery' && (
                                     <div className="mb-10 space-y-6">
                                         <div>
@@ -628,6 +751,8 @@ const CheckoutPage = () => {
                                                 {formData.distance > 0 ? `Fee calculated based on ${formData.distance} km` : 'Enter address to calculate'}
                                             </p>
                                         </div>
+
+
 
                                         <div>
                                             <label className="block text-xs font-medium text-gray-500 mb-1">Delivery Instructions (Optional)</label>
@@ -677,6 +802,18 @@ const CheckoutPage = () => {
                                                 className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900 placeholder-gray-300"
                                                 placeholder="email@example.com"
                                             />
+                                        </div>
+
+                                        {/* Special Instructions */}
+                                        <div className="md:col-span-2 mt-4">
+                                            <label className="block text-xs text-gray-500 mb-1">Special Instructions / Delivery Notes (Optional)</label>
+                                            <textarea
+                                                rows="2"
+                                                value={formData.deliveryInstructions}
+                                                onChange={(e) => setFormData({ ...formData, deliveryInstructions: e.target.value })}
+                                                className="w-full p-3 rounded-xl border border-gray-100 focus:border-pink-500 focus:outline-none bg-gray-50/50 text-sm font-medium text-gray-900 placeholder-gray-400"
+                                                placeholder="e.g. Please use less sugar, or delivery instruction 'Leave at the gate'..."
+                                            ></textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -832,23 +969,43 @@ const CheckoutPage = () => {
                             <div className="h-px bg-gray-100 my-4"></div>
 
                             {/* Loyalty Points Toggle */}
-                            <div className="mb-4">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm font-medium text-gray-700">Use Loyalty Points</span>
+                            <div className="mb-4 bg-pink-50/60 rounded-xl p-3 border border-pink-100">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm font-semibold text-gray-800">Use Loyalty Points</span>
                                     <label className="relative inline-flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
                                             className="sr-only peer"
                                             checked={loyaltyDiscount > 0}
                                             onChange={handleLoyaltyToggle}
-                                            disabled={availablePointsRaw === 0}
+                                            disabled={availablePointsRaw === 0 || pointsAvailableForDiscount === 0}
                                         />
                                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
                                     </label>
                                 </div>
-                                <div className="flex justify-between text-xs text-gray-500">
-                                    <span>Available: {availablePointsRaw} points</span>
-                                    {loyaltyDiscount > 0 && <span className="text-pink-600 font-bold">-{loyaltyDiscount} applied</span>}
+
+                                <div className="mt-2 text-xs text-gray-500 space-y-1">
+                                    {/* Points balance row */}
+                                    <div className="flex justify-between">
+                                        <span>{isUrgentOrder ? `${availablePointsRaw} − 500 (urgent)` : 'Available'}</span>
+                                        <span className={`font-semibold ${pointsAvailableForDiscount > 0 ? 'text-pink-600' : 'text-gray-400'}`}>
+                                            {pointsAvailableForDiscount} pts
+                                        </span>
+                                    </div>
+
+                                    {/* Cap badge */}
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-pink-700">Max discount (30%)</span>
+                                        <span className="font-semibold text-pink-800">Rs.{maxAllowedDiscount.toLocaleString()}</span>
+                                    </div>
+
+                                    {/* Applied discount */}
+                                    {loyaltyDiscount > 0 && (
+                                        <div className="flex justify-between text-green-600 font-semibold pt-1 border-t border-pink-100">
+                                            <span>Discount applied</span>
+                                            <span>−Rs.{loyaltyDiscount.toLocaleString()}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

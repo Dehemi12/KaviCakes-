@@ -12,30 +12,35 @@ import ResetPassword from './pages/auth/ResetPassword';
 import Profile from './pages/Profile';
 import CustomOrderPage from './pages/CustomOrderPage';
 import BulkOrderPage from './pages/BulkOrderPage';
+import CategoriesPage from './pages/CategoriesPage';
 import CakesPage from './pages/CakesPage';
 import ProductDetailsPage from './pages/ProductDetailsPage';
 import CartPage from './pages/CartPage';
+import WishlistPage from './pages/WishlistPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrdersPage from './pages/OrdersPage';
-import BulkOrderReviewPage from './pages/BulkOrderReviewPage';
-import BulkRequestSentPage from './pages/BulkRequestSentPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import ErrorBoundary from './components/ErrorBoundary';
+
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <CartProvider>
+          <Toaster position="top-right" />
           <Routes>
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Home />} />
               <Route path="cakes" element={<CakesPage />} />
+              <Route path="categories" element={<CategoriesPage />} />
               <Route path="cakes/:id" element={<ProductDetailsPage />} />
               <Route path="cart" element={<CartPage />} />
+              <Route path="wishlist" element={<WishlistPage />} />
               <Route path="checkout" element={
                 <ProtectedRoute>
                   <CheckoutPage />
@@ -45,8 +50,6 @@ function App() {
               <Route path="track-order/:id" element={<OrderTrackingPage />} />
               <Route path="custom-orders" element={<CustomOrderPage />} />
               <Route path="bulk-orders" element={<BulkOrderPage />} />
-              <Route path="bulk-order-review/:id" element={<BulkOrderReviewPage />} />
-              <Route path="bulk-request-sent" element={<BulkRequestSentPage />} />
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
               <Route path="verify-otp" element={<VerifyOtp />} />

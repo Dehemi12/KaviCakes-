@@ -47,7 +47,7 @@ const NotificationPanel = () => {
             try {
                 await api.put(`/orders/${orderId}/confirm`);
                 setNotifications(prev => prev.filter(n => n.id !== notification.id));
-                alert("Order successfully confirmed!");
+                toast.success("Order successfully confirmed!");
             } catch (err) {
                 console.error('Failed to confirm order', err);
             }

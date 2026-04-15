@@ -2,32 +2,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const { sendEmail } = require('../utils/mailer');
 
 const prisma = new PrismaClient();
-
-// Configure Nodemailer (Using Gmail as example, or just logging if credentials missing)
-const transporter = nodemailer.createTransport({
-    service: 'gmail', // or your SMTP host
-    auth: {
-        user: process.env.EMAIL_USER, // Add these to .env later
-        pass: process.env.EMAIL_PASS
-    }
-});
-
-// Helper to send email
-const sendEmail = async (to, subject, text) => {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        console.log(`[Mock Email] To: ${to}, Subject: ${subject}, Body: ${text}`);
-        return;
-    }
-    await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to,
-        subject,
-        text
-    });
-};
 
 exports.register = async (req, res) => {
     const { email, role } = req.body;

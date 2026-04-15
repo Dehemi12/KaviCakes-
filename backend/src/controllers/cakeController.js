@@ -154,7 +154,7 @@ exports.getMasterData = async (req, res) => {
             prisma.cakeSize.findMany(),
             prisma.cakeShape.findMany(),
             prisma.cakeFlavor.findMany(),
-            prisma.cakeCategory.findMany()
+            prisma.cakeCategory.findMany() // This model has imageUrl field
         ]);
         res.json({ sizes, shapes, flavors, categories });
     } catch (error) {
@@ -162,6 +162,92 @@ exports.getMasterData = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch master data' });
     }
 };
+
+// GET Best Sellers (Based on Order Placement)
+exports.getBestSellers = async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 3;
+
+        // Group by variantId and count occurrences in OrderItems
+        // We filter for orders that are not CANCELLED for accuracy
+        const bestSellerVariants = await prisma.orderItem.groupBy({
+            by: ['variantId'],
+            where: {
+                variantId: { not: null },
+                order: {
+                    status: { not: 'CANCELLED' }
+                }
+            },
+            _count: {
+                variantId: true
+            },
+            orderBy: {
+                _count: {
+                    variantId: 'desc'
+                }
+            },
+            take: limit
+        });
+
+        if (bestSellerVariants.length === 0) {
+            // Fallback: Just return latest cakes if no orders yet
+            const fallbackCakes = await prisma.cake.findMany({
+                take: limit,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    category: true,
+                    variants: {
+                        include: { size: true, shape: true, flavor: true }
+                    }
+                }
+            });
+            return res.json(formatCakes(fallbackCakes));
+        }
+
+        const variantIds = bestSellerVariants.map(v => v.variantId);
+
+        // Fetch the corresponding cakes
+        const bestSellerCakes = await prisma.cake.findMany({
+            where: {
+                variants: {
+                    some: {
+                        id: { in: variantIds }
+                    }
+                }
+            },
+            include: {
+                category: true,
+                variants: {
+                    include: { size: true, shape: true, flavor: true }
+                }
+            }
+        });
+
+        res.json(formatCakes(bestSellerCakes));
+    } catch (error) {
+        console.error('[CakeController:getBestSellers] Error:', error);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// Helper to format cakes
+function formatCakes(cakes) {
+    return cakes.map(c => {
+        let displayPrice = parseFloat(c.category.basePrice || 0);
+        const standardVariant = c.variants.find(v => v.size && v.size.label === '1kg') || c.variants[0];
+        if (standardVariant) {
+            displayPrice = parseFloat(standardVariant.price) || parseFloat(c.category.basePrice || 0);
+        }
+        return {
+            id: c.id,
+            name: c.name,
+            description: c.description,
+            imageUrl: c.imageUrl,
+            categoryName: c.category.name,
+            price: displayPrice
+        };
+    });
+}
 
 // POST Create Category
 exports.createCategory = async (req, res) => {
@@ -372,6 +458,90 @@ exports.createFlavor = async (req, res) => {
         res.status(201).json(flavor);
     } catch (error) {
         console.error('[CakeController] Error:', error); res.status(500).json({ error: 'Failed' });
+    }
+};
+
+// PUT Update Size
+exports.updateSize = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { label, price } = req.body;
+        const size = await prisma.cakeSize.update({
+            where: { id: parseInt(id) },
+            data: { label, price: parseFloat(price || 400) }
+        });
+        res.json(size);
+    } catch (error) {
+        console.error('[CakeController:updateSize] Error:', error);
+        res.status(500).json({ error: 'Failed to update size' });
+    }
+};
+
+// DELETE Size
+exports.deleteSize = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.cakeSize.delete({ where: { id: parseInt(id) } });
+        res.json({ message: 'Size deleted' });
+    } catch (error) {
+        console.error('[CakeController:deleteSize] Error:', error);
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+// PUT Update Flavor
+exports.updateFlavor = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { label, price } = req.body;
+        const flavor = await prisma.cakeFlavor.update({
+            where: { id: parseInt(id) },
+            data: { label, price: parseFloat(price || 0) }
+        });
+        res.json(flavor);
+    } catch (error) {
+        console.error('[CakeController:updateFlavor] Error:', error);
+        res.status(500).json({ error: 'Failed to update flavor' });
+    }
+};
+
+// DELETE Flavor
+exports.deleteFlavor = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.cakeFlavor.delete({ where: { id: parseInt(id) } });
+        res.json({ message: 'Flavor deleted' });
+    } catch (error) {
+        console.error('[CakeController:deleteFlavor] Error:', error);
+        res.status(500).json({ error: 'Failed' });
+    }
+};
+
+// PUT Update Shape
+exports.updateShape = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { label, price } = req.body;
+        const shape = await prisma.cakeShape.update({
+            where: { id: parseInt(id) },
+            data: { label, price: parseFloat(price || 0) }
+        });
+        res.json(shape);
+    } catch (error) {
+        console.error('[CakeController:updateShape] Error:', error);
+        res.status(500).json({ error: 'Failed to update shape' });
+    }
+};
+
+// DELETE Shape
+exports.deleteShape = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.cakeShape.delete({ where: { id: parseInt(id) } });
+        res.json({ message: 'Shape deleted' });
+    } catch (error) {
+        console.error('[CakeController:deleteShape] Error:', error);
+        res.status(500).json({ error: 'Failed' });
     }
 };
 

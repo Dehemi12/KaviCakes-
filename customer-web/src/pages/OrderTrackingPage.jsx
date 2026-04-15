@@ -7,6 +7,8 @@ import {
 import api from '../services/api';
 import { useCart } from '../context/CartContext';
 import FeedbackModal from '../components/FeedbackModal';
+import toast from 'react-hot-toast';
+import { XCircle } from 'lucide-react';
 
 const OrderTrackingPage = () => {
     const { id } = useParams();
@@ -21,6 +23,8 @@ const OrderTrackingPage = () => {
     const [paymentSelection, setPaymentSelection] = useState('full'); // Default safe, will adjust in effect
     const [error, setError] = useState('');
     const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+    const [isCancelling, setIsCancelling] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editFormData, setEditFormData] = useState({ deliveryDate: '', address: '', specialNotes: '' });
 
@@ -174,27 +178,17 @@ const OrderTrackingPage = () => {
 
     // Actions
     const handleCancel = async () => {
-        // Date Logic Check (Reuse logic or copy it)
-        const deliveryDate = new Date(order.details?.deliveryDate || order.deliveryDate);
-        const today = new Date();
-        deliveryDate.setHours(0, 0, 0, 0);
-        today.setHours(0, 0, 0, 0);
-        const diffDays = Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24));
-
-        if (diffDays < 3) {
-            alert(`Orders can only be edited or cancelled at least 3 days before the delivery date.\nDays remaining: ${diffDays}`);
-            return;
-        }
-
-        if (!window.confirm("Are you sure you want to cancel?")) return;
+        setIsCancelling(true);
         try {
-            const token = localStorage.getItem('token');
-            await api.delete(`/orders/${order.id}`);
-            alert("Order cancelled!");
+            await api.put(`/orders/${order.id}/cancel`);
+            toast.success('Order cancelled successfully.');
             navigate('/orders');
         } catch (e) {
             console.error(e);
-            alert("Failed to cancel order");
+            toast.error(e.response?.data?.error || 'Failed to cancel order.');
+        } finally {
+            setIsCancelling(false);
+            setIsCancelModalOpen(false);
         }
     };
 
@@ -330,7 +324,19 @@ const OrderTrackingPage = () => {
     const canEditOrCancel = order && allowedEditStatuses.includes(order.status);
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans pb-12">
+        <div className="min-h-screen relative overflow-hidden bg-gray-50 font-sans pb-12">
+            {/* Background Image Overlay - Modern Subtle Branding */}
+            <div 
+                className="absolute inset-0 z-0 pointer-events-none opacity-[0.06]"
+                style={{ 
+                    backgroundImage: 'url(/assets/tracking_bg.jpg)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundAttachment: 'fixed'
+                }}
+            />
+
+            <div className="relative z-10">
             {/* Feedback Modal */}
             <FeedbackModal
                 open={isFeedbackOpen}
@@ -389,6 +395,49 @@ const OrderTrackingPage = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Cancel Order Confirmation Modal */}
+            {isCancelModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
+                        <div className="bg-red-500 p-6 text-white text-center">
+                            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <XCircle className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-xl font-bold">Cancel Order?</h3>
+                            <p className="opacity-90 text-sm mt-1">This action cannot be undone.</p>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                <p className="text-xs font-black text-amber-800 uppercase tracking-wide mb-1">⚠️ No Refund Policy</p>
+                                <p className="text-sm text-amber-700 leading-relaxed">
+                                    Cancellations are <strong>only allowed before any payment is made.</strong> Once a payment slip is uploaded, orders cannot be cancelled. There are <strong>no refunds</strong> for this service.
+                                </p>
+                            </div>
+                            <p className="text-sm text-gray-600 text-center">
+                                Are you sure you want to cancel <strong>Order #{order?.id}</strong>?
+                            </p>
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCancelModalOpen(false)}
+                                    disabled={isCancelling}
+                                    className="flex-1 py-3 text-sm font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition"
+                                >
+                                    Keep Order
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleCancel}
+                                    disabled={isCancelling}
+                                    className="flex-1 py-3 text-sm font-bold text-white bg-red-500 rounded-xl hover:bg-red-600 transition shadow-lg shadow-red-200 disabled:opacity-50"
+                                >
+                                    {isCancelling ? 'Cancelling...' : 'Yes, Cancel'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -791,7 +840,8 @@ const OrderTrackingPage = () => {
                 </div>
             </div>
         </div>
-    );
+    </div>
+);
 };
 
 export default OrderTrackingPage;

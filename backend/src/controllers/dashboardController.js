@@ -19,11 +19,7 @@ exports.getStats = async (req, res) => {
 
         const inDelivery = await prisma.order.count({
             where: {
-                status: 'ready',
-                deliveryDate: {
-                    gte: startOfDay,
-                    lte: endOfDay
-                }
+                status: { in: ['READY', 'OUT_FOR_DELIVERY'] }
             }
         });
 
@@ -31,35 +27,59 @@ exports.getStats = async (req, res) => {
             where: { status: 'DELIVERED' }
         });
 
-        const orderRevenueAgg = await prisma.order.aggregate({
-            _sum: { total: true },
+        const newOrdersCount = await prisma.order.count({
+            where: { status: 'NEW' }
+        });
+
+        // 🍰 To-Do Logic: Count cakes to bake today based on Delivery Date
+        const ordersToBakeToday = await prisma.order.findMany({
+            where: {
+                status: { in: ['CONFIRMED', 'PREPARING'] },
+                deliveryDate: {
+                    gte: startOfDay,
+                    lte: endOfDay
+                }
+            },
+            include: { items: true }
+        });
+
+        let cakesToBakeToday = 0;
+        ordersToBakeToday.forEach(order => {
+            order.items.forEach(item => {
+                cakesToBakeToday += item.quantity;
+            });
+        });
+
+        // As per user request: "Net balance of the business" (Income - Expenses)
+        const incomeAgg = await prisma.transaction.aggregate({
+            _sum: { amount: true },
             where: { 
-                status: 'DELIVERED',
-                paymentStatus: 'PAID'
+                type: 'INCOME',
+                OR: [
+                    { orderId: null },
+                    { order: { status: { not: 'CANCELLED' } } }
+                ]
             }
         });
 
-        // Safely fetch transaction revenue
-        let transactionRevenue = 0;
-        try {
-            const transactionRevenueAgg = await prisma.transaction.aggregate({
-                _sum: { amount: true },
-                where: { type: 'INCOME' }
-            });
-            transactionRevenue = transactionRevenueAgg._sum.amount || 0;
-        } catch (txnError) {
-            console.warn('[Dashboard] Transaction aggregation failed, defaulting to 0:', txnError.message);
-        }
+        const expenseAgg = await prisma.transaction.aggregate({
+            _sum: { amount: true },
+            where: { type: 'EXPENSE' }
+        });
 
-        // Calculate total revenue from results
-        // As per user request: "Total revenue means the total amount of order prices which is payment completed (PAID) and delivered (DELIVERED)"
-        const totalRevenue = Number(orderRevenueAgg._sum.total || 0);
+        const totalIncome = Number(incomeAgg._sum.amount || 0);
+        const totalExpenses = Number(expenseAgg._sum.amount || 0);
+        const netBalance = totalIncome - totalExpenses;
 
         res.json({
             totalOrders,
             inDelivery,
             completed,
-            totalRevenue: totalRevenue
+            totalRevenue: totalIncome,
+            netBalance: netBalance,
+            newOrdersCount,
+            cakesToBakeToday,
+            ordersToBakeToday: ordersToBakeToday.length
         });
 
     } catch (error) {
@@ -113,6 +133,7 @@ exports.getRecentOrders = async (req, res) => {
             isCustom: !!order.customOrder,
             isBulk: !!order.bulkOrder,
             orderType: order.orderType,
+            deliveryDate: order.deliveryDate,
             bulkInfo: order.bulkOrder ? { event: order.bulkOrder.eventName, org: order.bulkOrder.organization } : null
         }));
 
@@ -182,14 +203,16 @@ exports.getMonthlyAnalysis = async (req, res) => {
             if (order.customOrder) type = 'Custom';
             else if (order.bulkOrder) type = 'Bulk';
 
-            // Counts
-            if (type === 'Standard') standardCount++;
-            else if (type === 'Custom') customCount++;
-            else if (type === 'Bulk') bulkCount++;
+            // Counts (only if not cancelled)
+            if (order.status !== 'CANCELLED') {
+                if (type === 'Standard') standardCount++;
+                else if (type === 'Custom') customCount++;
+                else if (type === 'Bulk') bulkCount++;
 
-            // Revenue (only if PAID and DELIVERED as per user definition)
-            if (order.status === 'DELIVERED' && order.paymentStatus === 'PAID') {
-                totalRevenue += Number(order.total);
+                // Revenue (only if PAID and DELIVERED as per user definition)
+                if (order.status === 'DELIVERED' && order.paymentStatus === 'PAID') {
+                    totalRevenue += Number(order.total);
+                }
             }
 
             // Always track item sales for analytics if not cancelled
@@ -220,10 +243,16 @@ exports.getMonthlyAnalysis = async (req, res) => {
                 paymentStatus: order.paymentStatus,
                 status: order.status,
                 total: Number(order.total),
+                bankSlip: order.bankSlip,
+                advanceStatus: order.advanceStatus,
+                paymentMethod: order.paymentMethod,
+                specialNotes: order.specialNotes,
+                address: order.address || order.delivery?.address || '',
                 items: order.items.map(item => ({
                     id: item.id,
                     name: item.name || item.variant?.cake?.name || 'Unknown Item',
                     quantity: item.quantity,
+                    price: Number(item.unitPrice),
                     variant: item.variant
                 }))
             };

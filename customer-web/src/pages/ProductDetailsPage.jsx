@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Minus, Plus, Heart, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { Minus, Plus, Heart, ShoppingBag, ArrowLeft, CheckCircle, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import api from '../services/api';
+import toast from 'react-hot-toast';
 
 
 const ProductDetailsPage = () => {
@@ -22,6 +23,16 @@ const ProductDetailsPage = () => {
     const [instructions, setInstructions] = useState('');
     const [currentPrice, setCurrentPrice] = useState(0);
     const [isWishlisted, setIsWishlisted] = useState(false);
+    
+    // Popup state
+    const [showCartPopup, setShowCartPopup] = useState(false);
+
+    useEffect(() => {
+        if (product) {
+            const savedWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+            setIsWishlisted(savedWishlist.some(item => String(item.id) === String(product.id)));
+        }
+    }, [product]);
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -152,12 +163,13 @@ const ProductDetailsPage = () => {
 
         addToCart(product, variant, quantity, instructions);
 
-        // Feedback to user
-        alert("Delicious choice! Added to your cart.");
+        // Feedback to user (Popup instead of alert/redirect)
+        setShowCartPopup(true);
 
+        // Auto-close after 5 seconds
         setTimeout(() => {
-            navigate('/cart');
-        }, 100);
+            setShowCartPopup(false);
+        }, 5000);
     };
 
     if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -221,7 +233,7 @@ const ProductDetailsPage = () => {
                                             : 'bg-white border border-gray-200 text-gray-700 hover:border-pink-300'
                                             }`}
                                     >
-                                        {f.label} {f.priceMod > 0 && `(+Rs.${f.priceMod})`}
+                                        {f.label}
                                     </button>
                                 ))}
                             </div>
@@ -240,7 +252,7 @@ const ProductDetailsPage = () => {
                                             : 'bg-white border border-gray-200 text-gray-700 hover:border-pink-300'
                                             }`}
                                     >
-                                        {s.label} {s.priceMod > 0 && `(+Rs.${s.priceMod})`}
+                                        {s.label}
                                     </button>
                                 ))}
                             </div>
@@ -294,8 +306,20 @@ const ProductDetailsPage = () => {
                                     </button>
                                     <button
                                         onClick={() => {
-                                            setIsWishlisted(!isWishlisted);
-                                            alert(isWishlisted ? "Removed from Wishlist" : "Added to Wishlist");
+                                            const savedWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+                                            if (isWishlisted) {
+                                                const newWishlist = savedWishlist.filter(item => String(item.id) !== String(product.id));
+                                                localStorage.setItem('wishlist', JSON.stringify(newWishlist));
+                                                setIsWishlisted(false);
+                                                window.dispatchEvent(new Event('wishlist-updated'));
+                                                toast.success("Removed from Wishlist");
+                                            } else {
+                                                savedWishlist.push({ id: product.id, name: product.name, image: product.image, price: currentPrice || product.basePrice });
+                                                localStorage.setItem('wishlist', JSON.stringify(savedWishlist));
+                                                setIsWishlisted(true);
+                                                window.dispatchEvent(new Event('wishlist-updated'));
+                                                toast.success("Added to Wishlist");
+                                            }
                                         }}
                                         className={`px-4 py-3.5 rounded-xl border font-bold transition-colors flex items-center justify-center min-w-[60px] ${isWishlisted ? 'bg-pink-50 border-pink-200 text-pink-600' : 'border-pink-200 text-pink-600 hover:bg-pink-50'}`}
                                     >
@@ -308,6 +332,23 @@ const ProductDetailsPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Success Toast Notification */}
+            {showCartPopup && (
+                <div 
+                    className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white rounded-full shadow-lg px-6 py-3 transform transition-all duration-300 flex items-center gap-3"
+                    style={{ animation: 'slideUp 0.3s ease-out' }}
+                >
+                    <style>{`
+                        @keyframes slideUp {
+                            from { transform: translate(-50%, 100%); opacity: 0; }
+                            to { transform: translate(-50%, 0); opacity: 1; }
+                        }
+                    `}</style>
+                    <CheckCircle className="text-green-400 h-5 w-5" />
+                    <span className="text-sm font-medium">Item added to your cart successfully.</span>
+                </div>
+            )}
         </div>
     );
 };

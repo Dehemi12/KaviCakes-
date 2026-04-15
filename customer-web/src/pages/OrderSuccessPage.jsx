@@ -7,6 +7,18 @@ const OrderSuccessPage = () => {
     const navigate = useNavigate();
     const order = location.state?.order;
 
+    // Safe date formatter: parses YYYY-MM-DD without timezone shifting
+    const formatDate = (rawDate) => {
+        if (!rawDate) return '—';
+        // Strip time portion if ISO string (e.g. 2026-04-13T00:00:00.000Z → 2026-04-13)
+        const datePart = typeof rawDate === 'string' ? rawDate.split('T')[0] : rawDate;
+        const [year, month, day] = datePart.split('-').map(Number);
+        if (!year || !month || !day) return rawDate;
+        // Build with UTC parts to avoid timezone shifting
+        const d = new Date(Date.UTC(year, month - 1, day));
+        return d.toLocaleDateString('en-US', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' });
+    };
+
     // Use mock data if no order state is present (for development/testing)
     const orderDetails = order || {
         id: 'ORD-MOCK-001',
@@ -45,7 +57,7 @@ const OrderSuccessPage = () => {
                             <div>
                                 <p className="text-gray-500 mb-1">Delivery Date</p>
                                 <p className="font-bold text-gray-900">
-                                    {orderDetails.details?.deliveryDate || orderDetails.deliveryDate}
+                                    {formatDate(orderDetails.details?.deliveryDate || orderDetails.deliveryDate)}
                                 </p>
                             </div>
                             <div>
@@ -85,6 +97,7 @@ const OrderSuccessPage = () => {
                                 <div className="flex gap-2">
                                     <input
                                         type="file"
+                                        accept=".jpg,.jpeg"
                                         className="block w-full text-sm text-blue-500
                                           file:mr-4 file:py-2 file:px-4
                                           file:rounded-full file:border-0
@@ -97,7 +110,8 @@ const OrderSuccessPage = () => {
                                         Upload
                                     </button>
                                 </div>
-                                <p className="text-[10px] text-blue-400 mt-2">* You can also upload this later from the Order Tracking page.</p>
+                                <p className="text-[10px] text-blue-500 mt-2 font-bold animate-pulse">📸 Please upload a clear JPG image of your slip.</p>
+                                <p className="text-[10px] text-blue-400 mt-1">* You can also upload this later from the Order Tracking page.</p>
                             </div>
                         </div>
                     )}

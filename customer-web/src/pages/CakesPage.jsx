@@ -13,7 +13,7 @@ const CakesPage = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [category, setCategory] = useState(categoryParam);
-    const [priceRange, setPriceRange] = useState(5000);
+    const [priceRange, setPriceRange] = useState(20000);
     const [sortBy, setSortBy] = useState('featured');
     const [categories, setCategories] = useState(['All']);
 
@@ -134,8 +134,8 @@ const CakesPage = () => {
                             <input
                                 type="range"
                                 min="0"
-                                max="10000"
-                                step="100"
+                                max="20000"
+                                step="500"
                                 value={priceRange}
                                 onChange={(e) => setPriceRange(Number(e.target.value))}
                                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-600"
@@ -206,7 +206,7 @@ const CakesPage = () => {
                                     </div>
                                     <h3 className="text-lg font-medium text-gray-900">No cakes found</h3>
                                     <p className="text-gray-500 mt-1 max-w-sm">Try adjusting your search or filter to find what you're looking for.</p>
-                                    <button onClick={() => { setCategory('All'); setPriceRange(10000); }} className="mt-4 text-pink-600 font-medium hover:underline">Clear all filters</button>
+                                    <button onClick={() => { setCategory('All'); setPriceRange(20000); }} className="mt-4 text-pink-600 font-medium hover:underline">Clear all filters</button>
                                 </div>
                             )}
                         </>

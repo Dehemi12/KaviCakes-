@@ -1,0 +1,8 @@
+getNotifications
+getCustomerNotifications
+getTemplates
+createTemplate
+sendManualNotification
+approvePayment
+markAsRead
+sendIndividualNotification

@@ -1,4 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
+const { sendOrderConfirmation } = require('../utils/mailer');
+const { sendTemplateEmail } = require('../utils/emailService');
 const prisma = new PrismaClient();
 
 // POST Create Order
@@ -43,26 +45,32 @@ exports.createOrder = async (req, res) => {
                     let calculatedPrice = 0;
 
                     // Fetch components prices
+                    let catBase = 0;
+                    let sizeMultiplier = 1; // Default to 1x
+                    let flavorPremium = 0;
+
                     if (categoryId) {
                         const cat = await prisma.cakeCategory.findUnique({ where: { id: parseInt(categoryId) } });
-                        if (cat) calculatedPrice += parseFloat(cat.basePrice);
+                        if (cat) catBase = parseFloat(cat.basePrice);
                     }
                     if (sizeId) {
                         const size = await prisma.cakeSize.findUnique({ where: { id: parseInt(sizeId) } });
-                        if (size) calculatedPrice += parseFloat(size.price);
-                    }
-                    if (shapeId) {
-                        const shape = await prisma.cakeShape.findUnique({ where: { id: parseInt(shapeId) } });
-                        if (shape) calculatedPrice += parseFloat(shape.price);
+                        if (size) {
+                            // Logic: If size price is > 10, treat as additive. If < 10, treat as multiplier.
+                            // OR just trust the admin setting. Let's assume weights/multipliers are stored here.
+                            sizeMultiplier = parseFloat(size.price) || 1;
+                        }
                     }
                     if (flavorId) {
                         const flavor = await prisma.cakeFlavor.findUnique({ where: { id: parseInt(flavorId) } });
-                        if (flavor) calculatedPrice += parseFloat(flavor.price);
+                        if (flavor) flavorPremium = parseFloat(flavor.price);
                     }
 
-                    // Hardcoded Decoration Prices (Sync with Frontend until DB table exists)
+                    // PROPER TECHNIQUE: (Category Base * Size Multiplier) + Flavor Premium
+                    calculatedPrice = (catBase * sizeMultiplier) + flavorPremium;
+
+                    // Support for any surviving legacy decorations (optional)
                     const DECORATIONS = { 'None': 0, 'Flowers': 500, 'Topper': 300, 'Gold Leaf': 600 };
-                    // item.customDetails spread includes topDecoration from frontend formData
                     const decorationName = item.customDetails.topDecoration || 'None';
                     calculatedPrice += (DECORATIONS[decorationName] || 0);
 
@@ -86,45 +94,25 @@ exports.createOrder = async (req, res) => {
 
                 // --- BULK ORDER PRICE AUTHENTICATION ---
                 if (item.isBulk && item.bulkDetails) {
-                    const { cakeType, quantity: bulkQty, eventName, organization, instructions } = item.bulkDetails;
-                    const qty = parseInt(bulkQty) || 0;
+                    const qty = parseInt(item.bulkDetails.qty_estimate || item.bulkDetails.quantity) || 0;
 
                     // Enforce Minimum Quantity Rule
                     if (qty < 50) {
-                        throw new Error(`Bulk order quantity for ${cakeType} must be at least 50. Received: ${qty}`);
+                        throw new Error(`Bulk order quantity must be at least 50. Received: ${qty}`);
                     }
 
-                    // Fetch Bulk Pricing Rule
-                    const pricingRule = await prisma.bulkPricing.findUnique({
-                        where: { categoryLabel: cakeType }
-                    });
-
-                    let calculatedTotal = 0;
-
-                    if (pricingRule) {
-                        const effectivePrice = (qty >= pricingRule.bulkThreshold)
-                            ? parseFloat(pricingRule.bulkPrice)
-                            : parseFloat(pricingRule.basePrice);
-
-                        calculatedTotal = effectivePrice * qty;
-                    } else {
-                        // Fallback Backend Logic if rule missing (matching frontend fallback)
-                        const effectivePrice = (qty >= 100) ? 220 : 250;
-                        calculatedTotal = effectivePrice * qty;
-                    }
-
-                    if (calculatedTotal > 0) {
-                        unitPrice = calculatedTotal; // For Bulk, ItemQuantity is 1, UnitPrice is Total for the batch
-                    }
+                    // For dynamic bulk orders, we trust the calculated frontend unitPrice 
+                    // since it's built dynamically from Admin-configured FormFields.
+                    // The cart bundle itself acts as quantity=1, with item.price = Total.
+                    unitPrice = parseFloat(item.price || 0);
 
                     // Capture details for BulkOrder table
-                    // We attach this to the request scope to use later in creation
                     if (!req.bulkOrderDetails) {
                         req.bulkOrderDetails = {
-                            eventName: eventName,
-                            organization: organization,
+                            eventName: item.bulkDetails.event_name || item.bulkDetails.eventName || 'Dynamic Bulk Event',
+                            organization: item.bulkDetails.organization || 'Various',
                             quantity: qty,
-                            notes: instructions
+                            notes: item.bulkDetails.special_instructions || item.bulkDetails.instructions || ''
                         };
                     }
                 }
@@ -148,8 +136,10 @@ exports.createOrder = async (req, res) => {
                     recipientName: details.name || req.user.name,
                     phoneNumber: details.phone,
                     address: details.address || '',
-                    deliveryMethod: details.method || 'Standard', // standard, express, etc.
-                    deliveryFee: parseFloat(deliveryFee || 0)
+                    deliveryMethod: details.method || 'Standard',
+                    distanceKm: details.distance ? parseFloat(details.distance) : null,
+                    deliveryFee: parseFloat(deliveryFee || 0),
+                    approximateDeliveryTime: details.deliveryTime || null
                 }
             } : undefined;
 
@@ -162,14 +152,31 @@ exports.createOrder = async (req, res) => {
             };
 
             // Recalculate Total strictly
-            const itemsTotal = orderItemsData.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
-            const calculatedTotal = itemsTotal + deliveryFeeVal - pointsUsed;
+            // Logic: Trust the frontend unitPrice for Standard items if it's passed 
+            // (since variants might have dynamic modifiers or specific pricing)
+            const itemsTotal = orderItemsData.reduce((acc, item) => {
+                const price = parseFloat(item.unitPrice || 0);
+                const qty = parseInt(item.quantity) || 1;
+                return acc + (price * qty);
+            }, 0);
+
+            const finalDeliveryFee = parseFloat(deliveryFeeVal || 0);
+            const rawOrderTotal = itemsTotal + finalDeliveryFee;
+
+            // RULE: Loyalty discount capped at 30% of order gross (matches frontend rule)
+            const LOYALTY_CAP_PERCENT = 0.30;
+            const maxAllowedDiscount = Math.floor(rawOrderTotal * LOYALTY_CAP_PERCENT);
+            const requestedDiscount = parseFloat(pointsUsed || 0);
+            const finalLoyaltyDiscount = Math.min(requestedDiscount, maxAllowedDiscount);
+
+            // Ensure total is never negative
+            const calculatedTotal = Math.max(0, rawOrderTotal - finalLoyaltyDiscount);
             const pointsEarned = Math.floor(itemsTotal / 100);
 
-            console.log("DEBUG LOYALTY:", {
-                discountRaw: discount,
-                pointsUsed,
+            console.log("DEBUG PRICING:", {
                 itemsTotal,
+                finalDeliveryFee,
+                finalLoyaltyDiscount,
                 calculatedTotal,
                 pointsEarned,
                 customerId
@@ -177,14 +184,16 @@ exports.createOrder = async (req, res) => {
 
             // --- PAYMENT LOGIC BASED ON USER INTENT ---
             const { paymentType, bankSlip } = req.body;
-            const isFull = paymentType === 'full' && (paymentMethod === 'ONLINE_PAYMENT' || paymentMethod === 'BANK_TRANSFER');
+            const isFull = paymentType === 'full' || paymentMethod === 'ONLINE_PAYMENT' || paymentMethod === 'BANK_TRANSFER';
 
-            let advanceAmount = 0;
-            let balanceAmount = calculatedTotal;
+            let startAdvanceAmount = 0;
+            let startBalanceAmount = calculatedTotal;
             let initialAdvanceStatus = 'PENDING';
 
             if (isFull) {
                 if (bankSlip) initialAdvanceStatus = 'UPLOADED_FULL';
+            } else if (paymentMethod === 'COD') {
+                if (bankSlip) initialAdvanceStatus = 'UPLOADED_ADVANCE';
             } else {
                 if (bankSlip) initialAdvanceStatus = 'UPLOADED_ADVANCE';
             }
@@ -201,8 +210,8 @@ exports.createOrder = async (req, res) => {
                     paymentMethod: paymentMethod || 'COD',
 
                     // Advance Payment Fields
-                    advanceAmount: advanceAmount,
-                    balanceAmount: balanceAmount,
+                    advanceAmount: startAdvanceAmount,
+                    balanceAmount: startBalanceAmount,
                     advanceStatus: initialAdvanceStatus,
                     bankSlip: bankSlip || null,
 
@@ -227,10 +236,18 @@ exports.createOrder = async (req, res) => {
             });
 
             // Update Customer Points
-            // Urgent Order Effect: Deduct 500 points extra
-            let totalPointsRedeemed = Math.floor(pointsUsed);
+            // Use the capped discount (not the uncapped request from frontend)
+            let totalPointsRedeemed = Math.floor(finalLoyaltyDiscount);
+            // Urgent Order Effect: Deduct 500 points extra as urgency fee
             if (orderType === 'URGENT') {
                 totalPointsRedeemed += 500;
+            }
+
+            // Safety guard: total points redeemed cannot exceed customer's current balance
+            const customerRecord = await prisma.customer.findUnique({ where: { id: customerId }, select: { loyaltyPoints: true } });
+            const currentBalance = customerRecord?.loyaltyPoints || 0;
+            if (totalPointsRedeemed > currentBalance) {
+                throw new Error(`Insufficient loyalty points. Required: ${totalPointsRedeemed}, Available: ${currentBalance}`);
             }
 
             if (pointsEarned > 0 || totalPointsRedeemed > 0) {
@@ -265,6 +282,42 @@ exports.createOrder = async (req, res) => {
             pointsEarned: result.pointsEarned
         });
 
+        // Trigger Immediate Notifications for the new order
+        const createdOrder = result.newOrder;
+        const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+        
+        if (customer) {
+            // 1. Send Order Placed Confirmation
+            sendTemplateEmail('ORDER_CONFIRMED', customer.email, {
+                '{customer_name}': customer.name,
+                '{order_id}': createdOrder.id,
+                '{delivery_date}': createdOrder.deliveryDate ? new Date(createdOrder.deliveryDate).toLocaleDateString() : 'your scheduled date'
+            }, createdOrder.id).catch(e => console.error('[OrderController:EmailError]', e));
+
+            // 2. If delivery is within 2 days, trigger payment reminder IMMEDIATELY
+            if (createdOrder.deliveryDate) {
+                const now = new Date();
+                const dDate = new Date(createdOrder.deliveryDate);
+                const diffTime = dDate - now;
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+                // If due tomorrow (diffDays <= 1.1), trigger payment reminder IMMEDIATELY
+                if (diffDays <= 1.1) {
+                    const isOnline = createdOrder.paymentMethod === 'ONLINE_PAYMENT' || createdOrder.paymentMethod === 'BANK_TRANSFER';
+                    const needsPayment = isOnline ? createdOrder.paymentStatus !== 'PAID' : createdOrder.advanceStatus !== 'APPROVED';
+                    
+                    if (needsPayment) {
+                        const templateType = isOnline ? 'FULL_PAYMENT_REQUIRED' : 'ADVANCE_REQUIRED';
+                        console.log(`[OrderController] Triggering immediate urgent ${templateType} for Order #${createdOrder.id}`);
+                        sendTemplateEmail(templateType, customer.email, {
+                            '{customer_name}': customer.name,
+                            '{order_id}': createdOrder.id,
+                            '{delivery_date}': dDate.toLocaleDateString()
+                        }, createdOrder.id).catch(e => console.error('[OrderController:EmailError]', e));
+                    }
+                }
+            }
+        }
     } catch (error) {
         console.error('[OrderController:createOrder] Error:', error);
         res.status(500).json({ error: 'Failed to create order: ' + error.message });
@@ -464,13 +517,16 @@ exports.updateOrder = async (req, res) => {
         const customerId = req.user.id;
 
         const result = await prisma.$transaction(async (prisma) => {
-            // 1. Check if order exists and belongs to user
             const existingOrder = await prisma.order.findUnique({
                 where: { id: orderId },
                 include: { customOrder: true, bulkOrder: true }
             });
 
             if (!existingOrder) throw new Error("Order not found");
+            
+            if (existingOrder.status === 'CANCELLED') {
+                throw new Error("Cannot edit a cancelled order.");
+            }
             if (String(existingOrder.customerId) !== String(customerId) && req.user.role !== 'ADMIN') {
                 throw new Error(`Unauthorized to edit this order. User: ${customerId}, Order Owner: ${existingOrder.customerId}`);
             }
@@ -528,7 +584,9 @@ exports.updateOrder = async (req, res) => {
             // Payment might be kept or updated. Let's update payment intent if needed.
 
             const updateData = {
-                specialNotes: specialNotes || '',
+                specialNotes: existingOrder.specialNotes && specialNotes 
+                    ? `${existingOrder.specialNotes}\n[Customer Update]: ${specialNotes}` 
+                    : (specialNotes || existingOrder.specialNotes || ''),
                 isEdited: true,
                 delivery: details ? {
                     create: {
@@ -536,14 +594,17 @@ exports.updateOrder = async (req, res) => {
                         phoneNumber: details.phone,
                         address: details.address || '',
                         deliveryMethod: details.method || 'Standard',
-                        deliveryFee: parseFloat(deliveryFee || 0)
+                        deliveryFee: parseFloat(deliveryFee || 0),
+                        approximateDeliveryTime: details.deliveryTime || null
                     }
                 } : undefined,
                 deliveryDate: (details && details.deliveryDate) ? new Date(details.deliveryDate) : existingOrder.deliveryDate
             };
 
             if (!req.body.detailsOnly) {
-                updateData.total = parseFloat(total);
+                const newTotal = parseFloat(total);
+                updateData.total = newTotal;
+                updateData.balanceAmount = Math.max(0, newTotal - parseFloat(existingOrder.advanceAmount || 0));
                 updateData.loyaltyDiscount = parseFloat(discount || 0);
                 updateData.paymentMethod = paymentMethod || 'COD';
 
@@ -560,7 +621,7 @@ exports.updateOrder = async (req, res) => {
             const updatedOrder = await prisma.order.update({
                 where: { id: orderId },
                 data: updateData,
-                include: { items: true, delivery: true }
+                include: { items: true, delivery: true, customer: true }
             });
 
             return updatedOrder;
@@ -568,6 +629,28 @@ exports.updateOrder = async (req, res) => {
 
         res.json({ message: 'Order updated successfully', order: result });
 
+        // Trigger Notification if now within 2 days due to update
+        if (result.customer && result.deliveryDate) {
+            const now = new Date();
+            const dDate = new Date(result.deliveryDate);
+            const diffTime = dDate - now;
+            const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+            if (diffDays <= 2.1) {
+                const isOnline = result.paymentMethod === 'ONLINE_PAYMENT' || result.paymentMethod === 'BANK_TRANSFER';
+                const needsPayment = isOnline ? result.paymentStatus !== 'PAID' : result.advanceStatus !== 'APPROVED';
+                
+                if (needsPayment) {
+                    const templateType = isOnline ? 'FULL_PAYMENT_REQUIRED' : 'ADVANCE_REQUIRED';
+                    console.log(`[OrderController] Triggering immediate urgent ${templateType} after update for Order #${result.id}`);
+                    sendTemplateEmail(templateType, result.customer.email, {
+                        '{customer_name}': result.customer.name,
+                        '{order_id}': result.id,
+                        '{delivery_date}': dDate.toLocaleDateString()
+                    }, result.id).catch(e => console.error('[OrderController:EmailError]', e));
+                }
+            }
+        }
     } catch (error) {
         console.error('[OrderController:updateOrder] Error:', error);
         res.status(500).json({ error: 'Failed to update order: ' + error.message });
@@ -587,8 +670,15 @@ exports.updateOrderStatus = async (req, res) => {
 
         const orderId = parseInt(id);
 
-        const order = await prisma.order.findUnique({ where: { id: orderId } });
+        const order = await prisma.order.findUnique({
+            where: { id: orderId },
+            include: { customer: true }
+        });
         if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        if (order.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'Cannot update status of a cancelled order.' });
+        }
 
         // BLOCKER: Strict Payment Rules for entering PREPARING stage
         if (status === 'PREPARING') {
@@ -617,6 +707,57 @@ exports.updateOrderStatus = async (req, res) => {
             data: { status }
         });
 
+        // Trigger Notification Email if status moved to CONFIRMED
+        if (status === 'CONFIRMED' && order.customer) {
+            // 1. Send Order Confirmed Confirmation
+            sendTemplateEmail('ORDER_CONFIRMED', order.customer.email, {
+                '{customer_name}': order.customer.name,
+                '{order_id}': order.id,
+                '{delivery_date}': order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'your scheduled date'
+            }, order.id);
+
+            // 2. If delivery is within 2 days, and payment is pending, trigger payment reminder as well
+            if (order.deliveryDate) {
+                const now = new Date();
+                const dDate = new Date(order.deliveryDate);
+                const diffTime = dDate - now;
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+                // If due tomorrow (diffDays <= 1.1), trigger payment reminder IMMEDIATELY
+                if (diffDays <= 1.1) {
+                    const isOnline = order.paymentMethod === 'ONLINE_PAYMENT' || order.paymentMethod === 'BANK_TRANSFER';
+                    const needsPayment = isOnline ? order.paymentStatus !== 'PAID' : order.advanceStatus !== 'APPROVED';
+                    
+                    if (needsPayment) {
+                        const templateType = isOnline ? 'FULL_PAYMENT_REQUIRED' : 'ADVANCE_REQUIRED';
+                        console.log(`[OrderController] Triggering urgent ${templateType} upon confirmation for Order #${order.id}`);
+                        sendTemplateEmail(templateType, order.customer.email, {
+                            '{customer_name}': order.customer.name,
+                            '{order_id}': order.id,
+                            '{delivery_date}': dDate.toLocaleDateString()
+                        }, order.id).catch(e => console.error('[OrderController:EmailError]', e));
+                    }
+                }
+            }
+        }
+
+        // REMOVED: Automatic Ready email trigger as requested
+
+        if (status === 'DELIVERED' && order.customer) {
+            sendTemplateEmail('DELIVERED', order.customer.email, {
+                '{customer_name}': order.customer.name,
+                '{order_id}': order.id
+            }, order.id);
+        }
+
+        if (status === 'CANCELLED' && order.customer) {
+            console.log(`[OrderController] Sending Order Rejected email to ${order.customer.email} for Order #${order.id}`);
+            sendTemplateEmail('ORDER_REJECTED', order.customer.email, {
+                '{customer_name}': order.customer.name,
+                '{order_id}': order.id
+            }, order.id).catch(e => console.error('[OrderController:RejectEmailError]', e));
+        }
+
         res.json(updatedOrder);
     } catch (error) {
         console.error('[OrderController:updateOrderStatus] Error:', error);
@@ -628,23 +769,60 @@ exports.updateOrderStatus = async (req, res) => {
 exports.updatePaymentStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { paymentStatus } = req.body;
+        const { paymentStatus, total, note } = req.body;
+        const orderId = parseInt(id);
 
-        const validStatuses = ['PENDING', 'PAID', 'REFUNDED'];
-        if (!validStatuses.includes(paymentStatus)) {
-            return res.status(400).json({ error: 'Invalid payment status' });
+        const order = await prisma.order.findUnique({ where: { id: orderId } });
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        if (order.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'Cannot update a cancelled order.' });
+        }
+
+        const updateData = {};
+
+        // Case 1: Admin is adjusting the price/total
+        if (total !== undefined) {
+            const newTotal = parseFloat(total);
+            if (isNaN(newTotal) || newTotal < 0) {
+                return res.status(400).json({ error: 'Invalid total amount' });
+            }
+            const currentAdvance = parseFloat(order.advanceAmount || 0);
+            updateData.total = newTotal;
+            // Recalculate balance based on new total
+            updateData.balanceAmount = Math.max(0, newTotal - currentAdvance);
+
+            // Log the adjustment to specialNotes
+            const adjNote = note ? `[Price Adjusted by Admin: Rs.${newTotal} — ${note}]` : `[Price Adjusted by Admin: Rs.${newTotal}]`;
+            updateData.specialNotes = order.specialNotes
+                ? `${order.specialNotes}\n${adjNote}`
+                : adjNote;
+        }
+
+        // Case 2: Admin is changing payment status
+        if (paymentStatus) {
+            const validStatuses = ['PENDING', 'PAID', 'REFUNDED', 'ADVANCE_RECEIVED'];
+            if (!validStatuses.includes(paymentStatus)) {
+                return res.status(400).json({ error: 'Invalid payment status' });
+            }
+            updateData.paymentStatus = paymentStatus;
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ error: 'No valid fields to update' });
         }
 
         const updatedOrder = await prisma.order.update({
-            where: { id: parseInt(id) },
-            data: { paymentStatus }
+            where: { id: orderId },
+            data: updateData
         });
 
-        // Also update the linked Payment record if it exists
-        await prisma.payment.updateMany({
-            where: { orderId: parseInt(id) },
-            data: { paymentStatus: paymentStatus }
-        });
+        if (paymentStatus) {
+            await prisma.payment.updateMany({
+                where: { orderId },
+                data: { paymentStatus }
+            });
+        }
 
         res.json(updatedOrder);
     } catch (error) {
@@ -652,6 +830,7 @@ exports.updatePaymentStatus = async (req, res) => {
         res.status(500).json({ error: 'Failed to update payment status' });
     }
 };
+
 
 // DELETE Order (Cancel)
 exports.deleteOrder = async (req, res) => {
@@ -718,6 +897,7 @@ exports.deleteOrder = async (req, res) => {
             await prisma.customOrder.deleteMany({ where: { orderId } });
             await prisma.bulkOrder.deleteMany({ where: { orderId } });
             await prisma.itemRating.deleteMany({ where: { orderItem: { orderId } } });
+            await prisma.transaction.deleteMany({ where: { orderId } });
 
             // Delete order
             await prisma.order.delete({ where: { id: orderId } });
@@ -734,6 +914,11 @@ exports.deleteOrder = async (req, res) => {
 exports.sendInvoice = async (req, res) => {
     try {
         const { id } = req.params;
+        const order = await prisma.order.findUnique({ where: { id: parseInt(id) } });
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        if (order.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'Cannot send invoice for a cancelled order.' });
+        }
         console.log(`Sending invoice for Order #${id} to customer...`);
         await new Promise(resolve => setTimeout(resolve, 1000));
         res.json({ message: 'Invoice sent successfully!' });
@@ -749,12 +934,20 @@ exports.uploadBankSlip = async (req, res) => {
     try {
         const { id } = req.params;
         const orderId = parseInt(id);
-
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded. Please select an image or PDF.' });
         }
 
-        const bankSlipUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+        const url = req.originalUrl || '';
+        let folder;
+        if (url.includes('/upload-slip')) {
+            folder = 'slips';
+        } else if (url.includes('/upload/site') || url.includes('/content')) {
+            folder = 'site';
+        } else {
+            folder = 'cakes'; // default: cake images
+        }
+        const bankSlipUrl = `${req.protocol}://${req.get('host')}/uploads/${folder}/${req.file.filename}`;
 
         const order = await prisma.order.findUnique({ where: { id: orderId } });
         if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -785,8 +978,19 @@ exports.uploadBankSlip = async (req, res) => {
                     if (order.balanceAmount <= 0) return 'UPLOADED_FULL';
                     return 'UPLOADED_ADVANCE';
                 })()
-            }
+            },
+            include: { customer: true }
         });
+
+        // Send email to customer
+        if (updated.customer) {
+            const { sendTemplateEmail } = require('../utils/emailService');
+            sendTemplateEmail('BANK_SLIP_RECEIVED', updated.customer.email, {
+                '{customer_name}': updated.customer.name,
+                '{order_id}': updated.id,
+                '{delivery_date}': updated.deliveryDate ? new Date(updated.deliveryDate).toLocaleDateString() : 'your scheduled date'
+            }, updated.id).catch(e => console.error('Failed to send BANK_SLIP_RECEIVED email', e));
+        }
 
         res.json({ message: 'Payment slip uploaded successfully. Waiting for admin approval.', order: updated });
 
@@ -802,8 +1006,15 @@ exports.approvePayment = async (req, res) => {
         const { id } = req.params;
         const orderId = parseInt(id);
 
-        const order = await prisma.order.findUnique({ where: { id: orderId } });
+        const order = await prisma.order.findUnique({ 
+            where: { id: orderId },
+            include: { payment: true } 
+        });
         if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        if (order.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'Cannot approve payment for a cancelled order.' });
+        }
 
         if (order.paymentMethod !== 'ONLINE_PAYMENT' && order.paymentMethod !== 'BANK_TRANSFER' && order.paymentMethod !== 'COD') {
             return res.status(400).json({ error: 'Approval only for supported payment methods (Online, Bank Transfer, COD)' });
@@ -821,12 +1032,15 @@ exports.approvePayment = async (req, res) => {
         }
 
         const total = parseFloat(order.total || 0);
-        const advanceToPay = total * 0.30;
+        // Bulk orders require 50% advance, regular orders 30%
+        const isBulk = order.orderType === 'BULK' || order.orderType === 'CUSTOM'; // Custom/Bulk prioritized
+        const advancePercentage = isBulk ? 0.50 : 0.30;
+        const advanceToPay = total * advancePercentage;
+        
         const approvedAmount = fullPayment ? total : advanceToPay;
 
-        // Logic: If status is NEW or ORDER_PLACED, auto-move to CONFIRMED (Production Queue)
-        const newStatus = ['NEW', 'ORDER_PLACED'].includes(order.status) ? 'CONFIRMED' : undefined;
-
+        // NOTE: Order status is NOT changed here. Payment and order status are independent.
+        // Admin must manually update order status in the Orders page.
         const updated = await prisma.order.update({
             where: { id: orderId },
             data: {
@@ -834,7 +1048,6 @@ exports.approvePayment = async (req, res) => {
                 paymentStatus: fullPayment ? 'PAID' : 'ADVANCE_RECEIVED',
                 advanceAmount: approvedAmount,
                 balanceAmount: total - approvedAmount,
-                ...(newStatus && { status: newStatus })
             }
         });
 
@@ -852,6 +1065,19 @@ exports.approvePayment = async (req, res) => {
             }
         });
 
+        // Fetch customer to send email
+        const customerData = await prisma.customer.findUnique({ where: { id: order.customerId } });
+        if (customerData) {
+            sendTemplateEmail('PAYMENT_CONFIRMED', customerData.email, {
+                '{customer_name}': customerData.name,
+                '{order_id}': order.id,
+                '{total_amount}': `Rs.${total}`,
+                '{advance_amount}': `Rs.${approvedAmount}`,
+                '{balance_amount}': `Rs.${total - approvedAmount}`,
+                '{delivery_date}': order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'your scheduled date'
+            }, order.id);
+        }
+
         console.log(`[OrderController] Payment Approved. Status: ${updated.status}, Amount: ${approvedAmount}`);
 
         res.json({ message: `Payment approved (${fullPayment ? 'Full' : 'Advance'}).`, order: updated });
@@ -862,11 +1088,52 @@ exports.approvePayment = async (req, res) => {
     }
 };
 
+exports.rejectPaymentSlip = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const orderId = parseInt(id);
+
+        const order = await prisma.order.findUnique({ where: { id: orderId } });
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        if (order.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'Cannot reject payment slip for a cancelled order.' });
+        }
+
+        const updated = await prisma.order.update({
+            where: { id: orderId },
+            data: {
+                advanceStatus: 'REJECTED',
+                bankSlip: null 
+            },
+            include: { customer: true }
+        });
+
+        if (updated.customer) {
+            const { sendTemplateEmail } = require('../utils/emailService');
+            sendTemplateEmail('PAYMENT_SLIP_REJECTED', updated.customer.email, {
+                '{customer_name}': updated.customer.name,
+                '{order_id}': updated.id
+            }, updated.id).catch(e => console.error('Failed to send PAYMENT_SLIP_REJECTED email', e));
+        }
+
+        res.json({ message: 'Payment slip rejected. Customer will need to upload a new one.', order: updated });
+
+    } catch (error) {
+        console.error('[OrderController:rejectPaymentSlip] Error:', error);
+        res.status(500).json({ error: 'Failed to reject payment slip' });
+    }
+};
+
 exports.confirmOrder = async (req, res) => {
     try {
         const orderId = parseInt(req.params.id);
         const order = await prisma.order.findUnique({ where: { id: orderId } });
         if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        if (order.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'Cannot confirm a cancelled order.' });
+        }
 
         let newNotes = order.specialNotes || '';
         if (!newNotes.includes('Customer Confirmed')) {
@@ -903,6 +1170,10 @@ exports.markPaymentReceived = async (req, res) => {
 
         if (!order) return res.status(404).json({ error: 'Order not found' });
 
+        if (order.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'Cannot record payment for a cancelled order.' });
+        }
+
         const currentBalance = parseFloat(order.balanceAmount || 0);
         const currentAdvance = parseFloat(order.advanceAmount || 0);
         const totalAmount = parseFloat(order.total || 0);
@@ -917,8 +1188,14 @@ exports.markPaymentReceived = async (req, res) => {
 
         // Determine Payment Status: PENDING / PARTIAL / PAID
         let newPaymentStatus = 'PARTIAL';
+        let newAdvanceStatus = order.advanceStatus;
+
         if (newBalance <= 0) {
             newPaymentStatus = 'PAID';
+            newAdvanceStatus = 'APPROVED'; // Also approve advance if fully paid
+        } else if (newAdvance > 0) {
+            newPaymentStatus = 'PARTIAL'; // Not fully paid, but advance collected
+            newAdvanceStatus = 'APPROVED'; // If any money is collected, mark advance as approved
         } else if (newAdvance === 0) {
             newPaymentStatus = 'PENDING';
         }
@@ -929,6 +1206,7 @@ exports.markPaymentReceived = async (req, res) => {
                 advanceAmount: newAdvance,
                 balanceAmount: newBalance,
                 paymentStatus: newPaymentStatus,
+                advanceStatus: newAdvanceStatus,
                 status: markAsDelivered ? 'DELIVERED' : undefined,
                 // Update payment record too for sync
                 payment: {
@@ -936,8 +1214,29 @@ exports.markPaymentReceived = async (req, res) => {
                         paymentStatus: newPaymentStatus
                     }
                 }
-            }
+            },
+            include: { customer: true }
         });
+
+        if (updatedOrder.paymentStatus === 'PAID' && updatedOrder.customer) {
+            const { sendTemplateEmail } = require('../utils/emailService');
+            sendTemplateEmail('PAYMENT_CONFIRMED', updatedOrder.customer.email, {
+                '{customer_name}': updatedOrder.customer.name,
+                '{order_id}': updatedOrder.id,
+                '{total_amount}': `Rs.${totalAmount}`,
+                '{advance_amount}': `Rs.${newAdvance}`,
+                '{balance_amount}': `Rs.${newBalance}`,
+                '{delivery_date}': updatedOrder.deliveryDate ? new Date(updatedOrder.deliveryDate).toLocaleDateString() : 'your scheduled date'
+            }, updatedOrder.id).catch(e => console.error('Failed to send PAYMENT_CONFIRMED email', e));
+        }
+
+        if (markAsDelivered && updatedOrder.customer) {
+            const { sendTemplateEmail } = require('../utils/emailService');
+            sendTemplateEmail('DELIVERED', updatedOrder.customer.email, {
+                '{customer_name}': updatedOrder.customer.name,
+                '{order_id}': updatedOrder.id
+            }, updatedOrder.id).catch(e => console.error('Failed to send DELIVERED email', e));
+        }
 
         // Create Transaction History
         await prisma.transaction.create({
@@ -947,7 +1246,7 @@ exports.markPaymentReceived = async (req, res) => {
                 type: 'INCOME',
                 category: 'Order Payment',
                 amount: received,
-                description: `Payment Received for Order #${orderId} (${received === totalAmount ? 'Full' : 'Balance/Advance'}). Method: ${paymentMethod || 'Cash'}`,
+                description: `Payment Received config: Rs.${received}. Balance remaining: Rs.${newBalance}. Method: ${paymentMethod || 'Cash'}`,
                 paymentMode: paymentMethod || 'Cash',
                 date: new Date()
             }
@@ -963,5 +1262,78 @@ exports.markPaymentReceived = async (req, res) => {
     } catch (error) {
         console.error('[OrderController:markPaymentReceived] Error:', error);
         res.status(500).json({ error: 'Failed to record payment: ' + error.message });
+    }
+};
+
+// PUT Cancel Order (Customer-initiated, no payment made)
+exports.cancelOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const orderId = parseInt(id);
+        const customerId = req.user.id;
+
+        const order = await prisma.order.findUnique({
+            where: { id: orderId },
+            include: { customer: true }
+        });
+
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        // Only the order owner can cancel
+        if (String(order.customerId) !== String(customerId)) {
+            return res.status(403).json({ error: 'You are not authorized to cancel this order.' });
+        }
+
+        // Already cancelled
+        if (order.status === 'CANCELLED') {
+            return res.status(400).json({ error: 'This order is already cancelled.' });
+        }
+
+        // Block if order is past early stages
+        const nonCancellableStatuses = ['PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+        if (nonCancellableStatuses.includes(order.status)) {
+            return res.status(400).json({
+                error: 'This order cannot be cancelled as it is already being prepared or delivered.'
+            });
+        }
+
+        // Block if any payment has been submitted or approved
+        const hasPaid = order.paymentStatus === 'PAID' ||
+            order.advanceStatus === 'APPROVED' ||
+            (order.advanceStatus && order.advanceStatus.startsWith('UPLOADED'));
+
+        if (hasPaid) {
+            return res.status(400).json({
+                error: 'This order cannot be cancelled because a payment has already been submitted. Please contact us directly.'
+            });
+        }
+
+        // Restore loyalty points that were redeemed on this order
+        if (order.loyaltyDiscount && parseFloat(order.loyaltyDiscount) > 0) {
+            const pointsToRestore = Math.floor(parseFloat(order.loyaltyDiscount));
+            await prisma.customer.update({
+                where: { id: customerId },
+                data: { loyaltyPoints: { increment: pointsToRestore } }
+            });
+        }
+
+        // Cancel the order
+        await prisma.order.update({
+            where: { id: orderId },
+            data: { status: 'CANCELLED' }
+        });
+
+        // Send cancellation notification email
+        if (order.customer?.email) {
+            sendTemplateEmail('ORDER_REJECTED', order.customer.email, {
+                '{customer_name}': order.customer.name,
+                '{order_id}': order.id
+            }, order.id).catch(e => console.error('[cancelOrder:EmailError]', e));
+        }
+
+        res.json({ message: 'Order cancelled successfully.' });
+    } catch (error) {
+        console.error('[OrderController:cancelOrder] Error:', error);
+        res.status(500).json({ error: 'Failed to cancel order: ' + error.message });
     }
 };

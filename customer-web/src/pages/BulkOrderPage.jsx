@@ -1,357 +1,350 @@
-import React, { useState } from 'react';
-import { Calendar, ChevronRight } from 'lucide-react';
-import { useNavigate }
-    from 'react-router-dom';
-import { useCart } from '../context/CartContext';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Upload, Image as ImageIcon, CheckCircle2, PackageOpen, Calendar } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
+import toast from 'react-hot-toast';
 
 const BulkOrderPage = () => {
     const navigate = useNavigate();
-    const { addToCart } = useCart();
-    const [pricingRules, setPricingRules] = useState([]);
+    const { user } = useAuth();
+    const [fields, setFields] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [formData, setFormData] = useState({});
+    const [totalPrice, setTotalPrice] = useState(0);
 
-    const [formData, setFormData] = useState({
-        eventName: 'Annual Gathering',
-        organization: 'Company ABC',
-        quantity: 200,
-        cakeType: 'Cupcakes',
-        cakeFlavor: 'Chocolate',
-        instructions: '',
-        colorTheme: '',
-        packingInstructions: ''
-    });
+    // Fetch dynamic fields from Admin configured FormField database
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const res = await api.get('/form-fields/public/BULK');
+                setFields(res.data);
+                
+                // Initialize form state
+                const initialData = {};
+                res.data.forEach(f => {
+                    if (f.fieldType === 'dropdown' && f.options?.length > 0) {
+                        initialData[f.fieldId] = ''; // Force them to select manually for better UX
+                    } else if (f.fieldType === 'number') {
+                        initialData[f.fieldId] = f.config?.min || '';
+                    } else {
+                        initialData[f.fieldId] = '';
+                    }
+                });
+                setFormData(initialData);
+            } catch (err) {
+                console.error("Failed to fetch bulk form config:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchConfig();
+    }, []);
 
-    // Image Upload States
-    const [referenceImageUrl, setReferenceImageUrl] = useState('');
-    const [packingImageUrl, setPackingImageUrl] = useState('');
-    const [uploadingRef, setUploadingRef] = useState(false);
-    const [uploadingPack, setUploadingPack] = useState(false);
+    // Calculate price purely based on selected options and quantity
+    useEffect(() => {
+        if (!fields.length) return;
+        
+        let qty = 0;
+        
+        // Find quantity field
+        const qtyField = fields.find(f => f.fieldId.toLowerCase().includes('qty') || f.fieldId.toLowerCase().includes('quantity') || f.fieldType === 'number');
+        if (qtyField) {
+            const val = formData[qtyField.fieldId];
+            qty = Number(val) || Number(qtyField.config?.min) || 50;
+        } else {
+            qty = 50; // Total fallback
+        }
 
-    const handleFileUpload = async (file, setUrl, setUploading) => {
+        let unitBase = 0;
+        let extras = 0;
+        let selectedProduct = null;
+        
+        fields.forEach(f => {
+            const val = formData[f.fieldId];
+            if (!val) return;
+
+            if (f.fieldType === 'dropdown' && f.options) {
+                const selectedOpt = f.options.find(o => String(o.name).trim() === String(val).trim());
+                if (selectedOpt) {
+                    const price = Number(selectedOpt.price) || 0;
+                    const fid = f.fieldId.toLowerCase();
+                    
+                    if (fid.includes('unit') || fid.includes('product') || fid.includes('item')) {
+                        unitBase = price;
+                        selectedProduct = selectedOpt.name;
+                    } else if (fid.includes('packag')) {
+                        // User constraint: add 25 for packaging if price is 0, else use price
+                        extras += (price > 0 ? price : 25);
+                    } else {
+                        extras += price;
+                    }
+                }
+            }
+        });
+
+        // Price = quantity * (unitBase + extras)
+        let total = qty * (unitBase + extras);
+        
+        // 10% discount for orders > 100
+        if (qty > 100) {
+            total = total * 0.9;
+        }
+
+        setTotalPrice(Math.round(total));
+    }, [formData, fields]);
+
+
+    const handleChange = (fieldId, value) => {
+        setFormData(prev => ({ ...prev, [fieldId]: value }));
+    };
+
+    const handleFileUpload = async (e, fieldId) => {
+        const file = e.target.files[0];
         if (!file) return;
-        setUploading(true);
+        
         const uploadData = new FormData();
         uploadData.append('file', file);
-
+        
         try {
-            // Use env or default
-            const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-            const res = await fetch(`${baseUrl}/upload`, {
-                method: 'POST',
-                body: uploadData
-            });
-            const data = await res.json();
-            if (data.url) {
-                setUrl(data.url);
-            } else {
-                alert('Upload failed');
+            const res = await api.post('/upload', uploadData);
+            if (res.data?.url) {
+                handleChange(fieldId, res.data.url);
             }
         } catch (error) {
             console.error("Upload error:", error);
-            alert('Image upload failed');
-        } finally {
-            setUploading(false);
+            toast.error('Image upload failed');
         }
     };
 
-    // Fetch Bulk Pricing on Mount
-    React.useEffect(() => {
-        const fetchPricing = async () => {
-            try {
-                // Use relative path if proxy is set or absolute if configured in api service
-                // Assuming api service logic for now or keeping simple fetch if public
-                const res = await fetch('http://localhost:5000/api/bulk-pricing');
-                if (res.ok) {
-                    const data = await res.json();
-                    setPricingRules(data);
-
-                    // Set default type if available
-                    if (data.length > 0 && !formData.cakeType) {
-                        setFormData(prev => ({ ...prev, cakeType: data[0].categoryLabel }));
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to fetch bulk pricing:", err);
-            }
-        };
-        fetchPricing();
-    }, []);
-
-    // Live Price Calculation
-    const calculatePrice = () => {
-        if (!formData.cakeType) return { unit: 0, total: 0 };
-
-        let unitPrice = 0;
-        const rule = pricingRules.find(r => r.categoryLabel === formData.cakeType);
-
-        if (rule) {
-            if (formData.quantity >= rule.bulkThreshold) {
-                unitPrice = parseFloat(rule.bulkPrice);
-            } else {
-                unitPrice = parseFloat(rule.basePrice);
-            }
-        } else {
-            // Fallback
-            unitPrice = (formData.quantity >= 100) ? 220 : 250;
-        }
-
-        return { unit: unitPrice, total: unitPrice * formData.quantity };
-    };
-
-    const { unit, total } = calculatePrice();
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-    };
-
-    const handleProcessToCheckout = (e) => {
+    const handleContinueToCheckout = (e) => {
         e.preventDefault();
-
-        // Basic Validation
-        if (formData.quantity < 50) {
-            alert("The minimum order quantity for bulk orders is 50 items. Please increase your quantity.");
+        
+        if (!user) {
+            toast.error("Please login to submit a bulk order request.");
+            navigate('/login', { state: { from: '/bulk-orders' } });
             return;
         }
 
-        // Calculate Price based on rules or fallback
-        const { unit, total } = calculatePrice();
-        const totalPrice = total;
+        const missing = fields.filter(f => {
+            if (!f.required) return false;
+            
+            // Allow skipping package design selection if custom package image is uploaded
+            if (f.fieldId === 'packaging_type' && formData['packaging_design_file']) {
+                return false;
+            }
+            
+            return !formData[f.fieldId];
+        });
 
+        if (missing.length) {
+            toast.error(`Please complete the required field: ${missing[0].label}`);
+            return;
+        }
 
+        const mainProductField = formData['product_unit'] || formData['cakeType'] || 'Bulk Order';
 
-        const bulkItem = {
-            id: 'BULK-' + Date.now(),
-            name: `Bulk Order: ${formData.cakeType}`,
-            description: `${formData.eventName} (${formData.quantity} items) - ${formData.cakeFlavor}`,
+        // Extract selected product image
+        let selectedProductImage = null;
+        fields.forEach(f => {
+            const val = formData[f.fieldId];
+            if (val && f.fieldType === 'dropdown' && f.options) {
+                const selectedOpt = f.options.find(o => String(o.name).trim() === String(val).trim());
+                if (selectedOpt) {
+                    const fid = f.fieldId.toLowerCase();
+                    if (fid.includes('unit') || fid.includes('product') || fid.includes('item')) {
+                        selectedProductImage = selectedOpt.imageUrl;
+                    }
+                }
+            }
+        });
+
+        const bulkProduct = {
+            quantity: 1, // Order batch
             price: totalPrice,
-            image: referenceImageUrl || 'https://images.unsplash.com/photo-1612203985729-ca8a88d7ad56?auto=format&fit=crop&q=80&w=300',
-            quantity: 1
+            name: `Bulk Order: ${mainProductField}`,
+            image: formData['reference_image'] || selectedProductImage || 'https://images.unsplash.com/photo-1557925923-33b2512ea2aa?auto=format&fit=crop&q=80&w=300',
+            isBulk: true,
+            bulkDetails: formData
         };
 
-        const bulkDetailsPayload = {
-            ...formData,
-            referenceImage: referenceImageUrl,
-            packingImage: packingImageUrl
-        };
+        navigate('/checkout', { state: { bulkOrder: { cart: [bulkProduct], cartTotal: totalPrice } } });
+    };
 
-        addToCart(bulkItem, { label: 'Bulk', isBulk: true, bulkDetails: bulkDetailsPayload }, 1);
-        navigate('/checkout');
+    if (loading) {
+        return <div className="min-h-screen flex items-center justify-center">Loading bulk configuration...</div>;
+    }
+
+    // Helper: Determine if options have images (visual grid)
+    const renderDropdown = (f) => {
+        const hasImages = f.options.some(o => o.imageUrl);
+        
+        if (hasImages) {
+            return (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-3">
+                    {f.options.map((opt, i) => {
+                        const isSelected = formData[f.fieldId] === opt.name;
+                        return (
+                            <div 
+                                key={i} 
+                                onClick={() => handleChange(f.fieldId, opt.name)}
+                                className={`relative group cursor-pointer rounded-2xl overflow-hidden border-2 transition-all duration-300 ${isSelected ? 'border-pink-600 shadow-pink-200 shadow-lg' : 'border-gray-100 hover:border-pink-300'}`}
+                            >
+                                <div className="aspect-[4/3] bg-gray-100">
+                                    {opt.imageUrl ? (
+                                        <img src={opt.imageUrl} alt={opt.name} className={`w-full h-full object-cover transition-transform duration-500 ${isSelected ? 'scale-105' : 'group-hover:scale-110'}`} />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-pink-50 text-pink-300">
+                                            <PackageOpen size={48} />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className={`p-4 ${isSelected ? 'bg-pink-50' : 'bg-white'}`}>
+                                    <h4 className={`font-bold text-sm ${isSelected ? 'text-pink-700' : 'text-gray-800'}`}>{opt.name}</h4>
+                                    {opt.price > 0 && <p className="text-xs text-gray-500 font-medium mt-1">+ Rs. {opt.price} / unit</p>}
+                                </div>
+                                {isSelected && (
+                                    <div className="absolute top-3 right-3 bg-white rounded-full p-0.5 shadow-md">
+                                        <CheckCircle2 className="w-5 h-5 text-pink-600 fill-pink-100" />
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        // Standard Dropdown Fallback
+        return (
+            <select
+                value={formData[f.fieldId] || ''}
+                onChange={(e) => handleChange(f.fieldId, e.target.value)}
+                className="w-full mt-2 py-3 px-4 rounded-xl border border-gray-200 focus:border-pink-500 focus:ring-4 focus:ring-pink-50 text-sm font-medium text-gray-900 transition-all bg-white"
+            >
+                <option value="" disabled>Select {f.label}</option>
+                {f.options.map((opt, i) => (
+                    <option key={i} value={opt.name}>{opt.name} {opt.price > 0 ? `(+Rs.${opt.price})` : ''}</option>
+                ))}
+            </select>
+        );
     };
 
     return (
-        <div className="font-sans min-h-screen bg-gray-50 py-12">
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="font-sans min-h-screen relative overflow-hidden bg-gray-50 py-12">
+            {/* Background Image Overlay - Modern Subtle Branding */}
+            <div 
+                className="absolute inset-0 z-0 pointer-events-none opacity-[0.25]"
+                style={{ 
+                    backgroundImage: 'url(/assets/bulk_bg.jpg)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center', // Centered for the new cupcake grid image
+                    backgroundAttachment: 'fixed'
+                }}
+            />
+
+            <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
-                <div className="text-center mb-12">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Bulk Order Request</h1>
-                    <p className="text-gray-500">
-                        Special pricing for orders of 100 or more cakes
+                <div className="text-center mb-10">
+                    <h1 className="text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">Bulk & Corporate Orders</h1>
+                    <p className="text-lg text-gray-600 max-w-2xl mx-auto font-medium">
+                        Custom artisan creations for your most important events.
                     </p>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 md:p-12">
-                    <h2 className="text-lg font-bold text-gray-900 mb-8">Event Details</h2>
+                <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8 md:p-12 min-h-[500px]">
+                    <div className="space-y-12">
+                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-8 flex items-center">
+                                Product Selection & Design
+                            </h2>
+                            <div className="space-y-10">
+                        {fields.map((f) => (
+                            <div key={f.id} className="last:border-0">
+                                <label className="flex items-center text-sm font-bold text-gray-900 mb-2">
+                                    {f.label}
+                                    {f.required && !(f.fieldId === 'packaging_type' && formData['packaging_design_file']) && <span className="text-pink-600 ml-1">*</span>}
+                                    {f.fieldId === 'packaging_type' && formData['packaging_design_file'] && <span className="text-green-600 ml-2 font-normal text-xs">(Custom uploaded ✓)</span>}
+                                </label>
+                                
+                                {f.config?.placeholder && f.fieldType !== 'text' && f.fieldType !== 'textarea' && (
+                                    <p className="text-[11px] text-gray-400 mb-4">{f.config.placeholder}</p>
+                                )}
 
-                    <form onSubmit={handleProcessToCheckout} className="space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-
-                            {/* Event Name */}
-                            <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-2">Event Name</label>
-                                <input
-                                    type="text"
-                                    name="eventName"
-                                    value={formData.eventName}
-                                    onChange={handleChange}
-                                    className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900"
-                                    placeholder="e.g. Annual Gathering"
-                                />
-                            </div>
-
-                            {/* Organization */}
-                            <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-2">Organization</label>
-                                <input
-                                    type="text"
-                                    name="organization"
-                                    value={formData.organization}
-                                    onChange={handleChange}
-                                    className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900"
-                                    placeholder="Company Name"
-                                />
-                            </div>
-
-                            {/* Quantity */}
-                            <div className="col-span-1">
-                                <label className="block text-xs font-medium text-gray-500 mb-2">Quantity</label>
-                                <input
-                                    type="number"
-                                    name="quantity"
-                                    value={formData.quantity}
-                                    onChange={handleChange}
-                                    className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900"
-                                    placeholder="200"
-                                />
-                                <p className="text-[10px] text-gray-400 mt-2 leading-relaxed">
-                                    Minimum order of 50 cakes. Orders of 100+ receive special pricing.
-                                </p>
-                            </div>
-
-                            {/* Cake Type */}
-                            <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-2">Cake Type</label>
-                                <select
-                                    name="cakeType"
-                                    value={formData.cakeType}
-                                    onChange={handleChange}
-                                    className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900"
-                                >
-                                    {pricingRules.length > 0 ? (
-                                        pricingRules.map(rule => (
-                                            <option key={rule.id} value={rule.categoryLabel}>{rule.categoryLabel}</option>
-                                        ))
-                                    ) : (
-                                        <>
-                                            <option>Cupcakes</option>
-                                            <option>Mini Cakes</option>
-                                            <option>Jar Cakes</option>
-                                            <option>Brownies</option>
-                                        </>
-                                    )}
-                                </select>
-                            </div>
-
-                            {/* Flavor */}
-                            <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-2">Cake Flavor</label>
-                                <select
-                                    name="cakeFlavor"
-                                    value={formData.cakeFlavor}
-                                    onChange={handleChange}
-                                    className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900"
-                                >
-                                    <option>Chocolate</option>
-                                    <option>Vanilla</option>
-                                    <option>Red Velvet</option>
-                                    <option>Coffee</option>
-                                </select>
-                            </div>
-
-                            {/* Instructions */}
-                            <div className="md:col-span-2">
-                                <label className="block text-xs font-medium text-gray-500 mb-2">Special Instructions</label>
-                                <textarea
-                                    name="instructions"
-                                    value={formData.instructions}
-                                    onChange={handleChange}
-                                    rows="1"
-                                    className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900 resize-none"
-                                    placeholder="Any specific instructions..."
-                                ></textarea>
-                            </div>
-
-                            {/* New Fields Section */}
-                            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-gray-100 pt-8 mt-4">
-
-                                {/* Color Theme */}
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-2">Color Theme</label>
+                                {f.fieldType === 'text' && (
                                     <input
                                         type="text"
-                                        name="colorTheme"
-                                        value={formData.colorTheme}
-                                        onChange={handleChange}
-                                        className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900"
-                                        placeholder="e.g. Royal Blue & Gold"
+                                        value={formData[f.fieldId] || ''}
+                                        onChange={(e) => handleChange(f.fieldId, e.target.value)}
+                                        className="w-full py-3.5 px-5 rounded-xl border border-gray-200 focus:border-pink-500 focus:ring-4 focus:ring-pink-50 text-sm font-medium text-gray-900 transition-all bg-gray-50/30"
+                                        placeholder={f.config?.placeholder}
                                     />
-                                </div>
+                                )}
 
-                                {/* Reference Image Upload */}
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-2">Reference Image (Design/Color)</label>
-                                    <div className="flex items-center gap-4">
-                                        <input
-                                            type="file"
-                                            onChange={(e) => handleFileUpload(e.target.files[0], setReferenceImageUrl, setUploadingRef)}
-                                            className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100"
-                                            accept="image/*"
-                                        />
-                                        {uploadingRef && <span className="text-xs text-pink-500">Uploading...</span>}
-                                        {referenceImageUrl && <span className="text-xs text-green-500">✓ Uploaded</span>}
-                                    </div>
-                                    {referenceImageUrl && (
-                                        <div className="mt-2 w-16 h-16 rounded overflow-hidden border">
-                                            <img src={referenceImageUrl} alt="Reference" className="w-full h-full object-cover" />
-                                        </div>
-                                    )}
-                                </div>
+                                {f.fieldType === 'number' && (
+                                    <input
+                                        type="number"
+                                        min={f.config?.min}
+                                        value={formData[f.fieldId] || ''}
+                                        onChange={(e) => handleChange(f.fieldId, e.target.value)}
+                                        className="w-full py-3.5 px-5 rounded-xl border border-gray-200 focus:border-pink-500 focus:ring-4 focus:ring-pink-50 text-sm font-medium text-gray-900 transition-all bg-gray-50/30"
+                                        placeholder={f.config?.placeholder}
+                                    />
+                                )}
 
-                                {/* Packing Instructions */}
-                                <div className="md:col-span-2">
-                                    <h3 className="text-sm font-bold text-gray-900 mb-4">Packing Details</h3>
-                                </div>
-
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-medium text-gray-500 mb-2">Packing Preferences</label>
+                                {f.fieldType === 'textarea' && (
                                     <textarea
-                                        name="packingInstructions"
-                                        value={formData.packingInstructions}
-                                        onChange={handleChange}
-                                        rows="2"
-                                        className="w-full py-2 border-b border-gray-200 focus:border-pink-500 focus:outline-none bg-transparent text-sm font-medium text-gray-900 resize-none"
-                                        placeholder="Explain how you want them packed (e.g., Individual boxes, Trays...)"
+                                        value={formData[f.fieldId] || ''}
+                                        onChange={(e) => handleChange(f.fieldId, e.target.value)}
+                                        rows="4"
+                                        className="w-full py-3.5 px-5 rounded-xl border border-gray-200 focus:border-pink-500 focus:ring-4 focus:ring-pink-50 text-sm font-medium text-gray-900 transition-all resize-none bg-gray-50/30"
+                                        placeholder={f.config?.placeholder}
                                     ></textarea>
-                                </div>
+                                )}
 
-                                {/* Packing Reference Image */}
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-medium text-gray-500 mb-2">Packing Reference Image (Optional)</label>
-                                    <div className="flex items-center gap-4">
-                                        <input
-                                            type="file"
-                                            onChange={(e) => handleFileUpload(e.target.files[0], setPackingImageUrl, setUploadingPack)}
-                                            className="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
-                                            accept="image/*"
-                                        />
-                                        {uploadingPack && <span className="text-xs text-pink-500">Uploading...</span>}
-                                        {packingImageUrl && <span className="text-xs text-green-500">✓ Uploaded</span>}
+                                {f.fieldType === 'dropdown' && renderDropdown(f)}
+
+                                {f.fieldType === 'file' && (
+                                    <div className="mt-2">
+                                        <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-pink-100 rounded-2xl cursor-pointer hover:bg-pink-50 transition-colors bg-gray-50/50 group">
+                                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                <Upload className="w-10 h-10 mb-3 text-pink-300 group-hover:text-pink-400 transition-colors" />
+                                                <p className="mb-1 text-sm text-gray-600 font-bold tracking-tight">Click to upload image</p>
+                                                <p className="text-[10px] text-gray-400 font-medium">PNG, JPG, JPEG (Max 5MB)</p>
+                                            </div>
+                                            <input type="file" className="hidden" accept={f.config?.accept || "image/*"} onChange={(e) => handleFileUpload(e, f.fieldId)} />
+                                        </label>
+                                        
+                                        {formData[f.fieldId] && (
+                                            <div className="mt-4 flex items-center p-4 bg-green-50 rounded-2xl border border-green-100 animate-in zoom-in-95 duration-300">
+                                                <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 border-2 border-white shadow-sm">
+                                                    <img src={formData[f.fieldId]} alt="Uploaded" className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="ml-4 flex-1">
+                                                    <p className="text-xs font-bold text-green-800 flex items-center"><CheckCircle2 className="w-4 h-4 mr-2" /> Attachment ready</p>
+                                                </div>
+                                                <button type="button" onClick={() => handleChange(f.fieldId, '')} className="text-[11px] font-black text-red-500 hover:text-red-700 bg-white px-3 py-1.5 rounded-lg shadow-sm">Remove</button>
+                                            </div>
+                                        )}
                                     </div>
-                                    {packingImageUrl && (
-                                        <div className="mt-2 w-16 h-16 rounded overflow-hidden border">
-                                            <img src={packingImageUrl} alt="Packing Ref" className="w-full h-full object-cover" />
-                                        </div>
-                                    )}
+                                )}
+                            </div>
+                        ))}
                                 </div>
-
+                                <div className="flex justify-end pt-10 border-t border-gray-100 mt-10">
+                                    <button 
+                                        type="button"
+                                        onClick={handleContinueToCheckout}
+                                        className="bg-black text-white px-10 py-4 rounded-xl font-bold text-sm shadow-xl hover:bg-gray-800 transition-all flex items-center"
+                                    >
+                                        Continue to Checkout
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-
-                        {/* Price Display */}
-                        <div className="bg-pink-50 p-6 rounded-xl flex justify-between items-center">
-                            <div>
-                                <p className="text-sm text-gray-500 mb-1">Estimated Unit Price: <span className="font-semibold text-gray-900">Rs. {unit}</span></p>
-                                <p className="text-xs text-gray-500">
-                                    {formData.quantity >= 100 ? '🎉 Bulk discount applied!' : 'Order 100+ for bulk pricing'}
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-sm text-gray-500">Total Price</p>
-                                <p className="text-3xl font-bold text-pink-600">Rs. {total.toLocaleString()}</p>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end pt-8">
-                            <button
-                                type="submit"
-                                className="bg-pink-500 text-white px-8 py-3 rounded-lg font-bold text-sm shadow-md hover:bg-pink-600 transition-colors"
-                            >
-                                Process to checkout
-                            </button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div >
-        </div >
+            </div>
+        </div>
     );
 };
 

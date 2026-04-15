@@ -16,8 +16,17 @@ router.put('/:id', cakeController.updateCake); // New Endpoint for Edit
 router.post('/categories', cakeController.createCategory);
 router.put('/categories/:id', cakeController.updateCategory);
 router.delete('/categories/:id', cakeController.deleteCategory);
+
 router.post('/sizes', cakeController.createSize);
+router.put('/sizes/:id', cakeController.updateSize);
+router.delete('/sizes/:id', cakeController.deleteSize);
+
 router.post('/shapes', cakeController.createShape);
+router.put('/shapes/:id', cakeController.updateShape);
+router.delete('/shapes/:id', cakeController.deleteShape);
+
 router.post('/flavors', cakeController.createFlavor);
+router.put('/flavors/:id', cakeController.updateFlavor);
+router.delete('/flavors/:id', cakeController.deleteFlavor);
 
 module.exports = router;

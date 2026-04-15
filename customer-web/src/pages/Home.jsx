@@ -1,34 +1,52 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Star, ChevronRight, Check } from 'lucide-react';
+import { ArrowRight, Star, ChevronRight, Check, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../services/api';
 
 const Home = () => {
+
     const [categories, setCategories] = React.useState([]);
+    const [loadingCategories, setLoadingCategories] = React.useState(true);
 
     React.useEffect(() => {
         const fetchCategories = async () => {
             try {
                 const res = await api.get('/public/cakes/master-data');
                 if (res.data && res.data.categories) {
-                    const mapped = res.data.categories.map(c => ({
-                        name: c.name,
-                        image: c.imageUrl ? c.imageUrl :
-                            (c.name === 'Birthday' ? 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=400' :
-                                c.name === 'Cupcakes' ? 'https://images.unsplash.com/photo-1599785209707-33b6a22f7907?auto=format&fit=crop&q=80&w=400' :
-                                    c.name === 'Dessert Jars' ? 'https://images.unsplash.com/photo-1563729768601-d6fa4805e9a1?auto=format&fit=crop&q=80&w=400' :
-                                        c.name === 'Brownies' ? 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&q=80&w=400' :
-                                            c.name === 'Wedding' ? 'https://images.unsplash.com/photo-1535254973040-607b474cb50d?auto=format&fit=crop&q=80&w=400' :
-                                                'https://placehold.co/400x400/fee2e2/ec4899?text=' + c.name),
-                        link: `/cakes?category=${encodeURIComponent(c.name)}`
-                    }));
-                    console.log('Processed Categories:', mapped);
-                    setCategories(mapped);
+                    const mapped = res.data.categories.map(c => {
+                        let finalImage = c.imageUrl;
+                        if (!finalImage) {
+                            // Fallbacks
+                            if (c.name === 'Birthday') finalImage = 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=600';
+                            else if (c.name === 'Cupcakes') finalImage = 'https://images.unsplash.com/photo-1599785209707-33b6a22f7907?auto=format&fit=crop&q=80&w=600';
+                            else if (c.name === 'Dessert Jars') finalImage = 'https://images.unsplash.com/photo-1563729768601-d6fa4805e9a1?auto=format&fit=crop&q=80&w=600';
+                            else if (c.name === 'Brownies') finalImage = 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&q=80&w=600';
+                            else if (c.name === 'Wedding') finalImage = 'https://images.unsplash.com/photo-1535254973040-607b474cb50d?auto=format&fit=crop&q=80&w=600';
+                            else finalImage = 'https://placehold.co/600x600/fdf2f8/ec4899?text=' + c.name;
+                        }
+                        return {
+                            name: c.name,
+                            image: finalImage,
+                            link: `/cakes?category=${encodeURIComponent(c.name)}`,
+                            description: `Discover our sweet ${c.name.toLowerCase()} collection.`
+                        };
+                    });
+                    
+                    // Prepend "All Cakes"
+                    const allCakes = {
+                        name: 'All Cakes',
+                        image: 'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&q=80&w=600',
+                        link: '/cakes',
+                        description: 'Explore our complete collection of delightful creations.'
+                    };
+                    
+                    setCategories([allCakes, ...mapped]);
                 }
             } catch (err) {
                 console.error("Failed to fetch categories:", err);
-                setCategories([]);
+            } finally {
+                setLoadingCategories(false);
             }
         };
         fetchCategories();
@@ -64,16 +82,10 @@ const Home = () => {
     React.useEffect(() => {
         const fetchBestSellers = async () => {
             try {
-                // Fetch random or specific cakes for best sellers (using limit and shuffle or just different limit)
-                // Since verified "Best Seller" logic isn't on backend yet, we'll fetch latest 3 for now.
-                const res = await api.get('/public/cakes?limit=3');
+                // Fetch live best sellers calculated by backend
+                const res = await api.get('/public/cakes/best-sellers?limit=3');
                 if (res.data) {
-                    setBestSellers(res.data.map(c => ({
-                        id: c.id,
-                        name: c.name,
-                        price: c.price,
-                        image: c.imageUrl
-                    })));
+                    setBestSellers(res.data);
                 }
             } catch (err) {
                 console.error("Failed to fetch best sellers", err);
@@ -184,28 +196,90 @@ const Home = () => {
                 <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-purple-100 rounded-full blur-3xl opacity-50"></div>
             </section>
 
-            {/* Browse by Category */}
-            <section className="py-16">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl font-bold text-gray-900">Browse by Category</h2>
-                        <div className="w-16 h-1 bg-pink-500 mx-auto mt-4 rounded-full"></div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-                        {categories.map((cat, idx) => (
-                            <Link to={cat.link} key={idx} className="group text-center">
-                                <div className="relative overflow-hidden rounded-2xl aspect-square mb-4 shadow-md group-hover:shadow-xl transition-shadow bg-gray-100">
-                                    <img
-                                        src={cat.image}
-                                        alt={cat.name}
-                                        className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all"></div>
-                                </div>
-                                <h3 className="text-lg font-semibold text-gray-800 group-hover:text-pink-600 transition-colors">{cat.name}</h3>
-                            </Link>
-                        ))}
-                    </div>
+            {/* Categories Section - Moved from CategoriesPage */}
+            <section className="relative pt-24 pb-20 overflow-hidden bg-white">
+                <div className="absolute inset-0 z-0">
+                    <div className="absolute top-0 right-0 w-1/2 h-full bg-pink-50 transform -skew-x-12 translate-x-1/4 opacity-50"></div>
+                </div>
+                
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 flex flex-col md:flex-row items-center justify-between mb-16">
+                    <motion.div 
+                        initial={{ opacity: 0, x: -50 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                        className="md:w-1/2 mb-10 md:mb-0"
+                    >
+                        <div className="inline-flex items-center space-x-2 bg-pink-100 px-3 py-1 rounded-full text-pink-700 text-xs font-bold uppercase tracking-widest mb-6">
+                            <Sparkles className="h-3 w-3" />
+                            <span>Collections</span>
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.1] mb-6">
+                            Choose Your <br/>
+                            <span className="text-pink-600 relative">
+                                Perfect Slice
+                                <svg className="absolute w-full h-3 -bottom-1 left-0 text-pink-200" viewBox="0 0 100 10" preserveAspectRatio="none">
+                                    <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="4" fill="transparent"/>
+                                </svg>
+                            </span>
+                        </h2>
+                        <p className="text-lg text-slate-600 max-w-md">
+                            From grand wedding tiers to simple afternoon treats, explore our finest categories of handcrafted delights.
+                        </p>
+                    </motion.div>
+                </div>
+
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                    {loadingCategories ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {[1, 2, 3, 4, 5, 6].map(i => (
+                                <div key={i} className="animate-pulse bg-slate-100 h-96 rounded-2xl"></div>
+                            ))}
+                        </div>
+                    ) : (
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            whileInView={{ opacity: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ staggerChildren: 0.1 }}
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 gap-y-12"
+                        >
+                            {categories.map((cat, idx) => (
+                                <motion.div 
+                                    key={idx} 
+                                    initial={{ opacity: 0, y: 30 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ type: "spring", stiffness: 100, delay: idx * 0.1 }}
+                                    className="group cursor-pointer"
+                                >
+                                    <Link to={cat.link} className="block h-full">
+                                        <div className="relative overflow-hidden rounded-2xl aspect-[4/5] shadow-sm border border-slate-100 bg-slate-50 transition-shadow hover:shadow-2xl">
+                                            <div className="absolute inset-0 bg-slate-900/10 group-hover:bg-transparent transition-colors duration-500 z-10"></div>
+                                            <img 
+                                                src={cat.image} 
+                                                alt={cat.name} 
+                                                className="w-full h-full object-cover transform scale-100 group-hover:scale-110 transition-transform duration-700 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
+                                            />
+                                            
+                                            {/* Modern overlay title */}
+                                            <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 z-20 translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+                                                <div className="bg-white/95 backdrop-blur-md rounded-xl p-4 sm:p-5 shadow-xl flex items-center justify-between border border-white/40">
+                                                    <div>
+                                                        <h3 className="text-xl font-bold text-slate-900 leading-tight">{cat.name}</h3>
+                                                        <p className="text-sm text-slate-500 mt-1 line-clamp-1">{cat.description}</p>
+                                                    </div>
+                                                    <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center group-hover:bg-pink-600 transition-colors duration-300 shrink-0 shadow-sm">
+                                                        <ArrowRight className="h-5 w-5 text-pink-600 group-hover:text-white transition-colors" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                </motion.div>
+                            ))}
+                        </motion.div>
+                    )}
                 </div>
             </section>
 
@@ -302,24 +376,24 @@ const Home = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Custom Order */}
-                        <div className="relative rounded-3xl overflow-hidden h-80 group cursor-pointer">
-                            <img src="https://placehold.co/800x600/f3e5f5/purple?text=Custom+Orders" alt="Custom Orders" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-8">
-                                <h3 className="text-3xl font-bold text-white mb-2">Custom Orders</h3>
-                                <p className="text-white/90 mb-4">Have a specific design in mind? Let's bring your dream cake to life.</p>
-                                <Link to="/custom-orders" className="inline-flex items-center text-white font-bold hover:underline">
+                        <div className="relative rounded-3xl overflow-hidden h-80 group cursor-pointer shadow-xl border border-pink-100">
+                            <img src="/images/banners/custom_orders.png" alt="Custom Orders" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
+                                <h3 className="text-3xl font-extrabold text-white mb-2">Custom Orders</h3>
+                                <p className="text-white/95 mb-4 font-medium">Have a specific design in mind? Let's bring your dream cake to life with our artisan bakers.</p>
+                                <Link to="/custom-orders" className="inline-flex items-center text-white font-bold bg-pink-600/90 hover:bg-pink-600 px-6 py-2.5 rounded-full w-fit shadow-lg backdrop-blur-sm transition-all group-hover:px-8">
                                     Start Designing <ChevronRight className="ml-1 h-5 w-5" />
                                 </Link>
                             </div>
                         </div>
 
                         {/* Bulk Order */}
-                        <div className="relative rounded-3xl overflow-hidden h-80 group cursor-pointer">
-                            <img src="https://placehold.co/800x600/e3f2fd/blue?text=Bulk+Orders" alt="Bulk Orders" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-8">
-                                <h3 className="text-3xl font-bold text-white mb-2">Corporate & Bulk Orders</h3>
-                                <p className="text-white/90 mb-4">Planning a big event or office party? Get special rates for bulk orders.</p>
-                                <Link to="/bulk-orders" className="inline-flex items-center text-white font-bold hover:underline">
+                        <div className="relative rounded-3xl overflow-hidden h-80 group cursor-pointer shadow-xl border border-blue-100">
+                            <img src="/images/banners/bulk_orders.png" alt="Bulk Orders" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-8">
+                                <h3 className="text-3xl font-extrabold text-white mb-2">Corporate & Bulk Orders</h3>
+                                <p className="text-white/95 mb-4 font-medium">Planning a big event or office party? Get special rates and dedicated support for bulk orders.</p>
+                                <Link to="/bulk-orders" className="inline-flex items-center text-white font-bold bg-blue-600/90 hover:bg-blue-600 px-6 py-2.5 rounded-full w-fit shadow-lg backdrop-blur-sm transition-all group-hover:px-8">
                                     Request Quote <ChevronRight className="ml-1 h-5 w-5" />
                                 </Link>
                             </div>

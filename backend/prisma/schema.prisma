@@ -7,360 +7,388 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Admin {
-  id           String    @id @default(uuid())
-  email        String    @unique
+model admin {
+  id           String    @id
+  email        String    @unique(map: "Admin_email_key")
   password     String
   name         String?
   role         String    @default("ADMIN")
   isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime
   isVerified   Boolean   @default(false)
   otp          String?
   otpExpiresAt DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
 }
 
-model Customer {
-  id                  String               @id @default(uuid())
-  displayId           String               @unique // C001, C002
-  name                String
-  email               String               @unique
-  password            String
-  phone               String?
-  address             String?
-  loyaltyPoints       Int                  @default(0)
-  isActive            Boolean              @default(true)
-  isVerified          Boolean              @default(false)
-  otp                 String?
-  otpExpiresAt        DateTime?
-  orders              Order[]
-  carts               Cart[]
-  loyaltyTransactions LoyaltyTransaction[]
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  feedbacks           Feedback[]
-  notifications       Notification[]
+model bulkorder {
+  id           Int     @id @default(autoincrement())
+  orderId      Int     @unique(map: "BulkOrder_orderId_key")
+  eventName    String?
+  organization String?
+  quantity     Int?
+  notes        String? @db.Text
+  orders       orders  @relation(fields: [orderId], references: [id], map: "BulkOrder_orderId_fkey")
 }
 
-model LoyaltyTransaction {
-  id             Int      @id @default(autoincrement())
-  customerId     String
-  customer       Customer @relation(fields: [customerId], references: [id])
-  orderId        Int?
-  pointsEarned   Int      @default(0)
-  pointsRedeemed Int      @default(0)
-  createdAt      DateTime @default(now())
+model bulkpricing {
+  id            Int      @id @default(autoincrement())
+  categoryLabel String   @unique(map: "BulkPricing_categoryLabel_key")
+  basePrice     Decimal
+  bulkPrice     Decimal
+  bulkThreshold Int      @default(100)
+  minOrderQty   Int      @default(50)
+  updatedAt     DateTime
 }
 
-model Cart {
+model cake {
+  id           Int           @id @default(autoincrement())
+  name         String
+  description  String?       @db.Text
+  availability Boolean       @default(true)
+  ingredients  String?       @db.Text
+  imageUrl     String?
+  categoryId   Int
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime
+  cakecategory cakecategory  @relation(fields: [categoryId], references: [id], map: "Cake_categoryId_fkey")
+  cakevariant  cakevariant[]
+
+  @@index([categoryId], map: "Cake_categoryId_fkey")
+}
+
+model cakecategory {
+  id        Int     @id @default(autoincrement())
+  name      String  @unique(map: "CakeCategory_name_key")
+  basePrice Decimal @default(0.000000000000000000000000000000)
+  imageUrl  String?
+  cake      cake[]
+}
+
+model cakeflavor {
+  id          Int           @id @default(autoincrement())
+  label       String        @unique(map: "CakeFlavor_label_key")
+  price       Decimal       @default(0.000000000000000000000000000000)
+  cakevariant cakevariant[]
+}
+
+model cakeshape {
+  id          Int           @id @default(autoincrement())
+  label       String        @unique(map: "CakeShape_label_key")
+  price       Decimal       @default(0.000000000000000000000000000000)
+  cakevariant cakevariant[]
+}
+
+model cakesize {
+  id          Int           @id @default(autoincrement())
+  label       String        @unique(map: "CakeSize_label_key")
+  price       Decimal       @default(0.000000000000000000000000000000)
+  cakevariant cakevariant[]
+}
+
+model cakevariant {
+  id          Int         @id @default(autoincrement())
+  price       Decimal
+  cakeId      Int
+  sizeId      Int
+  shapeId     Int
+  flavorId    Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime
+  isAvailable Boolean     @default(true)
+  cake        cake        @relation(fields: [cakeId], references: [id], onDelete: Cascade, map: "CakeVariant_cakeId_fkey")
+  cakeflavor  cakeflavor  @relation(fields: [flavorId], references: [id], map: "CakeVariant_flavorId_fkey")
+  cakeshape   cakeshape   @relation(fields: [shapeId], references: [id], map: "CakeVariant_shapeId_fkey")
+  cakesize    cakesize    @relation(fields: [sizeId], references: [id], map: "CakeVariant_sizeId_fkey")
+  cartitem    cartitem[]
+  orderitem   orderitem[]
+
+  @@unique([cakeId, sizeId, flavorId, shapeId], map: "CakeVariant_cakeId_sizeId_flavorId_shapeId_key")
+  @@index([flavorId], map: "CakeVariant_flavorId_fkey")
+  @@index([shapeId], map: "CakeVariant_shapeId_fkey")
+  @@index([sizeId], map: "CakeVariant_sizeId_fkey")
+}
+
+model cart {
   id         Int        @id @default(autoincrement())
   customerId String
-  customer   Customer   @relation(fields: [customerId], references: [id])
   status     String     @default("ACTIVE")
-  items      CartItem[]
   createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  updatedAt  DateTime
+  customer   customer   @relation(fields: [customerId], references: [id], map: "Cart_customerId_fkey")
+  cartitem   cartitem[]
+
+  @@index([customerId], map: "Cart_customerId_fkey")
 }
 
-model CartItem {
-  id        Int         @id @default(autoincrement())
-  cartId    Int
-  cart      Cart        @relation(fields: [cartId], references: [id])
-  variantId Int
-  variant   CakeVariant @relation(fields: [variantId], references: [id])
-  quantity  Int
+model cartitem {
+  id          Int         @id @default(autoincrement())
+  cartId      Int
+  variantId   Int
+  quantity    Int
+  cart        cart        @relation(fields: [cartId], references: [id], map: "CartItem_cartId_fkey")
+  cakevariant cakevariant @relation(fields: [variantId], references: [id], map: "CartItem_variantId_fkey")
+
+  @@index([cartId], map: "CartItem_cartId_fkey")
+  @@index([variantId], map: "CartItem_variantId_fkey")
 }
 
-model Order {
-  @@map("Orders")
-
-  id              Int     @id @default(autoincrement()) // Using Int for #1082 format
-  total           Decimal
-  loyaltyDiscount Decimal @default(0)
-  status          String  @default("NEW") // NEW/ORDER_PLACED, ADMIN_CONFIRMED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
-  orderType       String? // REGULAR, CUSTOM, BULK
-  specialNotes    String? @db.Text
-
-  paymentStatus String @default("PENDING") // PENDING, PAYMENT_PENDING, PAYMENT_APPROVED_BY_ADMIN, PAID, REFUNDED
-  paymentMethod String @default("COD") // COD (Balance only), ONLINE_PAYMENT (Full/Balance)
-
-  advanceAmount   Decimal  @default(0) @db.Decimal(10, 2)
-  balanceAmount   Decimal  @default(0) @db.Decimal(10, 2)
-  advanceStatus   String   @default("PENDING") // PENDING, UPLOADED, APPROVED, REJECTED
-
-  bankSlip      String? // URL or Path specifically for ONLINE_PAYMENT
-
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id])
-
-  items       OrderItem[]
-  delivery    Delivery?
-  payment     Payment?
-  invoice     Invoice?
-  customOrder CustomOrder?
-  bulkOrder   BulkOrder?
-  transactions Transaction[]
-
-  address      String    @default("") // Keep for backward compatibility or simple orders
-  deliveryDate DateTime?
-  isEdited     Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  feedback     Feedback?
+model cashbook {
+  id             Int           @id @default(autoincrement())
+  date           DateTime      @db.Date
+  openingBalance Decimal?      @db.Decimal(10, 2)
+  closingBalance Decimal?      @db.Decimal(10, 2)
+  totalIncome    Decimal       @default(0.00) @db.Decimal(10, 2)
+  totalExpense   Decimal       @default(0.00) @db.Decimal(10, 2)
+  transaction    transaction[]
 }
 
-model OrderItem {
-  id            Int          @id @default(autoincrement())
-  orderId       Int
-  order         Order        @relation(fields: [orderId], references: [id])
-  variantId     Int?
-  variant       CakeVariant? @relation(fields: [variantId], references: [id])
-  quantity      Int
-  unitPrice     Decimal
-  
-  // Snapshots for Custom Orders & History
-  name          String?
-  image         String?
-  description   String?
-  customDetails Json?
-
-  rating        ItemRating?
+model customer {
+  id                 String               @id
+  displayId          String               @unique(map: "Customer_displayId_key")
+  name               String
+  email              String               @unique(map: "Customer_email_key")
+  password           String
+  phone              String?
+  address            String?
+  loyaltyPoints      Int                  @default(0)
+  isActive           Boolean              @default(true)
+  isVerified         Boolean              @default(false)
+  otp                String?
+  otpExpiresAt       DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  cart               cart[]
+  feedback           feedback[]
+  loyaltytransaction loyaltytransaction[]
+  notification       notification[]
+  orders             orders[]
 }
 
-model CustomOrder {
+model customorder {
   id                  Int      @id @default(autoincrement())
-  orderId             Int      @unique
-  order               Order    @relation(fields: [orderId], references: [id])
+  orderId             Int      @unique(map: "CustomOrder_orderId_key")
   sizeId              Int?
   flavorId            Int?
   shapeId             Int?
   quantity            Int?
   specialInstructions String?  @db.Text
   calculatedPrice     Decimal?
+  orders              orders   @relation(fields: [orderId], references: [id], map: "CustomOrder_orderId_fkey")
 }
 
-model BulkOrder {
-  id           Int     @id @default(autoincrement())
-  orderId      Int     @unique
-  order        Order   @relation(fields: [orderId], references: [id])
-  eventName    String?
-  organization String?
-  quantity     Int?
-  notes        String? @db.Text
+model delivery {
+  id                      Int      @id @default(autoincrement())
+  orderId                 Int      @unique(map: "Delivery_orderId_key")
+  recipientName           String?
+  phoneNumber             String?
+  email                   String?
+  address                 String   @db.Text
+  deliveryMethod          String?
+  distanceKm              Decimal? @db.Decimal(6, 2)
+  deliveryFee             Decimal? @default(0.000000000000000000000000000000)
+  approximateDeliveryTime String?
+  orders                  orders   @relation(fields: [orderId], references: [id], map: "Delivery_orderId_fkey")
 }
 
-model Delivery {
-  id             Int      @id @default(autoincrement())
-  orderId        Int      @unique
-  order          Order    @relation(fields: [orderId], references: [id])
-  recipientName  String?
-  phoneNumber    String?
-  email          String?
-  address        String   @db.Text
-  deliveryMethod String?
-  distanceKm     Decimal? @db.Decimal(6, 2)
-  deliveryFee    Decimal? @default(0)
+model emaillog {
+  id      Int      @id @default(autoincrement())
+  orderId Int?
+  email   String
+  status  String
+  error   String?  @db.Text
+  sentAt  DateTime @default(now())
 }
 
-model Payment {
-  id            Int           @id @default(autoincrement())
-  orderId       Int           @unique
-  order         Order         @relation(fields: [orderId], references: [id])
-  paymentMethod String?
-  paymentStatus String?
-  proofImage    String?
-  verifiedAt    DateTime?
-  transactions  Transaction[]
-}
-
-model Invoice {
-  id            Int      @id @default(autoincrement())
-  orderId       Int      @unique
-  order         Order    @relation(fields: [orderId], references: [id])
-  invoiceNumber String?
-  issuedAt      DateTime @default(now())
-}
-
-model ItemRating {
-  id          Int       @id @default(autoincrement())
-  orderItemId Int       @unique
-  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
-  stars       Int
-  createdAt   DateTime  @default(now())
-}
-
-model Feedback {
-  id         Int      @id @default(autoincrement())
-  rating     Int
-  title      String?
-  comment    String   @db.Text
-  status     String   @default("PENDING") // PENDING, APPROVED, HIDDEN
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id])
-  orderId    Int      @unique
-  order      Order    @relation(fields: [orderId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  reply      String?  @db.Text
-  replyAt    DateTime?
-}
-
-model Notification {
-  id        Int      @id @default(autoincrement())
-  title     String
-  message   String
-  type      String   @default("SYSTEM") // SYSTEM, ORDER, PAYMENT, DELIVERY
-  isRead    Boolean  @default(false)
-  metadata  Json? // { orderId: 1, slipUrl: '...' }
-  customerId String?
-  customer  Customer? @relation(fields: [customerId], references: [id])
-  createdAt DateTime @default(now())
-}
-
-model NotificationTemplate {
-  id           Int      @id @default(autoincrement())
-  name         String?  @unique
-  title        String
-  category     String // Order, Payment, Promotion, Customer
-  body         String   @db.Text
-  actionButton String?
-  lastUsed     DateTime @default(now())
-}
-
-// --- Master Data ---
-
-model CakeSize {
-  id       Int           @id @default(autoincrement())
-  label    String        @unique // e.g. "1kg"
-  price    Decimal       @default(0) // Extra cost
-  variants CakeVariant[]
-}
-
-model CakeShape {
-  id       Int           @id @default(autoincrement())
-  label    String        @unique // e.g. "Round"
-  price    Decimal       @default(0)
-  variants CakeVariant[]
-}
-
-model CakeFlavor {
-  id       Int           @id @default(autoincrement())
-  label    String        @unique // e.g. "Chocolate"
-  price    Decimal       @default(0)
-  variants CakeVariant[]
-}
-
-model CakeCategory {
-  id        Int     @id @default(autoincrement())
-  name      String  @unique // e.g. "Wedding Cakes", "Birthday Cakes"
-  basePrice Decimal @default(0)
-  imageUrl  String? // URL for category card on home page
-  cakes     Cake[]
-}
-
-model SiteSetting {
-  id        Int      @id @default(autoincrement())
-  key       String   @unique // e.g. "HOME_HERO_TITLE", "HOME_HERO_IMAGE"
-  value     String?  @db.Text
-  group     String?  // e.g. "HOME_PAGE", "CONTACT_INFO"
-  updatedAt DateTime @updatedAt
-}
-
-// --- Product Catalog ---
-
-model Cake {
-  id           Int     @id @default(autoincrement())
-  name         String
-  description  String? @db.Text
-  // basePrice removed - now inherited from CakeCategory
-  availability Boolean @default(true)
-  ingredients  String? @db.Text
-  imageUrl     String?
-
-  categoryId Int
-  category   CakeCategory @relation(fields: [categoryId], references: [id])
-
-  variants  CakeVariant[]
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-}
-
-model CakeVariant {
-  id    Int     @id @default(autoincrement())
-  price Decimal // Final calculated price
-
-  cakeId Int
-  cake   Cake @relation(fields: [cakeId], references: [id], onDelete: Cascade)
-
-  sizeId   Int
-  size     CakeSize   @relation(fields: [sizeId], references: [id])
-  shapeId  Int
-  shape    CakeShape  @relation(fields: [shapeId], references: [id])
-  flavorId Int
-  flavor   CakeFlavor @relation(fields: [flavorId], references: [id])
-
-  cartItems  CartItem[]
-  orderItems OrderItem[]
-
-  isAvailable Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([cakeId, sizeId, flavorId, shapeId])
-}
-
-model CashBook {
-  id             Int           @id @default(autoincrement())
-  date           DateTime      @db.Date
-  openingBalance Decimal?      @db.Decimal(10, 2)
-  closingBalance Decimal?      @db.Decimal(10, 2)
-  totalIncome    Decimal       @default(0) @db.Decimal(10, 2)
-  totalExpense   Decimal       @default(0) @db.Decimal(10, 2)
-  transactions   Transaction[]
-}
-
-model Transaction {
-  id          Int     @id @default(autoincrement())
-  type        String // INCOME, EXPENSE
-  category    String? // Rent, Salary, Utilities, Other, Manual_Income
-  amount      Decimal @db.Decimal(10, 2)
-  description String?
-  paymentMode String? @default("Cash") // Cash, Bank, Online, etc.
-  billUrl     String? // For storing links to uploaded bills/receipts
-
-  cashBookId Int?
-  cashBook   CashBook? @relation(fields: [cashBookId], references: [id])
-
-  paymentId Int?
-  payment   Payment? @relation(fields: [paymentId], references: [id])
-
-  orderId   Int?
-  order     Order? @relation(fields: [orderId], references: [id])
-
-  date      DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Event {
+model event {
   id          Int       @id @default(autoincrement())
   title       String
   description String?
   startTime   DateTime
   endTime     DateTime?
-  type        String // MANUAL, PRODUCTION, ORDER_DELIVERY (virtual)
-  category    String? // Delivery, Restock, Meeting, Production
+  type        String
+  category    String?
   createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  updatedAt   DateTime
 }
 
-model BulkPricing {
+model feedback {
+  id         Int       @id @default(autoincrement())
+  rating     Int
+  title      String?
+  comment    String    @db.Text
+  status     String    @default("PENDING")
+  customerId String
+  orderId    Int       @unique(map: "Feedback_orderId_key")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime
+  reply      String?   @db.Text
+  replyAt    DateTime?
+  customer   customer  @relation(fields: [customerId], references: [id], map: "Feedback_customerId_fkey")
+  orders     orders    @relation(fields: [orderId], references: [id], map: "Feedback_orderId_fkey")
+
+  @@index([customerId], map: "Feedback_customerId_fkey")
+}
+
+model formfield {
+  id           Int      @id @default(autoincrement())
+  formType     String
+  fieldId      String
+  label        String
+  fieldType    String
+  required     Boolean  @default(false)
+  active       Boolean  @default(true)
+  displayOrder Int      @default(99)
+  section      String   @default("basic_details")
+  options      String?  @db.Text
+  config       String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+
+  @@unique([formType, fieldId], map: "FormField_formType_fieldId_key")
+  @@index([formType, active], map: "FormField_formType_active_idx")
+}
+
+model invoice {
   id            Int      @id @default(autoincrement())
-  categoryLabel String   @unique // e.g. "Cupcakes", "Jar Cakes"
-  basePrice     Decimal // Price per unit (e.g. 250)
-  bulkPrice     Decimal // Discounted price per unit (e.g. 220)
-  bulkThreshold Int      @default(100) // Quantity to trigger discount
-  minOrderQty   Int      @default(50) // Minimum limit
-  updatedAt     DateTime @updatedAt
+  orderId       Int      @unique(map: "Invoice_orderId_key")
+  invoiceNumber String?
+  issuedAt      DateTime @default(now())
+  orders        orders   @relation(fields: [orderId], references: [id], map: "Invoice_orderId_fkey")
+}
+
+model itemrating {
+  id          Int       @id @default(autoincrement())
+  orderItemId Int       @unique(map: "ItemRating_orderItemId_key")
+  stars       Int
+  createdAt   DateTime  @default(now())
+  orderitem   orderitem @relation(fields: [orderItemId], references: [id], map: "ItemRating_orderItemId_fkey")
+}
+
+model loyaltytransaction {
+  id             Int      @id @default(autoincrement())
+  customerId     String
+  orderId        Int?
+  pointsEarned   Int      @default(0)
+  pointsRedeemed Int      @default(0)
+  createdAt      DateTime @default(now())
+  customer       customer @relation(fields: [customerId], references: [id], map: "LoyaltyTransaction_customerId_fkey")
+
+  @@index([customerId], map: "LoyaltyTransaction_customerId_fkey")
+}
+
+model notification {
+  id         Int       @id @default(autoincrement())
+  title      String
+  message    String
+  type       String    @default("SYSTEM")
+  isRead     Boolean   @default(false)
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+  customerId String?
+  customer   customer? @relation(fields: [customerId], references: [id], map: "Notification_customerId_fkey")
+
+  @@index([customerId], map: "Notification_customerId_fkey")
+}
+
+model notificationtemplate {
+  id        Int      @id @default(autoincrement())
+  body      String   @db.Text
+  name      String?  @unique(map: "NotificationTemplate_name_key")
+  createdAt DateTime @default(now())
+  subject   String?
+  type      String?
+  updatedAt DateTime
+}
+
+model orderitem {
+  id            Int          @id @default(autoincrement())
+  orderId       Int
+  variantId     Int?
+  quantity      Int
+  unitPrice     Decimal
+  name          String?
+  image         String?
+  description   String?
+  customDetails Json?
+  itemrating    itemrating?
+  orders        orders       @relation(fields: [orderId], references: [id], map: "OrderItem_orderId_fkey")
+  cakevariant   cakevariant? @relation(fields: [variantId], references: [id], map: "OrderItem_variantId_fkey")
+
+  @@index([orderId], map: "OrderItem_orderId_fkey")
+  @@index([variantId], map: "OrderItem_variantId_fkey")
+}
+
+model orders {
+  id              Int           @id @default(autoincrement())
+  total           Decimal
+  loyaltyDiscount Decimal       @default(0.000000000000000000000000000000)
+  status          String        @default("NEW")
+  orderType       String?
+  specialNotes    String?       @db.Text
+  paymentStatus   String        @default("PENDING")
+  paymentMethod   String        @default("COD")
+  advanceAmount   Decimal       @default(0.00) @db.Decimal(10, 2)
+  balanceAmount   Decimal       @default(0.00) @db.Decimal(10, 2)
+  advanceStatus   String        @default("PENDING")
+  bankSlip        String?
+  customerId      String
+  address         String        @default("")
+  deliveryDate    DateTime?
+  isEdited        Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime
+  bulkorder       bulkorder?
+  customorder     customorder?
+  delivery        delivery?
+  feedback        feedback?
+  invoice         invoice?
+  orderitem       orderitem[]
+  customer        customer      @relation(fields: [customerId], references: [id], map: "Orders_customerId_fkey")
+  payment         payment?
+  transaction     transaction[]
+
+  @@index([customerId], map: "Orders_customerId_fkey")
+}
+
+model payment {
+  id            Int           @id @default(autoincrement())
+  orderId       Int           @unique(map: "Payment_orderId_key")
+  paymentMethod String?
+  paymentStatus String?
+  proofImage    String?
+  verifiedAt    DateTime?
+  orders        orders        @relation(fields: [orderId], references: [id], map: "Payment_orderId_fkey")
+  transaction   transaction[]
+}
+
+model sitesetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique(map: "SiteSetting_key_key")
+  value     String?  @db.Text
+  group     String?
+  updatedAt DateTime
+}
+
+model transaction {
+  id          Int       @id @default(autoincrement())
+  type        String
+  category    String?
+  amount      Decimal   @db.Decimal(10, 2)
+  description String?
+  date        DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  billUrl     String?
+  cashBookId  Int?
+  orderId     Int?
+  paymentId   Int?
+  paymentMode String?   @default("Cash")
+  cashbook    cashbook? @relation(fields: [cashBookId], references: [id], map: "Transaction_cashBookId_fkey")
+  orders      orders?   @relation(fields: [orderId], references: [id], map: "Transaction_orderId_fkey")
+  payment     payment?  @relation(fields: [paymentId], references: [id], map: "Transaction_paymentId_fkey")
+
+  @@index([cashBookId], map: "Transaction_cashBookId_fkey")
+  @@index([orderId], map: "Transaction_orderId_fkey")
+  @@index([paymentId], map: "Transaction_paymentId_fkey")
 }

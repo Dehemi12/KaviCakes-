@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Star, X } from 'lucide-react';
 import api from '../services/api';
+import toast from 'react-hot-toast';
 
 const FeedbackModal = ({ open, onClose, orderId, onSuccess }) => {
     const [rating, setRating] = useState(5);
@@ -20,12 +21,12 @@ const FeedbackModal = ({ open, onClose, orderId, onSuccess }) => {
                 title,
                 comment
             });
-            alert('Feedback submitted successfully!');
+            toast.success('Feedback submitted successfully!');
             onSuccess();
             onClose();
         } catch (error) {
             console.error(error);
-            alert(error.response?.data?.error || 'Failed to submit feedback');
+            toast.error(error.response?.data?.error || 'Failed to submit feedback');
         } finally {
             setSubmitting(false);
         }
