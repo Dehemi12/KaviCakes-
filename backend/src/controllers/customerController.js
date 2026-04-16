@@ -14,9 +14,9 @@ exports.getCustomers = async (req, res) => {
             where,
             include: {
                 _count: {
-                    select: { orders: true }
+                    select: { order: true }
                 },
-                orders: {
+                order: {
                     orderBy: { createdAt: 'desc' },
                     take: 1, // To get the last order date
                     select: { createdAt: true }
@@ -51,8 +51,8 @@ exports.getCustomers = async (req, res) => {
             email: c.email,
             phone: c.phone,
             loyaltyPoints: c.loyaltyPoints,
-            orderCount: c._count.orders,
-            lastOrderDate: c.orders[0]?.createdAt || null,
+            orderCount: c._count.order,
+            lastOrderDate: c.order[0]?.createdAt || null,
             totalSpent: parseFloat(totalsMap[c.id] || 0)
         }));
 

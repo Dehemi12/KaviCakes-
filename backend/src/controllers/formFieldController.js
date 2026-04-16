@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 exports.getFields = async (req, res) => {
     try {
         const { formType } = req.params;
-        const fields = await prisma.formField.findMany({
+        const fields = await prisma.formfield.findMany({
             where: { formType: formType.toUpperCase() },
             orderBy: { displayOrder: 'asc' }
         });
@@ -26,14 +26,14 @@ exports.createField = async (req, res) => {
         const { formType, fieldId, label, fieldType, required, active, displayOrder, section, options, config } = req.body;
 
         // Validate fieldId uniqueness per formType
-        const existing = await prisma.formField.findFirst({
+        const existing = await prisma.formfield.findFirst({
             where: { formType: formType.toUpperCase(), fieldId }
         });
         if (existing) {
             return res.status(400).json({ error: `Field ID "${fieldId}" already exists for this form type.` });
         }
 
-        const field = await prisma.formField.create({
+        const field = await prisma.formfield.create({
             data: {
                 formType: formType.toUpperCase(),
                 fieldId,
@@ -44,7 +44,8 @@ exports.createField = async (req, res) => {
                 displayOrder: displayOrder || 99,
                 section: section || 'basic_details',
                 options: options ? JSON.stringify(options) : '[]',
-                config: config ? JSON.stringify(config) : '{}'
+                config: config ? JSON.stringify(config) : '{}',
+                updatedAt: new Date()
             }
         });
         res.status(201).json({
@@ -64,7 +65,7 @@ exports.updateField = async (req, res) => {
         const { id } = req.params;
         const { label, fieldType, required, active, displayOrder, section, options, config } = req.body;
 
-        const field = await prisma.formField.update({
+        const field = await prisma.formfield.update({
             where: { id: parseInt(id) },
             data: {
                 label,
@@ -74,7 +75,8 @@ exports.updateField = async (req, res) => {
                 displayOrder: displayOrder ?? 99,
                 section: section || 'basic_details',
                 options: options ? JSON.stringify(options) : '[]',
-                config: config ? JSON.stringify(config) : '{}'
+                config: config ? JSON.stringify(config) : '{}',
+                updatedAt: new Date()
             }
         });
         res.json({
@@ -92,7 +94,7 @@ exports.updateField = async (req, res) => {
 exports.deleteField = async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma.formField.delete({ where: { id: parseInt(id) } });
+        await prisma.formfield.delete({ where: { id: parseInt(id) } });
         res.json({ message: 'Field deleted successfully' });
     } catch (error) {
         console.error('[FormFieldController:deleteField]', error);
@@ -105,7 +107,7 @@ exports.reorderFields = async (req, res) => {
     try {
         const { orderedIds } = req.body; // array of ids in new order
         const updates = orderedIds.map((id, index) =>
-            prisma.formField.update({
+            prisma.formfield.update({
                 where: { id: parseInt(id) },
                 data: { displayOrder: index + 1 }
             })
@@ -122,7 +124,7 @@ exports.reorderFields = async (req, res) => {
 exports.getPublicFields = async (req, res) => {
     try {
         const { formType } = req.params;
-        const fields = await prisma.formField.findMany({
+        const fields = await prisma.formfield.findMany({
             where: {
                 formType: formType.toUpperCase(),
                 active: true

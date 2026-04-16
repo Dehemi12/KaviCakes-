@@ -112,9 +112,15 @@ exports.getTemplates = async (req, res) => {
 
 exports.createTemplate = async (req, res) => {
     try {
-        const { title, category, body, name, actionButton } = req.body;
+        const { subject, type, body, name, templateName } = req.body;
         const newTemplate = await prisma.notificationtemplate.create({
-            data: { title, category, body, name, actionButton }
+            data: { 
+                subject, 
+                type, 
+                body, 
+                name: name || templateName,
+                updatedAt: new Date()
+            }
         });
         res.status(201).json(newTemplate);
     } catch (error) {
@@ -293,11 +299,16 @@ exports.getLogs = async (req, res) => {
 exports.updateTemplate = async (req, res) => {
     try {
         const { id } = req.params;
-        const { subject, body } = req.body;
+        const { subject, body, type } = req.body;
         
         const template = await prisma.notificationtemplate.update({
             where: { id: parseInt(id) },
-            data: { subject, body }
+            data: { 
+                subject, 
+                body,
+                type,
+                updatedAt: new Date()
+            }
         });
         res.json({ message: 'Template updated', template });
     } catch (error) {

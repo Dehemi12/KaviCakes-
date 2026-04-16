@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 
 const getBulkPricing = async (req, res) => {
     try {
-        const pricing = await prisma.bulkPricing.findMany();
+        const pricing = await prisma.bulkpricing.findMany();
         res.json(pricing);
     } catch (error) {
         console.error('[BulkPricingController:getBulkPricing] Error:', error);
