@@ -113,6 +113,11 @@ const sendTemplateEmail = async (templateType, to, variables = {}, orderId = nul
         let parsedBody = parseTemplate(template.body, variables);
         const parsedSubject = parseTemplate(template.subject || 'Notification from Kavi Cakes', variables);
 
+        // Append invoice content if provided but not in template body
+        if (variables['{invoice_content}'] && !template.body.includes('{invoice_content}')) {
+            parsedBody += `<hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />` + variables['{invoice_content}'];
+        }
+
         // Merge logic: If this is a payment requirement for a Customizable order, append the edit reminder
         const paymentTriggers = ['ADVANCE_REQUIRED', 'FULL_PAYMENT_REQUIRED', 'PAYMENT_REMINDER'];
         if (orderId && paymentTriggers.includes(templateType)) {

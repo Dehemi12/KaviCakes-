@@ -1,59 +1,93 @@
-import React from 'react';
-import { Modal, Button, Typography, Row, Col, Divider, Table, Tag } from 'antd';
-import { SendOutlined, WalletOutlined, ShoppingOutlined, UserOutlined, EnvironmentOutlined, CalendarOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import React, { useEffect, useState, useRef } from 'react';
+import { Modal, Button, Typography, Row, Col, Divider, Table, Tag, Spin, message } from 'antd';
+import { 
+    PrinterOutlined, SendOutlined, WalletOutlined, ShoppingOutlined, 
+    UserOutlined, EnvironmentOutlined, CalendarOutlined, InfoCircleOutlined,
+    CheckCircleOutlined
+} from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
 const InvoiceModal = ({ open, order, onClose }) => {
-    if (!order) return null;
+    const [loading, setLoading] = useState(false);
+    const [invoiceData, setInvoiceData] = useState(null);
+    const printRef = useRef();
+
+    useEffect(() => {
+        if (open && order) {
+            fetchInvoice();
+        } else {
+            setInvoiceData(null);
+        }
+    }, [open, order]);
+
+    const fetchInvoice = async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`http://localhost:5000/api/orders/${order.id}/invoice`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setInvoiceData(res.data);
+        } catch (error) {
+            console.error('Error fetching invoice:', error);
+            // If it's not delivered, we might still want to show a preview for admins
+            // But for now, just show the error if the status isn't allowed
+            if (error.response?.status === 403) {
+                 message.warning('Order must be DELIVERED to view the finalized invoice.');
+            } else {
+                 message.error('Failed to load invoice details.');
+            }
+            onClose();
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSendInvoice = async () => {
         try {
             await axios.post(`http://localhost:5000/api/orders/${order.id}/invoice/send`, {}, {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
-            Modal.success({ content: 'Invoice sent successfully to customer!' });
-            onClose();
+            message.success('Invoice email triggered to customer!');
         } catch (error) {
-            Modal.error({ content: 'Failed to send invoice.' });
+            message.error('Failed to send invoice.');
         }
     };
 
+    const handlePrint = () => {
+        window.print();
+    };
+
+    if (!order) return null;
+
+    const { invoice, order: fullOrder } = invoiceData || {};
+
     const columns = [
         { 
-            title: 'Item', 
+            title: 'Item Description', 
             dataIndex: 'name', 
             key: 'name',
             render: (text, record) => (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div>
                     <Text strong>{text}</Text>
-                    {record.description && (
-                        <Text type="secondary" style={{ fontSize: '12px' }}>{record.description}</Text>
-                    )}
-                    {record.customDetails && typeof record.customDetails === 'object' && (
-                        <div style={{ marginTop: '4px', background: '#fafafa', padding: '8px', borderRadius: '8px', fontSize: '11px', border: '1px solid #f0f0f0' }}>
-                            {Object.entries(record.customDetails).map(([k, v]) => {
-                                if (!v) return null;
-                                // Ignore long urls or raw JSON strings
-                                if (typeof v === 'string' && v.startsWith('http')) {
-                                    return <div key={k}><Text strong style={{ textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</Text>: <a href={v} target="_blank" rel="noopener noreferrer">View Image</a></div>;
-                                }
-                                return <div key={k}><Text strong style={{ textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</Text>: {String(v)}</div>;
-                            })}
+                    {record.variant && (
+                        <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase' }}>
+                            {record.variant.size} • {record.variant.flavor} • {record.variant.shape}
                         </div>
                     )}
                 </div>
             )
         },
-        { title: 'Quantity', dataIndex: 'quantity', key: 'quantity', align: 'center' },
-        { title: 'Price', dataIndex: 'price', key: 'price', render: (val) => `Rs.${val.toLocaleString()}` },
+        { title: 'Qty', dataIndex: 'quantity', key: 'quantity', align: 'center' },
+        { title: 'Unit Price (LKR)', dataIndex: 'unitPrice', key: 'unitPrice', align: 'right', render: (val) => parseFloat(val).toLocaleString() },
         {
-            title: 'Total',
+            title: 'Total (LKR)',
             key: 'total',
             align: 'right',
-            render: (_, record) => `Rs.${(record.price * record.quantity).toLocaleString()}`
+            render: (_, record) => (parseFloat(record.unitPrice) * record.quantity).toLocaleString()
         },
     ];
 
@@ -61,200 +95,138 @@ const InvoiceModal = ({ open, order, onClose }) => {
         <Modal
             open={open}
             onCancel={onClose}
-            width={900}
+            width={460}
             centered
             footer={[
-                <Button key="close" onClick={onClose} size="large" style={{ borderRadius: '8px' }}>
+                <Button key="close" onClick={onClose}>
                     Close
                 </Button>,
-                <Button 
-                    key="send" 
-                    type="primary" 
-                    icon={<SendOutlined />} 
-                    onClick={handleSendInvoice} 
-                    size="large"
-                    style={{ 
-                        background: '#be185d', 
-                        borderColor: '#be185d', 
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(233, 30, 99, 0.2)'
-                    }}
-                >
-                    Send to Customer
+                <Button key="print" icon={<PrinterOutlined />} onClick={handlePrint}>
+                    Print
                 </Button>,
             ]}
             title={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <ShoppingOutlined style={{ color: '#be185d' }} />
-                    <Title level={4} style={{ margin: 0 }}>Order Details & Invoice</Title>
-                </div>
+                <span style={{ fontWeight: 600, color: '#1e293b' }}>
+                    🧾 Receipt / Tax Invoice
+                </span>
             }
             bodyStyle={{ padding: 0 }}
         >
-            <div style={{ padding: '0', background: '#f8f9fa' }}>
-                {/* Header Section */}
-                <div style={{ 
-                    padding: '32px', 
-                    background: 'white', 
-                    borderBottom: '1px solid #f0f0f0' 
-                }}>
-                    <Row justify="space-between" align="top">
-                        <Col>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                                <div style={{ 
-                                    width: '48px', 
-                                    height: '48px', 
-                                    background: '#fff0f6', 
-                                    borderRadius: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '28px'
-                                }}>🍰</div>
-                                <div>
-                                    <Title level={3} style={{ margin: 0, color: '#be185d', letterSpacing: '-0.5px' }}>KaviCakes</Title>
-                                    <Text type="secondary" style={{ fontSize: '13px' }}>Premium Designer Cakes</Text>
-                                </div>
-                            </div>
-                            <div style={{ paddingLeft: '60px' }}>
-                                <Text type="secondary" style={{ display: 'block' }}>123 Baker Street, Colombo</Text>
-                                <Text type="secondary" style={{ display: 'block' }}>contact@kavicakes.com</Text>
-                                <Text type="secondary" style={{ display: 'block' }}>+94 77 123 4567</Text>
-                            </div>
-                        </Col>
-                        <Col style={{ textAlign: 'right' }}>
-                            <Title level={4} style={{ color: '#be185d', margin: 0, fontSize: '24px' }}>INVOICE</Title>
-                            <Text strong style={{ display: 'block', fontSize: '16px', marginTop: '4px' }}>
-                                INV-#{order.id}
-                            </Text>
-                            <Text type="secondary">
-                                Placed: {dayjs(order.createdAt).format('MMMM D, YYYY')}
-                            </Text>
-                            <div style={{ marginTop: 12 }}>
-                                <Tag 
-                                    color={order.paymentStatus === 'PAID' ? 'success' : 'error'} 
-                                    style={{ padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold' }}
-                                >
-                                    {order.paymentStatus}
-                                </Tag>
-                            </div>
-                        </Col>
-                    </Row>
-                </div>
+            <Spin spinning={loading}>
+                {invoiceData ? (
+                    <div ref={printRef} style={{ padding: '24px', background: '#fff', color: '#334155', fontFamily: 'system-ui, sans-serif' }} className="invoice-printable">
+                         <style>{`
+                            @media print {
+                                body * { visibility: hidden; }
+                                .invoice-printable, .invoice-printable * { visibility: visible; }
+                                .invoice-printable { position: absolute; left: 0; top: 0; width: 100%; max-width: 400px; margin: 0 auto; border: none !important; }
+                                .ant-modal-close, .ant-modal-footer, .ant-modal-header { display: none !important; }
+                            }
+                        `}</style>
 
-                <div style={{ padding: '32px' }}>
-                    {/* Customer & Delivery Information Cards */}
-                    <Row gutter={24} style={{ marginBottom: '32px' }}>
-                        <Col span={12}>
-                            <Card 
-                                title={<Space><UserOutlined style={{ color: '#be185d' }} />Customer Information</Space>}
-                                bordered={false}
-                                style={{ height: '100%', borderRadius: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-                            >
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    <div>
-                                        <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>NAME</Text>
-                                        <Text strong style={{ fontSize: '15px' }}>{order.customer?.name || 'Guest Customer'}</Text>
-                                    </div>
-                                    <div>
-                                        <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>CONTACT</Text>
-                                        <Text style={{ display: 'block' }}>{order.customer?.email}</Text>
-                                        <Text>{order.phoneNumber || order.customer?.phone || 'N/A'}</Text>
-                                    </div>
-                                </div>
-                            </Card>
-                        </Col>
-                        <Col span={12}>
-                            <Card 
-                                title={<Space><EnvironmentOutlined style={{ color: '#be185d' }} />Delivery Details</Space>}
-                                bordered={false}
-                                style={{ height: '100%', borderRadius: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-                            >
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    <div>
-                                        <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>DELIVERY ADDRESS</Text>
-                                        <Text strong style={{ fontSize: '14px' }}>{order.address || 'Pick-up from Store'}</Text>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '24px', marginTop: '4px' }}>
-                                        <div>
-                                            <Text type="secondary" style={{ fontSize: '12px', display: 'block' }}>DELIVERY DATE</Text>
-                                            <Space>
-                                                <CalendarOutlined style={{ color: '#be185d', fontSize: '12px' }} />
-                                                <Text strong>{dayjs(order.deliveryDate).format('dddd, MMMM D, YYYY')}</Text>
-                                            </Space>
-                                        </div>
-                                    </div>
-                                </div>
-                            </Card>
-                        </Col>
-                    </Row>
-
-                    {/* Order Items Table */}
-                    <div style={{ background: 'white', padding: '24px', borderRadius: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: '32px' }}>
-                        <Title level={5} style={{ marginBottom: '20px' }}>
-                            <Space><ShoppingOutlined /> Purchased Items</Space>
-                        </Title>
-                        <Table
-                            dataSource={order.items || []}
-                            columns={columns}
-                            pagination={false}
-                            rowKey={(record, index) => `${record.name}-${index}`}
-                            style={{ border: 'none' }}
-                        />
-                        
-                        <div style={{ 
-                            marginTop: '24px', 
-                            padding: '24px', 
-                            background: '#fff0f6', 
-                            borderRadius: '12px',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                        }}>
-                            <Space direction="vertical" size={0}>
-                                <Text type="secondary">PAYMENT METHOD</Text>
-                                <Space>
-                                    <WalletOutlined style={{ color: '#be185d' }} />
-                                    <Text strong>{order.paymentMethod?.replace(/_/g, ' ')}</Text>
-                                </Space>
-                            </Space>
-                            <div style={{ textAlign: 'right' }}>
-                                <Text type="secondary" style={{ fontSize: '16px' }}>GRAND TOTAL</Text>
-                                <Title level={2} style={{ margin: 0, color: '#be185d' }}>Rs. {order.total.toLocaleString()}</Title>
-                            </div>
+                        {/* Invoice Header */}
+                        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                            <Title level={3} style={{ color: '#be185d', margin: 0, fontWeight: 700, letterSpacing: '-0.5px' }}>KaviCakes</Title>
+                            <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 4 }}>1st Lane, Wabada Road, Kadawatha</Text>
+                            <Text type="secondary" style={{ fontSize: 13, display: 'block' }}>077 123 4567 • Kavicakes@gmail.com</Text>
                         </div>
-                    </div>
 
-                    {/* Special Instructions */}
-                    {(order.specialNotes || order.deliveryStatus) && (
-                        <div style={{ 
-                            background: '#e6f7ff', 
-                            padding: '16px 20px', 
-                            borderRadius: '12px', 
-                            border: '1px solid #91d5ff',
-                            display: 'flex',
-                            gap: '12px'
-                        }}>
-                            <InfoCircleOutlined style={{ color: '#1890ff', fontSize: '18px', marginTop: '3px' }} />
+                        {/* Meta Info */}
+                        <div style={{ borderTop: '1px dashed #cbd5e1', borderBottom: '1px dashed #cbd5e1', padding: '12px 0', display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
                             <div>
-                                <Text strong style={{ color: '#0050b3' }}>Special Instructions / Delivery Notes:</Text>
-                                <div style={{ marginTop: '4px' }}>
-                                    <Text style={{ color: '#0050b3' }}>{order.specialNotes || 'No special instructions provided.'}</Text>
-                                </div>
+                                <Text style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Invoice No:</Text>
+                                <Text strong style={{ fontSize: 13 }}>#{invoice.invoiceNumber}</Text>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <Text style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 2 }}>Date:</Text>
+                                <Text strong style={{ fontSize: 13 }}>{dayjs(invoice.issuedAt).format('DD MMM YYYY')}</Text>
                             </div>
                         </div>
-                    )}
-                </div>
 
-                <div style={{ padding: '32px', textAlign: 'center', background: 'white', borderTop: '1px solid #f0f0f0' }}>
-                    <Text type="secondary" style={{ fontSize: '14px', fontStyle: 'italic' }}>
-                        "Baking memories, one cake at a time."
-                    </Text>
-                    <div style={{ marginTop: '8px' }}>
-                        <Title level={5} style={{ margin: 0, color: '#bfbfbf', fontWeight: 300 }}>KaviCakes Sweet Support Team</Title>
+                        {/* Customer & Delivery */}
+                        <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+                            <div style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Billed To</Text>
+                                <Text strong style={{ display: 'block', fontSize: 13, lineHeight: '16px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{fullOrder.customer?.name || 'Customer'}</Text>
+                                <Text style={{ fontSize: 12, color: '#475569', display: 'block' }}>{fullOrder.customer?.phone || 'N/A'}</Text>
+                            </div>
+                            <div style={{ flex: 1, textAlign: 'right' }}>
+                                <Text style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Delivery Target</Text>
+                                <Text strong style={{ display: 'block', fontSize: 13, lineHeight: '16px' }}>{dayjs(fullOrder.deliveryDate).format('DD MMM')}</Text>
+                            </div>
+                        </div>
+
+                        <Divider dashed style={{ margin: '20px 0' }} />
+
+                        {/* Items Table */}
+                        <Text style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 12 }}>Order Summary</Text>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {fullOrder.items.map((item, idx) => (
+                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <div style={{ paddingRight: 12 }}>
+                                        <Text strong style={{ fontSize: 13, display: 'block', lineHeight: 1.2 }}>{item.name}</Text>
+                                        <Text style={{ fontSize: 11, color: '#94a3b8', display: 'block', textTransform: 'uppercase', marginTop: 2 }}>
+                                            {item.quantity} x Rs. {parseFloat(item.unitPrice).toLocaleString()}
+                                            {item.variant ? ` • ${item.variant.size}` : ''}
+                                        </Text>
+                                    </div>
+                                    <Text style={{ fontSize: 13, fontWeight: 500 }}>Rs. {(parseFloat(item.unitPrice) * item.quantity).toLocaleString()}</Text>
+                                </div>
+                            ))}
+                            {fullOrder.delivery?.deliveryFee > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8 }}>
+                                    <Text style={{ fontSize: 13, color: '#64748b' }}>Delivery Charge</Text>
+                                    <Text style={{ fontSize: 13, fontWeight: 500 }}>Rs. {parseFloat(fullOrder.delivery.deliveryFee).toLocaleString()}</Text>
+                                </div>
+                            )}
+                        </div>
+
+                        <Divider style={{ margin: '20px 0' }} />
+
+                        {/* Payment Summary */}
+                        <div style={{ padding: '0 4px', marginBottom: 20 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <Text style={{ color: '#64748b', fontSize: 13 }}>Subtotal</Text>
+                                <Text style={{ fontSize: 13 }}>Rs. {parseFloat(fullOrder.subtotal).toLocaleString()}</Text>
+                            </div>
+                            
+                            {fullOrder.loyaltyDiscount > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                    <Text style={{ color: '#be185d', fontSize: 13 }}>Discount (Loyalty)</Text>
+                                    <Text style={{ color: '#be185d', fontSize: 13 }}>-Rs. {parseFloat(fullOrder.loyaltyDiscount).toLocaleString()}</Text>
+                                </div>
+                            )}
+                            
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '12px 0', paddingTop: 12, borderTop: '1px dashed #e2e8f0' }}>
+                                <Text strong style={{ fontSize: 16 }}>Total Amount</Text>
+                                <Text strong style={{ fontSize: 18, color: '#be185d', fontWeight: 700 }}>Rs. {parseFloat(fullOrder.total).toLocaleString()}</Text>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', marginTop: 12 }}>
+                                <Text style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase' }}>{fullOrder.paymentMethod} •</Text>
+                                <Text strong style={{ fontSize: 11, color: fullOrder.paymentStatus === 'PAID' ? '#10b981' : '#f59e0b', textTransform: 'uppercase' }}>{fullOrder.paymentStatus}</Text>
+                            </div>
+                        </div>
+
+                        {/* Delivery Footer */}
+                        <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: 16, textAlign: 'center' }}>
+                            <Text style={{ fontSize: 12, color: '#94a3b8', display: 'block' }}>{fullOrder.address || fullOrder.delivery?.address || 'Store Pickup'}</Text>
+                            {fullOrder.specialNotes && (
+                                <Text style={{ fontSize: 12, color: '#be185d', display: 'block', marginTop: 6 }}>Note: {fullOrder.specialNotes}</Text>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ marginTop: 24, textAlign: 'center' }}>
+                            <Text style={{ fontSize: 11, color: '#cbd5e1', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, display: 'block' }}>Thank you 💖</Text>
+                        </div>
                     </div>
-                </div>
-            </div>
+                ) : (
+                    <div style={{ padding: '60px', textAlign: 'center' }}>
+                         <Text type="secondary">Select an order to view the full receipt.</Text>
+                    </div>
+                )}
+            </Spin>
         </Modal>
     );
 };

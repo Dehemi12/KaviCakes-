@@ -8,7 +8,8 @@ import api from '../services/api';
 import { useCart } from '../context/CartContext';
 import FeedbackModal from '../components/FeedbackModal';
 import toast from 'react-hot-toast';
-import { XCircle } from 'lucide-react';
+import { XCircle, FileText } from 'lucide-react';
+import InvoiceModal from '../components/InvoiceModal';
 
 const OrderTrackingPage = () => {
     const { id } = useParams();
@@ -27,6 +28,28 @@ const OrderTrackingPage = () => {
     const [isCancelling, setIsCancelling] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editFormData, setEditFormData] = useState({ deliveryDate: '', address: '', specialNotes: '' });
+    const [invoiceData, setInvoiceData] = useState(null);
+    const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+    const [fetchingInvoice, setFetchingInvoice] = useState(false);
+
+    const handleViewInvoice = async () => {
+        if (invoiceData) {
+            setIsInvoiceOpen(true);
+            return;
+        }
+
+        try {
+            setFetchingInvoice(true);
+            const response = await api.get(`/orders/${order.id}/invoice`);
+            setInvoiceData(response.data);
+            setIsInvoiceOpen(true);
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to load invoice.');
+        } finally {
+            setFetchingInvoice(false);
+        }
+    };
 
     const processOrderData = (data) => {
         // Map backend status to UI steps
@@ -345,6 +368,13 @@ const OrderTrackingPage = () => {
                 onSuccess={() => {
                     // Refresh order to maybe hide button if we track that
                 }}
+            />
+
+            {/* Invoice Modal */}
+            <InvoiceModal
+                isOpen={isInvoiceOpen}
+                onClose={() => setIsInvoiceOpen(false)}
+                invoiceData={invoiceData}
             />
 
             {/* Edit Order Modal */}
@@ -716,13 +746,23 @@ const OrderTrackingPage = () => {
                                 )}
 
                                 {showFeedbackButton && (
-                                    <button
-                                        onClick={() => setIsFeedbackOpen(true)}
-                                        className="px-6 py-2 bg-yellow-400 text-white font-bold rounded-lg hover:bg-yellow-500 transition-colors text-sm shadow-sm flex items-center gap-2"
-                                    >
-                                        <Star className="w-4 h-4 fill-white" />
-                                        Rate Order
-                                    </button>
+                                    <>
+                                        <button
+                                            onClick={handleViewInvoice}
+                                            disabled={fetchingInvoice}
+                                            className="px-6 py-2 bg-pink-600 text-white font-bold rounded-lg hover:bg-pink-700 transition-colors text-sm shadow-sm flex items-center gap-2"
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                            {fetchingInvoice ? 'Loading...' : 'View Invoice'}
+                                        </button>
+                                        <button
+                                            onClick={() => setIsFeedbackOpen(true)}
+                                            className="px-6 py-2 bg-yellow-400 text-white font-bold rounded-lg hover:bg-yellow-500 transition-colors text-sm shadow-sm flex items-center gap-2"
+                                        >
+                                            <Star className="w-4 h-4 fill-white" />
+                                            Rate Order
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>

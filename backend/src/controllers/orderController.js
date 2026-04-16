@@ -50,11 +50,11 @@ exports.createOrder = async (req, res) => {
                     let flavorPremium = 0;
 
                     if (categoryId) {
-                        const cat = await prisma.cakeCategory.findUnique({ where: { id: parseInt(categoryId) } });
+                        const cat = await prisma.cakecategory.findUnique({ where: { id: parseInt(categoryId) } });
                         if (cat) catBase = parseFloat(cat.basePrice);
                     }
                     if (sizeId) {
-                        const size = await prisma.cakeSize.findUnique({ where: { id: parseInt(sizeId) } });
+                        const size = await prisma.cakesize.findUnique({ where: { id: parseInt(sizeId) } });
                         if (size) {
                             // Logic: If size price is > 10, treat as additive. If < 10, treat as multiplier.
                             // OR just trust the admin setting. Let's assume weights/multipliers are stored here.
@@ -62,7 +62,7 @@ exports.createOrder = async (req, res) => {
                         }
                     }
                     if (flavorId) {
-                        const flavor = await prisma.cakeFlavor.findUnique({ where: { id: parseInt(flavorId) } });
+                        const flavor = await prisma.cakeflavor.findUnique({ where: { id: parseInt(flavorId) } });
                         if (flavor) flavorPremium = parseFloat(flavor.price);
                     }
 
@@ -199,7 +199,7 @@ exports.createOrder = async (req, res) => {
             }
 
             // Create Order
-            const newOrder = await prisma.order.create({
+            const newOrder = await prisma.orders.create({
                 data: {
                     total: calculatedTotal,
                     loyaltyDiscount: pointsUsed,
@@ -330,7 +330,7 @@ exports.getOrderById = async (req, res) => {
         const { id } = req.params;
         const orderId = parseInt(id);
 
-        const order = await prisma.order.findUnique({
+        const order = await prisma.orders.findUnique({
             where: { id: orderId },
             include: {
                 customer: true,
@@ -397,7 +397,7 @@ exports.getAllOrders = async (req, res) => {
             where.paymentStatus = paymentStatus;
         }
 
-        const orders = await prisma.order.findMany({
+        const orders = await prisma.orders.findMany({
             where,
             include: {
                 customer: true,
@@ -457,7 +457,7 @@ exports.getMyOrders = async (req, res) => {
 
         if (!customerId) return res.status(401).json({ error: 'Unauthorized' });
 
-        const orders = await prisma.order.findMany({
+        const orders = await prisma.orders.findMany({
             where: { customerId: customerId },
             include: {
                 payment: true,
@@ -517,7 +517,7 @@ exports.updateOrder = async (req, res) => {
         const customerId = req.user.id;
 
         const result = await prisma.$transaction(async (prisma) => {
-            const existingOrder = await prisma.order.findUnique({
+            const existingOrder = await prisma.orders.findUnique({
                 where: { id: orderId },
                 include: { customOrder: true, bulkOrder: true }
             });
@@ -578,7 +578,7 @@ exports.updateOrder = async (req, res) => {
 
             // 2. Clear existing items and related info that will be replaced
             if (!req.body.detailsOnly) {
-                await prisma.orderItem.deleteMany({ where: { orderId } });
+                await prisma.orderitem.deleteMany({ where: { orderId } });
             }
             await prisma.delivery.deleteMany({ where: { orderId } });
             // Payment might be kept or updated. Let's update payment intent if needed.
@@ -618,7 +618,7 @@ exports.updateOrder = async (req, res) => {
             }
 
             // 4. Update Order
-            const updatedOrder = await prisma.order.update({
+            const updatedOrder = await prisma.orders.update({
                 where: { id: orderId },
                 data: updateData,
                 include: { items: true, delivery: true, customer: true }
@@ -670,7 +670,7 @@ exports.updateOrderStatus = async (req, res) => {
 
         const orderId = parseInt(id);
 
-        const order = await prisma.order.findUnique({
+        const order = await prisma.orders.findUnique({
             where: { id: orderId },
             include: { customer: true }
         });
@@ -700,9 +700,26 @@ exports.updateOrderStatus = async (req, res) => {
                     });
                 }
             }
+
+            // NEW BLOCKER: Date Constraint — Preparation can only start within 4 days of delivery
+            if (order.deliveryDate) {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0); // Reset today's time
+                const dDate = new Date(order.deliveryDate);
+                dDate.setHours(0, 0, 0, 0); // Reset delivery date time
+
+                const diffTime = dDate - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays > 4) {
+                    return res.status(400).json({
+                        error: `Too early to start preparation. Preparation can only start within 4 days of the scheduled delivery date (${dDate.toLocaleDateString()}).`
+                    });
+                }
+            }
         }
 
-        const updatedOrder = await prisma.order.update({
+        const updatedOrder = await prisma.orders.update({
             where: { id: orderId },
             data: { status }
         });
@@ -744,10 +761,43 @@ exports.updateOrderStatus = async (req, res) => {
         // REMOVED: Automatic Ready email trigger as requested
 
         if (status === 'DELIVERED' && order.customer) {
+            // 1. Generate Invoice Record if not exists
+            const { generateInvoiceHTML } = require('../utils/invoiceGenerator');
+            const dayjs = require('dayjs');
+            
+            let invoice = await prisma.invoice.findUnique({ where: { orderId: order.id } });
+            if (!invoice) {
+                const year = dayjs().year();
+                const invoiceNumber = `INV-${year}-${order.id.toString().padStart(5, '0')}`;
+                invoice = await prisma.invoice.create({
+                    data: {
+                        orderId: order.id,
+                        invoiceNumber,
+                        issuedAt: new Date()
+                    }
+                });
+            }
+
+            // 2. Fetch full order details for invoice generation
+            const fullOrder = await prisma.orders.findUnique({
+                where: { id: order.id },
+                include: {
+                    customer: true,
+                    items: true,
+                    delivery: true,
+                    invoice: true
+                }
+            });
+
+            // 3. Generate HTML
+            const invoiceHTML = generateInvoiceHTML(fullOrder);
+
+            // 4. Send Email (Pass the invoice HTML as a variable)
             sendTemplateEmail('DELIVERED', order.customer.email, {
                 '{customer_name}': order.customer.name,
-                '{order_id}': order.id
-            }, order.id);
+                '{order_id}': order.id,
+                '{invoice_content}': invoiceHTML
+            }, order.id).catch(e => console.error('[OrderController:InvoiceEmailError]', e));
         }
 
         if (status === 'CANCELLED' && order.customer) {
@@ -772,7 +822,7 @@ exports.updatePaymentStatus = async (req, res) => {
         const { paymentStatus, total, note } = req.body;
         const orderId = parseInt(id);
 
-        const order = await prisma.order.findUnique({ where: { id: orderId } });
+        const order = await prisma.orders.findUnique({ where: { id: orderId } });
         if (!order) return res.status(404).json({ error: 'Order not found' });
 
         if (order.status === 'CANCELLED') {
@@ -812,7 +862,7 @@ exports.updatePaymentStatus = async (req, res) => {
             return res.status(400).json({ error: 'No valid fields to update' });
         }
 
-        const updatedOrder = await prisma.order.update({
+        const updatedOrder = await prisma.orders.update({
             where: { id: orderId },
             data: updateData
         });
@@ -839,7 +889,7 @@ exports.deleteOrder = async (req, res) => {
         const orderId = parseInt(id);
 
         await prisma.$transaction(async (prisma) => {
-            const order = await prisma.order.findUnique({
+            const order = await prisma.orders.findUnique({
                 where: { id: orderId }
             });
 
@@ -890,17 +940,17 @@ exports.deleteOrder = async (req, res) => {
             });
 
             // Delete dependencies first (if Cascade not set)
-            await prisma.orderItem.deleteMany({ where: { orderId } });
+            await prisma.orderitem.deleteMany({ where: { orderId } });
             await prisma.delivery.deleteMany({ where: { orderId } });
             await prisma.payment.deleteMany({ where: { orderId } });
             await prisma.invoice.deleteMany({ where: { orderId } });
-            await prisma.customOrder.deleteMany({ where: { orderId } });
-            await prisma.bulkOrder.deleteMany({ where: { orderId } });
-            await prisma.itemRating.deleteMany({ where: { orderItem: { orderId } } });
+            await prisma.customorder.deleteMany({ where: { orderId } });
+            await prisma.bulkorder.deleteMany({ where: { orderId } });
+            await prisma.itemrating.deleteMany({ where: { orderItem: { orderId } } });
             await prisma.transaction.deleteMany({ where: { orderId } });
 
             // Delete order
-            await prisma.order.delete({ where: { id: orderId } });
+            await prisma.orders.delete({ where: { id: orderId } });
         });
 
         res.json({ message: 'Order cancelled and points reverted.' });
@@ -914,7 +964,7 @@ exports.deleteOrder = async (req, res) => {
 exports.sendInvoice = async (req, res) => {
     try {
         const { id } = req.params;
-        const order = await prisma.order.findUnique({ where: { id: parseInt(id) } });
+        const order = await prisma.orders.findUnique({ where: { id: parseInt(id) } });
         if (!order) return res.status(404).json({ error: 'Order not found' });
         if (order.status === 'CANCELLED') {
             return res.status(400).json({ error: 'Cannot send invoice for a cancelled order.' });
@@ -949,7 +999,7 @@ exports.uploadBankSlip = async (req, res) => {
         }
         const bankSlipUrl = `${req.protocol}://${req.get('host')}/uploads/${folder}/${req.file.filename}`;
 
-        const order = await prisma.order.findUnique({ where: { id: orderId } });
+        const order = await prisma.orders.findUnique({ where: { id: orderId } });
         if (!order) return res.status(404).json({ error: 'Order not found' });
 
         // Strict Block: DELIVERED or CANCELLED or already APPROVED
@@ -969,7 +1019,7 @@ exports.uploadBankSlip = async (req, res) => {
         }
 
         // Update
-        const updated = await prisma.order.update({
+        const updated = await prisma.orders.update({
             where: { id: orderId },
             data: {
                 bankSlip: bankSlipUrl,
@@ -1006,7 +1056,7 @@ exports.approvePayment = async (req, res) => {
         const { id } = req.params;
         const orderId = parseInt(id);
 
-        const order = await prisma.order.findUnique({ 
+        const order = await prisma.orders.findUnique({ 
             where: { id: orderId },
             include: { payment: true } 
         });
@@ -1041,7 +1091,7 @@ exports.approvePayment = async (req, res) => {
 
         // NOTE: Order status is NOT changed here. Payment and order status are independent.
         // Admin must manually update order status in the Orders page.
-        const updated = await prisma.order.update({
+        const updated = await prisma.orders.update({
             where: { id: orderId },
             data: {
                 advanceStatus: 'APPROVED',
@@ -1093,14 +1143,14 @@ exports.rejectPaymentSlip = async (req, res) => {
         const { id } = req.params;
         const orderId = parseInt(id);
 
-        const order = await prisma.order.findUnique({ where: { id: orderId } });
+        const order = await prisma.orders.findUnique({ where: { id: orderId } });
         if (!order) return res.status(404).json({ error: 'Order not found' });
 
         if (order.status === 'CANCELLED') {
             return res.status(400).json({ error: 'Cannot reject payment slip for a cancelled order.' });
         }
 
-        const updated = await prisma.order.update({
+        const updated = await prisma.orders.update({
             where: { id: orderId },
             data: {
                 advanceStatus: 'REJECTED',
@@ -1128,7 +1178,7 @@ exports.rejectPaymentSlip = async (req, res) => {
 exports.confirmOrder = async (req, res) => {
     try {
         const orderId = parseInt(req.params.id);
-        const order = await prisma.order.findUnique({ where: { id: orderId } });
+        const order = await prisma.orders.findUnique({ where: { id: orderId } });
         if (!order) return res.status(404).json({ error: 'Order not found' });
 
         if (order.status === 'CANCELLED') {
@@ -1140,7 +1190,7 @@ exports.confirmOrder = async (req, res) => {
             newNotes = newNotes ? `${newNotes} | Customer Confirmed` : 'Customer Confirmed';
         }
 
-        const updated = await prisma.order.update({
+        const updated = await prisma.orders.update({
             where: { id: orderId },
             data: { specialNotes: newNotes }
         });
@@ -1163,7 +1213,7 @@ exports.markPaymentReceived = async (req, res) => {
             return res.status(400).json({ error: 'Invalid amount received' });
         }
 
-        const order = await prisma.order.findUnique({
+        const order = await prisma.orders.findUnique({
             where: { id: orderId },
             include: { customer: true, payment: true }
         });
@@ -1200,7 +1250,7 @@ exports.markPaymentReceived = async (req, res) => {
             newPaymentStatus = 'PENDING';
         }
 
-        const updatedOrder = await prisma.order.update({
+        const updatedOrder = await prisma.orders.update({
             where: { id: orderId },
             data: {
                 advanceAmount: newAdvance,
@@ -1272,7 +1322,7 @@ exports.cancelOrder = async (req, res) => {
         const orderId = parseInt(id);
         const customerId = req.user.id;
 
-        const order = await prisma.order.findUnique({
+        const order = await prisma.orders.findUnique({
             where: { id: orderId },
             include: { customer: true }
         });
@@ -1318,7 +1368,7 @@ exports.cancelOrder = async (req, res) => {
         }
 
         // Cancel the order
-        await prisma.order.update({
+        await prisma.orders.update({
             where: { id: orderId },
             data: { status: 'CANCELLED' }
         });

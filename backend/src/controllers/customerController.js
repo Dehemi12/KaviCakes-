@@ -32,7 +32,7 @@ exports.getCustomers = async (req, res) => {
         // We will do a map with a separate query or include all orders (expensive).
         // BETTER: Use groupBy for totals.
 
-        const totals = await prisma.order.groupBy({
+        const totals = await prisma.orders.groupBy({
             by: ['customerId'],
             _sum: {
                 total: true,

@@ -238,7 +238,17 @@ const Production = () => {
         } catch (e) { message.error(e.response?.data?.error || 'Update failed'); }
     };
 
-    const isAuthorizedToPrepare = (o) => (o.paymentStatus === 'PAID' || o.advanceStatus === 'APPROVED');
+    const isAuthorizedToPrepare = (o) => {
+        const paymentAuthorized = (o.paymentStatus === 'PAID' || o.advanceStatus === 'APPROVED');
+        
+        // Date Constraint: Only show in queue if within 4 days of delivery
+        // If no delivery date, we show it anyway (safety fallback)
+        const withinDateRange = o.deliveryDate 
+            ? dayjs(o.deliveryDate).startOf('day').diff(dayjs().startOf('day'), 'day') <= 4 
+            : true;
+
+        return paymentAuthorized && withinDateRange;
+    };
 
     const filteredOrders = useMemo(() => orders.filter(o => {
         if (!isAuthorizedToPrepare(o)) return false;

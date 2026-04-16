@@ -29,7 +29,7 @@ exports.getSchedule = async (req, res) => {
         });
 
         // 2. Fetch Orders with Delivery Dates
-        const orders = await prisma.order.findMany({
+        const orders = await prisma.orders.findMany({
             where: {
                 status: { not: 'CANCELLED' },
                 deliveryDate: {

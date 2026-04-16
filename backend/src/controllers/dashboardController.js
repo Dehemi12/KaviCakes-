@@ -15,30 +15,36 @@ exports.getStats = async (req, res) => {
         */
 
         // Safer approach:
-        const totalOrders = await prisma.order.count();
+        const totalOrders = await prisma.orders.count();
 
-        const inDelivery = await prisma.order.count({
+        const inDelivery = await prisma.orders.count({
             where: {
                 status: { in: ['READY', 'OUT_FOR_DELIVERY'] }
             }
         });
 
-        const completed = await prisma.order.count({
+        const completed = await prisma.orders.count({
             where: { status: 'DELIVERED' }
         });
 
-        const newOrdersCount = await prisma.order.count({
+        const newOrdersCount = await prisma.orders.count({
             where: { status: 'NEW' }
         });
 
-        // 🍰 To-Do Logic: Count cakes to bake today based on Delivery Date
-        const ordersToBakeToday = await prisma.order.findMany({
+        // 🍰 NEW PRODUCTION FLOW LOGIC: 
+        // Count orders that are in the production queue (Meeting the 4-day window + Payment verified)
+        const fourDaysFromNow = new Date();
+        fourDaysFromNow.setDate(fourDaysFromNow.getDate() + 4);
+        fourDaysFromNow.setHours(23, 59, 59, 999);
+
+        const ordersToBakeToday = await prisma.orders.findMany({
             where: {
-                status: { in: ['CONFIRMED', 'PREPARING'] },
-                deliveryDate: {
-                    gte: startOfDay,
-                    lte: endOfDay
-                }
+                status: { in: ['CONFIRMED', 'PREPARING', 'ADMIN_CONFIRMED'] },
+                deliveryDate: { lte: fourDaysFromNow },
+                OR: [
+                    { paymentStatus: 'PAID' },
+                    { advanceStatus: 'APPROVED' }
+                ]
             },
             include: { items: true }
         });
@@ -90,7 +96,7 @@ exports.getStats = async (req, res) => {
 
 exports.getRecentOrders = async (req, res) => {
     try {
-        const recentOrders = await prisma.order.findMany({
+        const recentOrders = await prisma.orders.findMany({
             take: 5,
             orderBy: { createdAt: 'desc' },
             include: {
@@ -156,7 +162,7 @@ exports.getMonthlyAnalysis = async (req, res) => {
         const startOfMonth = new Date(y, m, 1);
         const endOfMonth = new Date(y, m + 1, 0, 23, 59, 59, 999);
 
-        const orders = await prisma.order.findMany({
+        const orders = await prisma.orders.findMany({
             where: {
                 createdAt: {
                     gte: startOfMonth,

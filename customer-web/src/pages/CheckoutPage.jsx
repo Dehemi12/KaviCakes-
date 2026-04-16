@@ -754,16 +754,7 @@ const CheckoutPage = () => {
 
 
 
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">Delivery Instructions (Optional)</label>
-                                            <input
-                                                type="text"
-                                                value={formData.deliveryInstructions}
-                                                onChange={(e) => setFormData({ ...formData, deliveryInstructions: e.target.value })}
-                                                className="w-full p-3 rounded-xl border border-gray-200 focus:outline-none focus:border-pink-500 text-sm"
-                                                placeholder="e.g. Leave at gate"
-                                            />
-                                        </div>
+
                                     </div>
                                 )}
 

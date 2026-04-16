@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 // Get Site Settings (Public/Admin)
 exports.getSiteSettings = async (req, res) => {
     try {
-        const settings = await prisma.siteSetting.findMany();
+        const settings = await prisma.sitesetting.findMany();
         const config = {};
         // Convert array to object { key: value }
         settings.forEach(s => config[s.key] = s.value);
@@ -22,7 +22,7 @@ exports.updateSiteSettings = async (req, res) => {
         const updates = req.body;
 
         const updatePromises = Object.keys(updates).map(key =>
-            prisma.siteSetting.upsert({
+            prisma.sitesetting.upsert({
                 where: { key },
                 update: { value: updates[key] },
                 create: { key, value: updates[key], group: 'HOME_PAGE' }

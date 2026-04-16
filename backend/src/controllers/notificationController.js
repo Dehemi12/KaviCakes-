@@ -21,7 +21,7 @@ exports.getCustomerNotifications = async (req, res) => {
         const todayAtMidnight = new Date(now.setHours(0, 0, 0, 0));
 
         // Fetch active orders
-        const activeOrders = await prisma.order.findMany({
+        const activeOrders = await prisma.orders.findMany({
             where: {
                 customerId: customerId,
                 status: { notIn: ['DELIVERED', 'CANCELLED'] }
@@ -103,7 +103,7 @@ exports.getCustomerNotifications = async (req, res) => {
 
 exports.getTemplates = async (req, res) => {
     try {
-        const templates = await prisma.notificationTemplate.findMany();
+        const templates = await prisma.notificationtemplate.findMany();
         res.json(templates);
     } catch (error) {
         console.error('[NotificationController] Error:', error); res.status(500).json({ error: 'Server error' });
@@ -113,7 +113,7 @@ exports.getTemplates = async (req, res) => {
 exports.createTemplate = async (req, res) => {
     try {
         const { title, category, body, name, actionButton } = req.body;
-        const newTemplate = await prisma.notificationTemplate.create({
+        const newTemplate = await prisma.notificationtemplate.create({
             data: { title, category, body, name, actionButton }
         });
         res.status(201).json(newTemplate);
@@ -138,7 +138,7 @@ exports.sendManualNotification = async (req, res) => {
             return res.status(400).json({ error: 'All provided IDs are invalid' });
         }
 
-        const orders = await prisma.order.findMany({
+        const orders = await prisma.orders.findMany({
             where: { id: { in: numericIds } },
             select: {
                 id: true,
@@ -250,7 +250,7 @@ exports.sendIndividualNotification = async (req, res) => {
     try {
         const { orderId, templateType } = req.body;
         const { sendTemplateEmail } = require('../utils/emailService');
-        const order = await prisma.order.findUnique({
+        const order = await prisma.orders.findUnique({
             where: { id: parseInt(orderId) },
             include: { customer: true }
         });
@@ -279,7 +279,7 @@ exports.sendIndividualNotification = async (req, res) => {
 
 exports.getLogs = async (req, res) => {
     try {
-        const logs = await prisma.emailLog.findMany({
+        const logs = await prisma.emaillog.findMany({
             orderBy: { sentAt: 'desc' },
             take: 100
         });
@@ -295,7 +295,7 @@ exports.updateTemplate = async (req, res) => {
         const { id } = req.params;
         const { subject, body } = req.body;
         
-        const template = await prisma.notificationTemplate.update({
+        const template = await prisma.notificationtemplate.update({
             where: { id: parseInt(id) },
             data: { subject, body }
         });
@@ -320,7 +320,7 @@ exports.getPendingBulkNotifications = async (req, res) => {
         endOfTwoDaysFromNow.setHours(23, 59, 59, 999);
 
         if (type === 'PAYMENT_REMINDER') {
-            const orders = await prisma.order.findMany({
+            const orders = await prisma.orders.findMany({
                 where: {
                     deliveryDate: { gte: startOfTwoDaysFromNow, lte: endOfTwoDaysFromNow },
                     status: { notIn: ['CANCELLED', 'DELIVERED', 'READY', 'OUT_FOR_DELIVERY'] }
@@ -343,7 +343,7 @@ exports.getPendingBulkNotifications = async (req, res) => {
             }));
 
         } else if (type === 'LAST_EDIT_REMINDER') {
-            const orders = await prisma.order.findMany({
+            const orders = await prisma.orders.findMany({
                 where: {
                     deliveryDate: { gte: startOfTwoDaysFromNow, lte: endOfTwoDaysFromNow },
                     orderType: { in: ['CUSTOM', 'BULK'] },
@@ -361,7 +361,7 @@ exports.getPendingBulkNotifications = async (req, res) => {
             }));
 
         } else if (type === 'READY') {
-            const orders = await prisma.order.findMany({
+            const orders = await prisma.orders.findMany({
                 where: { status: 'READY' },
                 include: { customer: true }
             });
@@ -398,7 +398,7 @@ exports.sendBulkNotifications = async (req, res) => {
         let emailQueue = [];
 
         if (type === 'PAYMENT_REMINDER') {
-            const orders = await prisma.order.findMany({
+            const orders = await prisma.orders.findMany({
                 where: {
                     deliveryDate: { gte: startOfTwoDaysFromNow, lte: endOfTwoDaysFromNow },
                     status: { notIn: ['CANCELLED', 'DELIVERED', 'READY', 'OUT_FOR_DELIVERY'] }
@@ -422,7 +422,7 @@ exports.sendBulkNotifications = async (req, res) => {
                 orderId: order.id
             }));
         } else if (type === 'LAST_EDIT_REMINDER') {
-            const orders = await prisma.order.findMany({
+            const orders = await prisma.orders.findMany({
                 where: {
                     deliveryDate: { gte: startOfTwoDaysFromNow, lte: endOfTwoDaysFromNow },
                     orderType: { in: ['CUSTOM', 'BULK'] },
@@ -442,7 +442,7 @@ exports.sendBulkNotifications = async (req, res) => {
                 orderId: order.id
             }));
         } else if (type === 'READY') {
-            const orders = await prisma.order.findMany({
+            const orders = await prisma.orders.findMany({
                 where: { status: 'READY' },
                 include: { customer: true }
             });

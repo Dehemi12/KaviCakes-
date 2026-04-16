@@ -13,7 +13,7 @@ body {
 /* 
   Suppression of browser extension injections (like Adobe Sign / Acrobat) 
   that may appear on specific pages like Checkout.
-*/
+ */
 [id*='adobe'], [class*='adobe'], [id*='acrobat'], [class*='acrobat'], 
 iframe[src*='adobe'], 
 .adobe-sign-widget {
@@ -21,4 +21,11 @@ iframe[src*='adobe'],
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
+}
+
+/* Hide Layout elements when Invoice Modal is active */
+body.invoice-modal-open nav,
+body.invoice-modal-open footer,
+body.invoice-modal-open .notification-bar {
+    display: none !important;
 }

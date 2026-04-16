@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/orderController');
+const invoiceController = require('../controllers/invoiceController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const upload = require('../middlewares/uploadMiddleware');
 
@@ -17,6 +18,7 @@ router.put('/:id/confirm', orderController.confirmOrder);
 router.put('/:id/status', orderController.updateOrderStatus);
 router.put('/:id/payment-status', orderController.updatePaymentStatus);
 router.post('/:id/invoice/send', orderController.sendInvoice);
+router.get('/:orderId/invoice', invoiceController.getInvoice);
 
 // Online Payment Routes
 router.post('/:id/upload-slip', upload.single('file'), orderController.uploadBankSlip);

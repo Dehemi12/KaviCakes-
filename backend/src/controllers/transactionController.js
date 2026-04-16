@@ -25,7 +25,7 @@ exports.getAllTransactions = async (req, res) => {
         // 2. Normalize and Enhance with customer names for order-linked transactions
         // We'll fetch order details for those that have orderId
         const orderIds = transactions.filter(t => t.orderId).map(t => t.orderId);
-        const relatedOrders = await prisma.order.findMany({
+        const relatedOrders = await prisma.orders.findMany({
             where: { id: { in: orderIds } },
             include: { customer: { select: { name: true } } }
         });
@@ -129,7 +129,7 @@ exports.getFinancialSummary = async (req, res) => {
         });
         
         // Fetch ALL non-cancelled orders for Receivables
-        const allOrders = await prisma.order.findMany({
+        const allOrders = await prisma.orders.findMany({
             where: { status: { not: 'CANCELLED' } }
         });
 

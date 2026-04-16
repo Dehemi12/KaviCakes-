@@ -27,7 +27,7 @@ exports.createFeedback = async (req, res) => {
         const customerId = req.user.id;
 
         // 1. Verify Ownership & Status
-        const order = await prisma.order.findUnique({
+        const order = await prisma.orders.findUnique({
             where: { id: parseInt(orderId) }
         });
 
