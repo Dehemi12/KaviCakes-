@@ -109,7 +109,8 @@ const runDailyJobs = async () => {
 const initCronJobs = () => {
     console.log('[Cron] Initializing automated daily scheduled tasks...');
 
-    // NOTE: Startup audit removed to prevent duplication on server restarts.
+    // Run an immediate audit on server start (throttled by the 6-hour check in runDailyJobs)
+    runDailyJobs().catch(e => console.error('[Cron:StartupError]', e));
     // Reliability is maintained by the daily 8:00 AM run and creation-time triggers.
 
     // Schedule to run every day at 8:00 AM

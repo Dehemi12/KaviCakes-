@@ -88,7 +88,8 @@ exports.addEvent = async (req, res) => {
                 startTime: new Date(startTime),
                 endTime: endTime ? new Date(endTime) : null,
                 type: 'MANUAL',
-                category: category || 'General'
+                category: category || 'General',
+                updatedAt: new Date()
             }
         });
 

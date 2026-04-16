@@ -24,8 +24,16 @@ exports.updateSiteSettings = async (req, res) => {
         const updatePromises = Object.keys(updates).map(key =>
             prisma.sitesetting.upsert({
                 where: { key },
-                update: { value: updates[key] },
-                create: { key, value: updates[key], group: 'HOME_PAGE' }
+                update: { 
+                    value: updates[key],
+                    updatedAt: new Date()
+                },
+                create: { 
+                    key, 
+                    value: updates[key], 
+                    group: 'HOME_PAGE',
+                    updatedAt: new Date()
+                }
             })
         );
 

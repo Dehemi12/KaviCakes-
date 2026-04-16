@@ -334,7 +334,8 @@ exports.createCake = async (req, res) => {
                     price: parseFloat(v.price || 0),
                     sizeId: parseInt(v.sizeId),
                     shapeId: parseInt(v.shapeId),
-                    flavorId: parseInt(v.flavorId)
+                    flavorId: parseInt(v.flavorId),
+                    updatedAt: new Date()
                 });
             }
         }
@@ -348,7 +349,8 @@ exports.createCake = async (req, res) => {
                 imageUrl,
                 variants: {
                     create: variantsData
-                }
+                },
+                updatedAt: new Date()
             },
             include: { variants: true }
         });
@@ -388,7 +390,8 @@ exports.updateCake = async (req, res) => {
                     description,
                     ingredients,
                     imageUrl,
-                    availability
+                    availability,
+                    updatedAt: new Date()
                 }
             });
 
@@ -407,7 +410,8 @@ exports.updateCake = async (req, res) => {
                         price: parseFloat(v.price),
                         sizeId: parseInt(v.sizeId),
                         shapeId: parseInt(v.shapeId),
-                        flavorId: parseInt(v.flavorId)
+                        flavorId: parseInt(v.flavorId),
+                        updatedAt: new Date()
                     }));
 
                 // Create new

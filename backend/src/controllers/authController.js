@@ -38,6 +38,7 @@ exports.register = async (req, res) => {
             console.log(`[Registration] Saving customer to database...`);
             customer = await prisma.customer.create({
                 data: {
+                    id: crypto.randomUUID(),
                     displayId,
                     name,
                     email,
@@ -46,7 +47,8 @@ exports.register = async (req, res) => {
                     address,
                     isVerified: false,
                     otp,
-                    otpExpiresAt
+                    otpExpiresAt,
+                    updatedAt: new Date()
                 }
             });
             console.log(`[Registration] Successfully created customer ID: ${customer.id}`);
@@ -84,12 +86,14 @@ exports.register = async (req, res) => {
             console.log(`[Registration] Creating admin user...`);
             user = await prisma.admin.create({
                 data: {
+                    id: crypto.randomUUID(),
                     email,
                     password: hashedPassword,
                     name,
                     isVerified: false,
                     otp,
-                    otpExpiresAt
+                    otpExpiresAt,
+                    updatedAt: new Date()
                 },
             });
             console.log(`[Registration] Admin created successfully: ${email}`);
@@ -138,12 +142,12 @@ exports.verifyOTP = async (req, res) => {
         if (userCategory === 'CUSTOMER') {
             await prisma.customer.update({
                 where: { id: user.id },
-                data: { isVerified: true, otp: null, otpExpiresAt: null }
+                data: { isVerified: true, otp: null, otpExpiresAt: null, updatedAt: new Date() }
             });
         } else {
             await prisma.admin.update({
                 where: { id: user.id },
-                data: { isVerified: true, otp: null, otpExpiresAt: null }
+                data: { isVerified: true, otp: null, otpExpiresAt: null, updatedAt: new Date() }
             });
         }
 
@@ -174,9 +178,9 @@ exports.resendOTP = async (req, res) => {
         const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
         if (userCategory === 'CUSTOMER') {
-            await prisma.customer.update({ where: { id: user.id }, data: { otp, otpExpiresAt } });
+            await prisma.customer.update({ where: { id: user.id }, data: { otp, otpExpiresAt, updatedAt: new Date() } });
         } else {
-            await prisma.admin.update({ where: { id: user.id }, data: { otp, otpExpiresAt } });
+            await prisma.admin.update({ where: { id: user.id }, data: { otp, otpExpiresAt, updatedAt: new Date() } });
         }
 
         await sendEmail(email, 'KaviCakes - New OTP', `Your new verification code is: ${otp}`);
@@ -323,12 +327,12 @@ exports.resetPassword = async (req, res) => {
         if (decoded.role === 'CUSTOMER') {
             await prisma.customer.update({
                 where: { id: decoded.id },
-                data: { password: hashedPassword }
+                data: { password: hashedPassword, updatedAt: new Date() }
             });
         } else {
             await prisma.admin.update({
                 where: { id: decoded.id },
-                data: { password: hashedPassword }
+                data: { password: hashedPassword, updatedAt: new Date() }
             });
         }
 
@@ -348,12 +352,12 @@ exports.updateProfile = async (req, res) => {
         if (role === 'CUSTOMER') {
             await prisma.customer.update({
                 where: { id },
-                data: { name }
+                data: { name, updatedAt: new Date() }
             });
         } else {
             await prisma.admin.update({
                 where: { id },
-                data: { name }
+                data: { name, updatedAt: new Date() }
             });
         }
 
@@ -387,12 +391,12 @@ exports.changePassword = async (req, res) => {
         if (role === 'CUSTOMER') {
             await prisma.customer.update({
                 where: { id },
-                data: { password: hashedPassword }
+                data: { password: hashedPassword, updatedAt: new Date() }
             });
         } else {
             await prisma.admin.update({
                 where: { id },
-                data: { password: hashedPassword }
+                data: { password: hashedPassword, updatedAt: new Date() }
             });
         }
 

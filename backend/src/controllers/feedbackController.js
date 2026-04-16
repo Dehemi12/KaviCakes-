@@ -55,7 +55,8 @@ exports.createFeedback = async (req, res) => {
                 comment,
                 customerId,
                 orderId: parseInt(orderId),
-                status: 'PENDING'
+                status: 'PENDING',
+                updatedAt: new Date()
             }
         });
 
@@ -74,7 +75,10 @@ exports.updateFeedbackStatus = async (req, res) => {
 
         await prisma.feedback.update({
             where: { id: parseInt(id) },
-            data: { status }
+            data: { 
+                status,
+                updatedAt: new Date()
+            }
         });
 
         res.json({ message: 'Feedback status updated' });
@@ -94,7 +98,8 @@ exports.replyToFeedback = async (req, res) => {
             data: {
                 reply,
                 replyAt: new Date(),
-                status: 'APPROVED'
+                status: 'APPROVED',
+                updatedAt: new Date()
             }
         });
 

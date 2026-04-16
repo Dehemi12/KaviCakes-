@@ -226,7 +226,8 @@ exports.createOrder = async (req, res) => {
                     payment: paymentData,
                     deliveryDate: details && details.deliveryDate ? new Date(details.deliveryDate) : null,
                     customOrder: customOrderDetails ? { create: customOrderDetails } : undefined,
-                    bulkOrder: req.bulkOrderDetails ? { create: req.bulkOrderDetails } : undefined
+                    bulkOrder: req.bulkOrderDetails ? { create: req.bulkOrderDetails } : undefined,
+                    updatedAt: new Date()
                 },
                 include: {
                     items: true,
@@ -258,13 +259,14 @@ exports.createOrder = async (req, res) => {
                             increment: pointsEarned - totalPointsRedeemed
                         },
                         // Log transaction
-                        loyaltyTransactions: {
+                        loyaltytransaction: {
                             create: {
                                 pointsEarned: pointsEarned,
                                 pointsRedeemed: totalPointsRedeemed,
                                 orderId: newOrder.id
                             }
-                        }
+                        },
+                        updatedAt: new Date()
                     }
                 });
             }
@@ -598,7 +600,8 @@ exports.updateOrder = async (req, res) => {
                         approximateDeliveryTime: details.deliveryTime || null
                     }
                 } : undefined,
-                deliveryDate: (details && details.deliveryDate) ? new Date(details.deliveryDate) : existingOrder.deliveryDate
+                deliveryDate: (details && details.deliveryDate) ? new Date(details.deliveryDate) : existingOrder.deliveryDate,
+                updatedAt: new Date()
             };
 
             if (!req.body.detailsOnly) {
@@ -721,7 +724,10 @@ exports.updateOrderStatus = async (req, res) => {
 
         const updatedOrder = await prisma.orders.update({
             where: { id: orderId },
-            data: { status }
+            data: { 
+                status,
+                updatedAt: new Date()
+            }
         });
 
         // Trigger Notification Email if status moved to CONFIRMED
@@ -758,7 +764,12 @@ exports.updateOrderStatus = async (req, res) => {
             }
         }
 
-        // REMOVED: Automatic Ready email trigger as requested
+        if (status === 'READY' && order.customer) {
+            sendTemplateEmail('READY', order.customer.email, {
+                '{customer_name}': order.customer.name,
+                '{order_id}': order.id
+            }, order.id).catch(e => console.error('[OrderController:ReadyEmailError]', e));
+        }
 
         if (status === 'DELIVERED' && order.customer) {
             // 1. Generate Invoice Record if not exists
@@ -862,6 +873,7 @@ exports.updatePaymentStatus = async (req, res) => {
             return res.status(400).json({ error: 'No valid fields to update' });
         }
 
+        updateData.updatedAt = new Date();
         const updatedOrder = await prisma.orders.update({
             where: { id: orderId },
             data: updateData
@@ -929,13 +941,14 @@ exports.deleteOrder = async (req, res) => {
                         decrement: earned,
                         increment: Math.floor(used) // Give back used points
                     },
-                    loyaltyTransactions: {
+                    loyaltytransaction: {
                         create: {
                             orderId: orderId,
                             pointsEarned: -earned,
                             pointsRedeemed: -Math.floor(used)
                         }
-                    }
+                    },
+                    updatedAt: new Date()
                 }
             });
 
@@ -1027,7 +1040,8 @@ exports.uploadBankSlip = async (req, res) => {
                     if (order.paymentStatus === 'ADVANCE_RECEIVED') return 'UPLOADED_BALANCE';
                     if (order.balanceAmount <= 0) return 'UPLOADED_FULL';
                     return 'UPLOADED_ADVANCE';
-                })()
+                })(),
+                updatedAt: new Date()
             },
             include: { customer: true }
         });
@@ -1098,6 +1112,7 @@ exports.approvePayment = async (req, res) => {
                 paymentStatus: fullPayment ? 'PAID' : 'ADVANCE_RECEIVED',
                 advanceAmount: approvedAmount,
                 balanceAmount: total - approvedAmount,
+                updatedAt: new Date()
             }
         });
 
@@ -1111,7 +1126,8 @@ exports.approvePayment = async (req, res) => {
                 amount: approvedAmount,
                 description: `Slip Approval for Order #${orderId} (${fullPayment ? 'Full' : 'Advance'}).`,
                 paymentMode: 'Bank',
-                date: new Date()
+                date: new Date(),
+                updatedAt: new Date()
             }
         });
 
@@ -1154,7 +1170,8 @@ exports.rejectPaymentSlip = async (req, res) => {
             where: { id: orderId },
             data: {
                 advanceStatus: 'REJECTED',
-                bankSlip: null 
+                bankSlip: null,
+                updatedAt: new Date()
             },
             include: { customer: true }
         });
@@ -1192,7 +1209,10 @@ exports.confirmOrder = async (req, res) => {
 
         const updated = await prisma.orders.update({
             where: { id: orderId },
-            data: { specialNotes: newNotes }
+            data: { 
+                specialNotes: newNotes,
+                updatedAt: new Date()
+            }
         });
 
         res.json({ message: 'Order confirmed successfully', order: updated });
@@ -1258,6 +1278,7 @@ exports.markPaymentReceived = async (req, res) => {
                 paymentStatus: newPaymentStatus,
                 advanceStatus: newAdvanceStatus,
                 status: markAsDelivered ? 'DELIVERED' : undefined,
+                updatedAt: new Date(),
                 // Update payment record too for sync
                 payment: {
                     update: {
@@ -1298,7 +1319,8 @@ exports.markPaymentReceived = async (req, res) => {
                 amount: received,
                 description: `Payment Received config: Rs.${received}. Balance remaining: Rs.${newBalance}. Method: ${paymentMethod || 'Cash'}`,
                 paymentMode: paymentMethod || 'Cash',
-                date: new Date()
+                date: new Date(),
+                updatedAt: new Date()
             }
         });
 
@@ -1363,14 +1385,20 @@ exports.cancelOrder = async (req, res) => {
             const pointsToRestore = Math.floor(parseFloat(order.loyaltyDiscount));
             await prisma.customer.update({
                 where: { id: customerId },
-                data: { loyaltyPoints: { increment: pointsToRestore } }
+                data: { 
+                    loyaltyPoints: { increment: pointsToRestore },
+                    updatedAt: new Date()
+                }
             });
         }
 
         // Cancel the order
         await prisma.orders.update({
             where: { id: orderId },
-            data: { status: 'CANCELLED' }
+            data: { 
+                status: 'CANCELLED',
+                updatedAt: new Date()
+            }
         });
 
         // Send cancellation notification email

@@ -65,7 +65,7 @@ const sendEmail = async (to, subject, html, orderId = null) => {
         });
 
         // Log success
-        await prisma.emailLog.create({
+        await prisma.emaillog.create({
             data: {
                 orderId: orderId ? parseInt(orderId) : null,
                 email: to,
@@ -79,7 +79,7 @@ const sendEmail = async (to, subject, html, orderId = null) => {
         console.error(`[EmailService] Failed to send email to ${to}:`, error.message);
         
         // Log failure
-        await prisma.emailLog.create({
+        await prisma.emaillog.create({
             data: {
                 orderId: orderId ? parseInt(orderId) : null,
                 email: to,
@@ -101,7 +101,7 @@ const sendEmail = async (to, subject, html, orderId = null) => {
  */
 const sendTemplateEmail = async (templateType, to, variables = {}, orderId = null) => {
     try {
-        const template = await prisma.notificationTemplate.findFirst({
+        const template = await prisma.notificationtemplate.findFirst({
             where: { type: templateType }
         });
 
