@@ -16,6 +16,7 @@ const transactionRoutes = require('./src/routes/transactionRoutes');
 const scheduleRoutes = require('./src/routes/scheduleRoutes');
 const publicCakeRoutes = require('./src/routes/publicCakeRoutes');
 const bulkRoutes = require('./src/routes/bulkRoutes');
+const reportRoutes = require('./src/routes/reportRoutes');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -38,6 +39,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/schedule', scheduleRoutes);
 app.use('/api/public/cakes', publicCakeRoutes);
 app.use('/api/bulk-pricing', bulkRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/upload', require('./src/routes/uploadRoutes'));
 app.use('/api/content', require('./src/routes/contentRoutes'));
 app.use('/api/form-fields', require('./src/routes/formFieldRoutes'));

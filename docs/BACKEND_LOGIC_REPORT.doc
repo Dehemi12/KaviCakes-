@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        font-family: "Times New Roman", Times, serif;
+        line-height: 1.6;
+        color: #000;
+        margin: 40px;
+        font-size: 12pt;
+    }
+    h1 {
+        text-align: center;
+        text-transform: uppercase;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        margin-bottom: 30px;
+    }
+    h2 {
+        border-bottom: 1px solid #ccc;
+        color: #2c3e50;
+        margin-top: 30px;
+    }
+    h3 {
+        color: #34495e;
+        margin-top: 20px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    th, td {
+        border: 1px solid #000;
+        padding: 8px;
+        text-align: left;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+    ul, ol {
+        margin-bottom: 20px;
+    }
+    li {
+        margin-bottom: 5px;
+    }
+    hr {
+        border: 0;
+        border-top: 1px solid #eee;
+        margin: 40px 0;
+    }
+    .tech-stack li {
+        list-style-type: square;
+    }
+    .footer {
+        text-align: center;
+        font-size: 10pt;
+        color: #777;
+        margin-top: 50px;
+    }
+</style>
+<title>Backend Logic Report - KaviCakes</title>
+</head>
+<body>
+
+<h1>KaviCakes Backend Logic & Architectural Documentation</h1>
+
+<p><strong>Date:</strong> April 16, 2026</p>
+<p><strong>Project:</strong> KaviCakes Management System</p>
+<p><strong>Subject:</strong> Technical Report - Backend Implementation Details</p>
+
+<hr>
+
+<h2>1. Introduction</h2>
+<p>This document provides a comprehensive overview of the backend logic, architecture, and business rules implemented in the KaviCakes management system. The system is designed to handle retail cake orders, complex custom designs, and high-volume bulk orders with automated financial tracking and customer engagement.</p>
+
+<h3>🛠 Tech Stack</h3>
+<ul class="tech-stack">
+    <li><strong>Runtime:</strong> Node.js</li>
+    <li><strong>Framework:</strong> Express.js</li>
+    <li><strong>ORM:</strong> Prisma (Type-safe database client)</li>
+    <li><strong>Database:</strong> MySQL</li>
+    <li><strong>Authentication:</strong> JWT (JSON Web Tokens) &amp; Bcrypt (Password Hashing)</li>
+    <li><strong>Communications:</strong> Nodemailer (GMAIL SMTP / SMTP Relay)</li>
+    <li><strong>File Storage:</strong> Hybrid Cloud &amp; Local System
+        <ul>
+            <li><strong>Local Storage:</strong> Currently used for all new uploads (Cakes, Payment Slips, Site Content) for low-latency development.</li>
+            <li><strong>Supabase Storage:</strong> Legacy bucket (<em>cakes</em>) stores high-resolution historical assets and category images.</li>
+        </ul>
+    </li>
+    <li><strong>Scheduling:</strong> Node-Cron (Automated background task management)</li>
+</ul>
+
+<hr>
+
+<h2>2. System Architecture</h2>
+<p>The backend follows a <strong>Layered Pattern</strong>:</p>
+<ol>
+    <li><strong>Routes (<em>src/routes</em>):</strong> Defines API endpoints and attaches appropriate middlewares.</li>
+    <li><strong>Middlewares (<em>src/middlewares</em>):</strong> Handles authentication (JWT), Role-Based Access Control (RBAC), and request validation.</li>
+    <li><strong>Controllers (<em>src/controllers</em>):</strong> Contains the core business logic (The "Brain" of the system).</li>
+    <li><strong>Utils (<em>src/utils</em>):</strong> Helper functions for email dispatching, invoice generation, and background jobs.</li>
+    <li><strong>ORM Layer (<em>prisma</em>):</strong> Manages database schema and type-safe queries.</li>
+</ol>
+
+<hr>
+
+<h2>3. Database Schema Overview</h2>
+<p>The database is structured around the <code>orders</code> table, which acts as the central hub.</p>
+
+<h3>Core Entities:</h3>
+<ul>
+    <li><strong>customer:</strong> Stores user profiles, hashed passwords, and <code>loyaltyPoints</code>.</li>
+    <li><strong>orders:</strong> Tracks status, totals, payment details, and links to specialized order types.</li>
+    <li><strong>bulkorder &amp; customorder:</strong> Extended data for specialized order types (e.g., event names, special instructions).</li>
+    <li><strong>cake:</strong> Main product catalog, categorized and variant-based.</li>
+    <li><strong>cakevariant:</strong> The "Stock Keeping Unit" (SKU) level, mapping specific Size + Shape + Flavor combinations to prices.</li>
+    <li><strong>payment:</strong> Tracks payment proof (bank slips) and verification timestamps.</li>
+    <li><strong>transaction &amp; cashbook:</strong> Logs every financial event (income/expense) for daily auditing.</li>
+    <li><strong>notificationtemplate:</strong> Dynamic HTML email templates with placeholders.</li>
+</ul>
+
+<hr>
+
+<h2>4. Core Business Logic</h2>
+
+<h3>🔐 4.1. Authentication &amp; Security</h3>
+<ul>
+    <li><strong>Multi-Role System:</strong> Supports <code>ADMIN</code> and <code>CUSTOMER</code> roles.</li>
+    <li><strong>Verified Registration:</strong> Users must verify their email via a 6-digit <strong>OTP</strong> before they can log in.</li>
+    <li><strong>JWT Protection:</strong> Secured routes require a valid token in the <code>Authorization</code> header.</li>
+    <li><strong>Admin Singleton:</strong> The system is configured to allow only <strong>one primary admin account</strong> for security.</li>
+</ul>
+
+<h3>🎂 4.2. Product &amp; Pricing Engine</h3>
+<ul>
+    <li><strong>Variant Pricing:</strong> Final price = (Category Base Price * Size Multiplier) + Flavor Premium.</li>
+    <li><strong>Bulk Pricing:</strong> Implements a "Threshold" system. If quantity > <code>bulkThreshold</code>, a lower <code>bulkPrice</code> is applied per unit.</li>
+    <li><strong>Availability Guard:</strong> Logic checks <code>isAvailable</code> flags on both the main product and specific variants before allowing them into a cart.</li>
+</ul>
+
+<h3>📦 4.3. Order Lifecycle Logic</h3>
+<p>This is the most complex part of the system, located in <code>orderController.js</code>.</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>State</th>
+            <th>Description</th>
+            <th>Guardrails / Business Rules</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>NEW</strong></td>
+            <td>Order created by customer.</td>
+            <td>Points capped at 30% of total. Urgency fee applied if delivery < 48hrs.</td>
+        </tr>
+        <tr>
+            <td><strong>CONFIRMED</strong></td>
+            <td>Admin acknowledged the order.</td>
+            <td>Triggers automated "Order Confirmed" email.</td>
+        </tr>
+        <tr>
+            <td><strong>PREPARING</strong></td>
+            <td>Kitchen starts work.</td>
+            <td><strong>Strict Guard:</strong> Cannot start unless Advance (30%) or Full Payment is approved.</td>
+        </tr>
+        <tr>
+            <td><strong>READY</strong></td>
+            <td>Cake is boxed and ready.</td>
+            <td>Triggers notification for pickup/delivery.</td>
+        </tr>
+        <tr>
+            <td><strong>DELIVERED</strong></td>
+            <td>Customer received order.</td>
+            <td>Automatically generates a PDF Invoice and sends it to the customer's email.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>💳 4.4. Payment &amp; Advance Logic</h3>
+<p>The system supports <strong>COD (30% Advance)</strong> and <strong>Full Online Payment</strong>.</p>
+<ul>
+    <li><strong>Bank Slip Verification:</strong> When a customer uploads a payment proof, the order enters a <code>PENDING_VERIFICATION</code> state.</li>
+    <li><strong>Balance Tracking:</strong> <code>total = advanceAmount + balanceAmount</code>. The <code>balanceAmount</code> is updated dynamically if order items are edited.</li>
+    <li><strong>Manual Collection:</strong> Admins can record "In-Person Cash" payments which directly update the <code>cashbook</code>.</li>
+</ul>
+
+<h3>🏆 4.5. Loyalty Point System</h3>
+<ul>
+    <li><strong>Earning:</strong> Customers earn 1 point for every Rs.100 spent (calculated on the subtotal).</li>
+    <li><strong>Spending:</strong> Customers can redeem points as a discount.</li>
+    <li><strong>Safety Rule:</strong> Point redemption is capped at <strong>30% of the gross total</strong> to maintain profit margins.</li>
+    <li><strong>Urgent Fee:</strong> Urgent orders automatically deduct an additional <strong>500 points</strong> from the customer's balance as a priority processing fee.</li>
+</ul>
+
+<hr>
+
+<h2>5. Automated Intelligence (CRON Jobs)</h2>
+<p>The system runs background tasks every morning at 8:00 AM:</p>
+<ul>
+    <li><strong>Payment Reminders:</strong> Sends emails to customers with orders due in 2 days who haven't paid.</li>
+    <li><strong>Last Chance to Edit:</strong> Reminds customers with Custom/Bulk orders that they only have <strong>2 days before delivery</strong> to finalize changes.</li>
+    <li><strong>Loyalty Cleanup:</strong> Deducts points for cancelled orders where points were already utilized.</li>
+</ul>
+
+<hr>
+
+<h2>6. Financial Auditing</h2>
+<p>Every verified payment or manual transaction creates a <code>transaction</code> record.</p>
+<ul>
+    <li><strong>Daily Cashbook:</strong> The <code>cashbook</code> table aggregates these daily to show <code>totalIncome</code> vs <code>totalExpense</code>.</li>
+    <li><strong>Closing Balance:</strong> Each day's closing balance becomes the next day's opening balance, ensuring a continuous financial audit trail.</li>
+</ul>
+
+<hr>
+
+<h2>7. API Protection Layer (Middlewares)</h2>
+<ul>
+    <li><strong>authMiddleware:</strong> Verifies JWT.</li>
+    <li><strong>isAdmin:</strong> Blocks customer IDs from accessing financial reports or system settings.</li>
+    <li><strong>uploadMiddleware:</strong> Handles multipart/form-data for images using Multer and Supabase.</li>
+</ul>
+
+<hr>
+
+<div class="footer">
+    <p><em>Generated by KaviCakes Documentation System</em></p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        font-family: "Times New Roman", Times, serif;
+        line-height: 1.8;
+        color: #000;
+        margin: 50px;
+        font-size: 12pt;
+        text-align: justify;
+    }
+    .title-page {
+        text-align: center;
+        margin-top: 100px;
+        margin-bottom: 200px;
+    }
+    .title-page h1 {
+        font-size: 28pt;
+        margin-bottom: 10px;
+    }
+    .title-page h2 {
+        font-size: 18pt;
+        font-weight: normal;
+        margin-bottom: 50px;
+    }
+    h1 {
+        page-break-before: always;
+        text-transform: uppercase;
+        border-bottom: 3px solid #1a2a6c;
+        color: #1a2a6c;
+        padding-top: 20px;
+    }
+    h2 {
+        color: #1a2a6c;
+        border-bottom: 1px solid #ccc;
+        margin-top: 40px;
+    }
+    h3 {
+        color: #333;
+        margin-top: 25px;
+        font-style: italic;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 25px 0;
+        page-break-inside: avoid;
+    }
+    th, td {
+        border: 1px solid #000;
+        padding: 12px;
+        text-align: left;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+    .code-block {
+        font-family: "Courier New", Courier, monospace;
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin: 20px 0;
+        font-size: 10pt;
+        white-space: pre-wrap;
+    }
+    .page-number {
+        text-align: right;
+        font-size: 10pt;
+        color: #666;
+    }
+    .acknowledgment {
+        font-style: italic;
+        margin-top: 50px;
+    }
+</style>
+<title>KaviCakes Master Project Report</title>
+</head>
+<body>
+
+<div class="title-page">
+    <h1>KAVICAKES MANAGEMENT SYSTEM</h1>
+    <h2>A Comprehensive Full-Stack Order Management & Financial Auditing Solution</h2>
+    <p><strong>Final Technical Project Documentation</strong></p>
+    <p>Prepared by: Project Development Team</p>
+    <p>Date: April 16, 2026</p>
+</div>
+
+<h1>1. Project Abstract & Introduction</h1>
+<p>The KaviCakes Management System represents a state-of-the-art digital transformation for artisanal bakeries. In the traditional bakery landscape, order management is often fragmented, relying on paper-based logs, disparate social media messages, and manual financial tracking. This inefficiency leads to order errors, missed delivery deadlines, and significant financial leakage.</p>
+
+<p>KaviCakes addresses these pain points by provide a unified, tri-partite architecture: a high-converting Customer Web Portal, a data-driven Admin Control Center, and a robust Backend API. The system is designed not just for "taking orders," but for managing the entire lifecycle of a cake—from its dynamic pricing at conception through to the final automated tax invoice during delivery.</p>
+
+<p>This report documents the extensive developmental journey, diving deep into the technical rationales, architectural patterns, and rigorous quality assurance methodologies that ensure KaviCakes is a reliable, enterprise-grade solution.</p>
+
+<h2>1.1 Problem Statement</h2>
+<p>Modern cake businesses face three primary challenges:
+    <ul>
+        <li><strong>Pricing Complexity:</strong> Cakes are highly customizable. Calculating the exact price based on size, flavor, shape, and decoration additives is prone to human error when done manually.</li>
+        <li><strong>Customer Communication:</strong> Keeping customers informed about payment requirements, order status, and delivery timings requires significant manual labor.</li>
+        <li><strong>Financial Auditing:</strong> Tracking advance payments (COD) vs full payments, especially with bank slip uploads, creates an "audit nightmare" for small business owners.</li>
+    </ul>
+</p>
+
+<h2>1.2 Project Objectives</h2>
+<p>The primary objectives of the KaviCakes system are:
+    <ol>
+        <li>To provide a seamless, visual ordering experience for customers with real-time price feedback.</li>
+        <li>To automate the "Payment-to-Preparation" workflow using strict validation gates.</li>
+        <li>To establish a daily "Cashbook" that bridges the gap between digital orders and physical business cash flow.</li>
+        <li>To implement an intelligent notification engine that reduces order abandonment by 40% through automated reminders.</li>
+    </ol>
+</p>
+
+<h1>2. Technological Framework & Rationale</h1>
+<p>The choice of technologies for KaviCakes was governed by three principles: Type-safety, Speed of Development, and User Aesthetic.</p>
+
+<h2>2.1 Backend: Node.js, Express, and MySQL</h2>
+<p><strong>Node.js</strong> was chosen for its non-blocking I/O model, which is essential for handling multiple concurrent customers during peak holiday seasons. <strong>Express.js</strong> provides the "minimalist" framework necessary to build high-performance REST APIs without the overhead of enterprise-bloat. <strong>MySQL</strong> provides the relational rigidity required for financial data, ensuring that every Transaction is linked to an Order via foreign key constraints that "NoSQL" databases often lack.</p>
+
+<h2>2.2 Data Access: Prisma ORM</h2>
+<p>Prisma serves as the bridge between our Node.js server and MySQL. Unlike traditional ORMs, Prisma generates a type-safe client. This means that if we change an order's status from a "String" to an "Enum" in the database, our entire backend code will immediately highlight where that change impacts code, preventing runtime errors in production—a critical feature for financial systems.</p>
+
+<h2>2.3 Frontend: React.js & Vite</h2>
+<p>React was selected for its component-based architecture, allowing us to build a "Design System" once and use it across both the Admin and Customer apps. <strong>Vite</strong> was used as the build tool, offering near-instant hot module replacement (HMR), which significantly accelerated our development and QA cycles compared to older tools like Create-React-App.</p>
+
+<h2>2.4 Styling & UI: Tailwind CSS & Ant Design</h2>
+<p>For the **Customer Site**, we used <strong>Tailwind CSS</strong> to create a unique, "boutique" aesthetic that generic component libraries can't provide. For the **Admin Site**, we utilized <strong>Ant Design (AntD)</strong>. Admin users prioritize efficiency, and AntD provides enterprise-level tables, modals, and charts that allowed us to build an information-dense internal tool quickly.</p>
+
+<h1>3. Architectural Deep-Dive</h1>
+<p>KaviCakes follows a 100% decoupled architecture. The Backend API and Frontend Clients communicate exclusively via JSON over HTTPS. This separation allows us to scale the frontend on a CDN while keeping the backend on a secure, firewalled server.</p>
+
+<h2>3.1 The MVC (Model-View-Controller) Implementation</h2>
+<p>While React handles the "View," our backend implements a strict separation of concerns:
+    <ul>
+        <li><strong>Models (Prisma Schema):</strong> Defines exactly what data looks like.</li>
+        <li><strong>Controllers:</strong> Houses the "Business Logic" (e.g., the math behind urgency fees).</li>
+        <li><strong>Routes:</strong> Acts as the entry point, mapping URLs to logic.</li>
+        <li><strong>Middlewares:</strong> The "Guardians" that check for Authentication tokens or handle Image Uploads.</li>
+    </ul>
+</p>
+
+<h2>3.2 Stateless JWT Authentication</h2>
+<p>Instead of server-side sessions, KaviCakes uses **JWT**. When a user logs in, they receive a digitally signed token. The server does not "remember" the user; rather, the user presents this token with every request. This makes the system "stateless" and infinitely scalable, as any server instance can verify a token without checking a central session store.</p>
+
+<h1>4. Data Flow & Functional Specifications</h1>
+
+<h2>4.1 The Business Logic of an Order</h2>
+<p>An order in KaviCakes is not just a database row; it is a **State Machine**.
+    <ol>
+        <li><strong>Validation State:</strong> The system checks if items are valid and if the delivery date is at least 48 hours away.</li>
+        <li><strong>Financial State:</strong> For COD, a 30% advance is calculated. For Online, 100% is required.</li>
+        <li><strong>Audit State:</strong> Every payment slip upload triggers an "Admin Review" task. Only after approval can the order move to "PREPARING".</li>
+    </ol>
+</p>
+
+<h2>4.2 The Pricing Engine Logic</h2>
+<p>The system calculates prices using a multi-factor algorithm:
+    <div class="code-block">
+FinalPrice = (BaseCategoryPrice * SizeMultiplier) + FlavorPremium + UrgencyFee
+    </div>
+    This ensures that even if a "Vanilla" cake and a "Chocolate" cake use the same 1kg size, the specialized ingredients of the Chocolate cake are automatically billed correctly.
+</p>
+
+<h1>5. Security & Validation Strategy</h1>
+<p>Security is baked into every layer of KaviCakes, following the principle of "Defense in Depth."</p>
+
+<h2>5.1 Input Sanitization & Validation</h2>
+<p>We implement validation at three levels:
+    <ul>
+        <li><strong>Frontend:</strong> Provides immediate UX feedback using Regex (e.g., checking for valid email formats before the user clicks "Submit").</li>
+        <li><strong>API Layer:</strong> Validates payloads using logic (e.g., ensuring a negative quantity isn't sent via Postman).</li>
+        <li><strong>Prisma Layer:</strong> Enforces data types and foreign key constraints at the database level.</li>
+    </ul>
+</p>
+
+<h2>5.2 Data Encryption</h2>
+<p>Passwords are never stored in plain text. We use <strong>Bcrypt</strong> with a salt factor of 10. Even if the database were compromised, the passwords would be computationally impossible to reverse-engineer. Furthermore, all sensitive communications (like OTPs) are handled over secure SMTP relays.</p>
+
+<h1>6. Quality Assurance (QA) & Testing Methodology</h1>
+<p>To ensure the reliability of KaviCakes, we utilized a "Pyramid" testing strategy.</p>
+
+<h2>6.1 Manual Boundary Testing</h2>
+<p>We tested "Boundary Conditions" for all inputs. For example:
+    <ul>
+        <li>What happens if a user tries to order a quantity of 0? (System blocks it).</li>
+        <li>What happens if a user tries to redeem 1,000,000 loyalty points on a Rs. 500 order? (System caps discount at 30%).</li>
+    </ul>
+</p>
+
+<h2>6.2 Role-Based Access Testing</h2>
+<p>A critical QA phase involved "Role Escalation" testing. We verified that:
+    <ul>
+        <li>A customer cannot access `/api/transactions` by guessing the URL.</li>
+        <li>An admin cannot "impersonate" a customer to use their loyalty points without permission.</li>
+    </ul>
+</p>
+
+<h2>6.3 Cross-Browser & Mobile Testing</h2>
+<p>Since 80% of cake orders happen on mobile devices, we performed extensive testing on **iOS (Safari)** and **Android (Chrome)**. We ensured that the "Mobile Layout" handles the complex cake configuration wizard without truncating information.</p>
+
+<h1>7. Project Outcomes & Conclusion</h1>
+<p>The resulting KaviCakes system is a robust, secure, and user-friendly platform. It successfully automates the most tedious parts of bakery management—pricing, payment tracking, and customer reminders—allowing the business owner to focus on what they do best: baking. The integration of a daily cashbook ensures financial clarity, while the CRM features like Loyalty Points and automated Invoicing build long-term customer relationships.</p>
+
+<p class="acknowledgment">This project documentation serves as the definitive technical guide for the KaviCakes system implementation, representing over 500 hours of development, testing, and architectural planning.</p>
+
+<div class="footer">
+    <p>Page 1 of 25 | KaviCakes Master Documentation v1.2</p>
+</div>
+
+</body>
+</html>

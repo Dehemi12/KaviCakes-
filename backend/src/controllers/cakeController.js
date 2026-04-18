@@ -163,67 +163,82 @@ exports.getMasterData = async (req, res) => {
     }
 };
 
-// GET Best Sellers (Based on Order Placement)
+// GET Best Sellers (Based on Order Placement - Standard Cakes Only)
 exports.getBestSellers = async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 3;
+        const limit = parseInt(req.query.limit) || 4;
 
-        // Group by variantId and count occurrences in OrderItems
-        // We filter for orders that are not CANCELLED for accuracy
-        const bestSellerVariants = await prisma.orderitem.groupBy({
-            by: ['variantId'],
+        // 1. Get sales data for standard variants
+        const orderItems = await prisma.orderitem.findMany({
             where: {
                 variantId: { not: null },
-                order: {
-                    status: { not: 'CANCELLED' }
-                }
+                order: { status: { not: 'CANCELLED' } }
             },
-            _count: {
-                variantId: true
-            },
-            orderBy: {
-                _count: {
-                    variantId: 'desc'
-                }
-            },
-            take: limit
+            select: { variantId: true, quantity: true }
         });
 
-        if (bestSellerVariants.length === 0) {
-            // Fallback: Just return latest cakes if no orders yet
-            const fallbackCakes = await prisma.cake.findMany({
-                take: limit,
-                orderBy: { createdAt: 'desc' },
+        let topCakes = [];
+
+        if (orderItems.length > 0) {
+            // Aggregate
+            const variantSales = {};
+            orderItems.forEach(item => {
+                variantSales[item.variantId] = (variantSales[item.variantId] || 0) + item.quantity;
+            });
+
+            const topVariantIds = Object.keys(variantSales);
+
+            // Fetch cakes
+            const variants = await prisma.cakevariant.findMany({
+                where: { id: { in: topVariantIds.map(id => parseInt(id)) } },
                 include: {
-                    category: true,
-                    variants: {
-                        include: { size: true, shape: true, flavor: true }
+                    cake: {
+                        include: {
+                            category: true,
+                            variants: { include: { size: true } }
+                        }
                     }
                 }
             });
-            return res.json(formatCakes(fallbackCakes));
-        }
 
-        const variantIds = bestSellerVariants.map(v => v.variantId);
-
-        // Fetch the corresponding cakes
-        const bestSellerCakes = await prisma.cake.findMany({
-            where: {
-                variants: {
-                    some: {
-                        id: { in: variantIds }
+            // Group by Cake design
+            const cakeMap = new Map();
+            variants.forEach(v => {
+                if (v.cake) {
+                    const currentSales = variantSales[v.id] || 0;
+                    if (!cakeMap.has(v.cake.id)) {
+                        cakeMap.set(v.cake.id, { ...v.cake, totalSold: currentSales });
+                    } else {
+                        cakeMap.get(v.cake.id).totalSold += currentSales;
                     }
                 }
-            },
-            include: {
-                category: true,
-                variants: {
-                    include: { size: true, shape: true, flavor: true }
-                }
-            }
-        });
+            });
 
-        res.json(formatCakes(bestSellerCakes));
+            topCakes = Array.from(cakeMap.values())
+                .sort((a, b) => b.totalSold - a.totalSold)
+                .slice(0, limit);
+        }
+
+        // 2. If no sales or not enough items, fill with latest cakes
+        if (topCakes.length < limit) {
+            const existingIds = topCakes.map(c => c.id);
+            const extraCakes = await prisma.cake.findMany({
+                where: { 
+                    id: { notIn: existingIds },
+                    availability: true 
+                },
+                take: limit - topCakes.length,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    category: true,
+                    variants: { include: { size: true } }
+                }
+            });
+            topCakes = [...topCakes, ...extraCakes];
+        }
+
+        const formatted = formatCakes(topCakes);
+        res.json(formatted);
     } catch (error) {
         console.error('[CakeController:getBestSellers] Error:', error);
         res.status(500).json({ error: 'Server error' });
@@ -234,7 +249,7 @@ exports.getBestSellers = async (req, res) => {
 function formatCakes(cakes) {
     return cakes.map(c => {
         let displayPrice = parseFloat(c.category?.basePrice || 0);
-        const standardVariant = c.variants.find(v => v.size && v.size.label === '1kg') || c.variants[0];
+        const standardVariant = c.variants?.find(v => v.size && v.size.label === '1kg') || (c.variants && c.variants[0]);
         if (standardVariant) {
             displayPrice = parseFloat(standardVariant.price) || parseFloat(c.category?.basePrice || 0);
         }
@@ -439,7 +454,11 @@ exports.createSize = async (req, res) => {
         const size = await prisma.cakesize.create({ data: { label, price: parseFloat(price || 0) } });
         res.status(201).json(size);
     } catch (error) {
-        console.error('[CakeController] Error:', error); res.status(500).json({ error: 'Failed' });
+        if (error.code === 'P2002') {
+            return res.status(400).json({ error: 'This size label already exists' });
+        }
+        console.error('[CakeController:createSize] Error:', error);
+        res.status(500).json({ error: 'Failed to create size' });
     }
 };
 
@@ -450,7 +469,11 @@ exports.createShape = async (req, res) => {
         const shape = await prisma.cakeshape.create({ data: { label, price: parseFloat(price || 0) } });
         res.status(201).json(shape);
     } catch (error) {
-        console.error('[CakeController] Error:', error); res.status(500).json({ error: 'Failed' });
+        if (error.code === 'P2002') {
+            return res.status(400).json({ error: 'This shape label already exists' });
+        }
+        console.error('[CakeController:createShape] Error:', error);
+        res.status(500).json({ error: 'Failed to create shape' });
     }
 };
 
@@ -461,7 +484,11 @@ exports.createFlavor = async (req, res) => {
         const flavor = await prisma.cakeflavor.create({ data: { label, price: parseFloat(price || 0) } });
         res.status(201).json(flavor);
     } catch (error) {
-        console.error('[CakeController] Error:', error); res.status(500).json({ error: 'Failed' });
+        if (error.code === 'P2002') {
+            return res.status(400).json({ error: 'This flavor label already exists' });
+        }
+        console.error('[CakeController:createFlavor] Error:', error);
+        res.status(500).json({ error: 'Failed to create flavor' });
     }
 };
 

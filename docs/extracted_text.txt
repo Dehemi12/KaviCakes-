@@ -1,0 +1,102 @@
+CHAPTER 4: SYSTEM IMPLEMENTATION AND TESTING
+4.1  Technologies and Tools Used
+The Preschool Management System is a full-stack, multi-platform solution built around four core components: the Admin Web Dashboard, the Parent Mobile Application, the Staff QR Scanner Application, and a centralized REST API Backend. All components communicate through HTTPS-secured REST API calls to a single backend server, ensuring that business logic, data validation, and security enforcement remain in one controlled environment regardless of which client sends the request.
+ The production system is hosted at malkakulufuturemind.me on a DigitalOcean VPS running Ubuntu 22.04, with Nginx serving as the reverse proxy and PM2 managing the Node.js process. Files such as student photos, birth certificates, and payment receipts are stored in a local /uploads directory on the server and served directly by Nginx as static assets.
+4.2  Programming Languages and Development Tools
+4.2.1  Backend — Node.js and Express.js
+The REST API is built on Node.js v20 LTS with the Express.js framework, chosen for its non-blocking I/O model that handles concurrent requests from parents, teachers, and admins efficiently.
+ The database schema is managed by Prisma ORM, which provides compile-time type safety and version-controlled migrations to ensure the schema never drifts out of sync with application code. Passwords are hashed using bcryptjs (salt round 10) and are never stored in plaintext. Authentication is stateless and JWT-based with a 24-hour token expiry. OTP codes for password resets are stored only as SHA-256 hashes and expire after 5 minutes. A custom RBAC middleware enforces role-level access control on every protected endpoint before any database query is executed. File uploads are handled by Multer using memory storage, writing the buffer to the server's /uploads directory. Puppeteer generates PDF billing reports by rendering HTML templates through a headless browser.
+ Transactional emails are sent via Nodemailer configured with the Brevo SMTP service, chosen because DigitalOcean blocks standard SMTP ports on new Droplets. Two automated background tasks are managed by node-cron: daily attendance closure at 9:30 AM and a special-day push notification dispatch at 8:00 PM, both running in the Asia/Colombo timezone.
+4.2.2  Admin Web — React 19 and Vite
+The Admin Dashboard is a Single Page Application built with React 19, bundled by Vite for fast development and optimized production builds. The UI is built on Ant Design v5, providing accessible enterprise-grade components for forms, tables, modals, and date pickers. Dashboard statistics are visualized using Recharts, rendering real-time bar and pie charts. Global user state is managed through Zustand, and all HTTP communication uses Axios with interceptors that automatically attach the JWT token and redirect to login on a 401 response.
+4.2.3  Parent App and Staff Scanner — React Native and Expo
+Both mobile applications are built with React Native under the Expo managed workflow, distributed as Android APKs built via EAS Build. The Parent App uses expo-secure-store to persist the JWT token in the device hardware-backed secure keystore, expo-notifications for receiving Firebase-backed push alerts, and expo-image-picker to upload payment receipts. The Staff App is purpose-built for QR scanning using expo-camera and expo-barcode-scanner, with expo-haptics providing tactile confirmation on every successful attendance scan.
+4.3  User Interface Demonstration and Data Entry Screens
+The system interface is organized strictly by role. An Admin has access to all modules. A Teacher sees only students in their assigned classrooms. A Parent sees only their own children. This access control is enforced both in the React frontend through route guards and in the backend API through RBAC middleware on every protected route.
+4.3.1  Authentication
+The Admin Web and Staff App share a login interface enforcing portal isolation — a parent attempting to authenticate through the Admin portal receives a 403 Forbidden response. Staff usernames must begin with the MFM_ prefix, enforced at both registration and login. The forgot-password flow delivers a 5-minute expiry OTP to the user's registered email. The OTP is stored exclusively as a SHA-256 hash; the plaintext is emailed and never persisted. On first login or after a temporary password is used, the system forces an immediate password change before granting access to any feature.
+Figure 4.1 – Admin Web Login
+Figure 4.2 – Forgot Password
+Figure 4.3 – OTP Verification
+4.3.2  Admin Dashboard and Staff Registration
+After login, the admin lands on the main dashboard displaying live KPIs: enrolled students, active classrooms, pending payment approvals, and today's attendance rate, visualized with Recharts charts. New staff accounts are created here; the system generates a secure temporary password and emails it to the staff member via Brevo SMTP. The firstLogin flag forces a password change on their first session.
+Figure 4.4 – Admin Dashboard
+Figure 4.5 – Create Staff Account
+4.3.3  Student Management
+The student list provides a searchable table of all active enrollments. Creating a student triggers a three-layer validation: the age must be between 3 and 6 years, the classroom must have remaining capacity, and no duplicate student with the same name under the same parent may exist. On creation, the system generates a unique student ID (format: S0001) and immediately produces a QR code PNG stored on the server, whose URL is saved back to the student record. Each student has a full-profile page consolidating personal details, classroom, attendance history, term-based skill assessments, and billing records in one view.
+Figure 4.6 – Student List
+Figure 4.7 – Add Student Form
+Figure 4.8 – Student Profile
+Figure 4.9 – Skills Assessment Entry
+Figure 4.10 – Student Billing
+Figure 4.11 – Student Attendance History
+4.3.4  Classroom and Teacher Management
+Each classroom stores its name, age group, student capacity, and a JSON meal plan string. Teachers are assigned with LEAD or ASSISTANT designations; no teacher may be assigned to more than three classrooms simultaneously. If a LEAD is reassigned from a classroom, the system automatically demotes their previous classroom's LEAD to ASSISTANT to maintain hierarchy.
+Figure 4.12 – Classroom List
+Figure 4.13 – Add Classroom
+Figure 4.14 – Teacher Assignment
+4.3.5  Attendance Management
+A node-cron job fires at 9:30 AM (Asia/Colombo) every weekday. It first checks the special_day table; if a holiday exists, the job exits without creating any records. Otherwise, it identifies all active students without a check-in today and bulk-inserts ABSENT records attributed to the system SUPER_ADMIN account. Admins can manually override any status through the attendance grid. Special days (school holidays) are managed through a dedicated interface that also triggers an 8:00 PM push notification to all parents on the evening before the holiday.
+Figure 4.15 – Daily Attendance Grid
+Figure 4.16 – Manual Attendance Override
+Figure 4.17 – Special Days List
+Figure 4.18 – Add Holiday
+4.3.6  Parent and Staff Management
+Parent accounts are registered by the admin and linked directly to enrolled students. A student may have a primary and a secondary parent, both receiving equal access through the mobile app. Staff profiles can be viewed, updated, and deactivated without deleting historical data. Meeting requests submitted by parents through the mobile app appear in the Admin Web for scheduling.
+Figure 4.19 – Parent List
+Figure 4.20 – Add Parent Form
+Figure 4.21 – Staff List
+Figure 4.22 – Meeting Requests
+4.3.7  Billing and Payment Verification
+Billing records follow a strict three-state lifecycle: UNPAID (created by Admin) → PENDING (parent uploads bank slip) → PAID (Admin approves in queue). The receipt image is stored in the server's local /uploads directory. The admin reviews the slip image inline in the Verification Queue before confirming. This manual checkpoint ensures every payment is backed by verified physical proof before the record is cleared. 
+Figure 4.23 – Billing Overview
+Figure 4.24 – Create Monthly Billing
+Figure 4.25 – Ad-Hoc Charge
+Figure 4.26 – Payment Verification Queue
+4.3.8  Events, Announcements, and System Logs
+Events are created by admins; teachers add media (photos/videos) to the event gallery after the activity takes place. These uploads are stored locally and parents view them in the mobile app. Announcements broadcast messages to specific roles or classrooms. The System Audit Log records every critical action with the actor's ID, action type, and timestamp. This page is visible exclusively to the SUPER_ADMIN role, hidden from all other roles via route guards in MainLayout.jsx.
+Figure 4.27 – Events List
+Figure 4.28 – Event with Media Gallery
+Figure 4.29 – Announcements
+Figure 4.30 – System Audit Logs (Super Admin)
+4.3.9  Parent Mobile Application
+The Parent App is an Expo-managed Android APK. After login, parents see a home screen listing all their enrolled children as selectable cards — supporting households with multiple siblings. Each child's profile has four tabs: Details (personal and academic info), Progress (term-based skill scores), Attendance (history and monthly rate), and Meal Plan (weekly menu parsed from classroom JSON). Parents upload bank slip receipts directly from camera or gallery. Events, announcements, and meeting requests are also accessible from the app.
+Figure 4.31 – Login
+Figure 4.32 – Home Dashboard
+Figure 4.33 – Child Selector
+Figure 4.34 – Student Profile
+Figure 4.35 – Skills Progress
+Figure 4.36 – Attendance History
+Figure 4.37 – Meal Plan Tab
+Figure 4.38 – Upload Payment Slip
+Figure 4.39 – Ad-Hoc Payments
+Figure 4.40 – Events Gallery
+Figure 4.41 – Announcements
+Figure 4.42 – Request Meeting
+Figure 4.43 – Parent Profile
+Figure 4.44 – Forgot Password
+4.3.10  Staff QR Scanner Application
+The Staff App is a minimal single-function Android application. The teacher opens the app, points the camera at a student's QR card, and expo-barcode-scanner decodes the embedded JSON payload. The student ID is sent to POST /api/attendance/qr-scan, which transitions today's ABSENT record to PRESENT with a checkInTime timestamp. A Welcome Card displays the student's name and photo for 3 seconds confirming the scan while expo-haptics provides simultaneous haptic feedback, allowing teachers to confirm a successful scan without looking at the screen.
+Figure 4.45 – Scanner Screen
+Figure 4.46 – Welcome Card After Scan
+4.3.11  Special Implementations
+Frontend and Backend Validation
+Every data entry form in the Admin Web uses Ant Design's Form validators for real-time inline error feedback before any API request is made. Enforced rules include required field checks, student age range (3-6 years), staff username prefix (MFM_), and password complexity policy (uppercase, lowercase, number, special character). In the Parent App, payment submissions are validated to confirm a file was selected before the upload request is sent. On the backend, Zod schemas validate all incoming request bodies before they reach any controller. Business logic validation adds further checks: enrollment date cannot be in the future or more than one month in the past, classroom capacity is verified before adding a student, and OTP expiry is enforced at the database query level using expiresAt >= NOW().
+Security and Encryption
+Passwords are hashed with bcryptjs using 10 salt rounds; plaintext passwords are never stored or logged at any point in the system. OTP codes are stored only as SHA-256 hashes. JWT tokens are signed with a 256-bit secret and expire after 24 hours. On mobile, tokens are stored in the device hardware-backed secure keystore via expo-secure-store, making them inaccessible to other applications. All API keys, database URLs, and secrets are isolated in a server-side .env file excluded from version control. Nginx enforces HTTPS on all incoming connections via a Let's Encrypt certificate.
+Error Handling
+A global Express error handling middleware sits at the end of the middleware chain and catches all unhandled exceptions. It maps Prisma error codes to appropriate HTTP responses: P2002 (unique constraint violation) returns 409 Conflict, P2025 (record not found) returns 404 Not Found, and all others return 500 Internal Server Error. Stack traces are logged server-side but never included in API responses. Both mobile applications wrap all API calls in try/catch blocks and surface failures as readable Alert dialogs to prevent silent failures.
+4.4  Quality Assurance Methods Used
+Quality assurance was conducted continuously throughout development. Validation testing covered every data entry form with deliberate invalid inputs ex:out-of-range ages, missing required fields, incorrect username formats  to verify that each returned the correct inline error. Error injection testing used expired JWTs, deliberately incorrect database credentials, and cross-role API access to confirm that the global error handler and RBAC middleware responded safely without leaking internal information.
+Manual end-to-end testing followed the complete student lifecycle: parent account creation, student enrollment, classroom assignment, QR scan on the Staff App, attendance record update, payment slip upload from the Parent App, and Admin approval in the Verification Queue. This full workflow was repeated multiple times with different accounts. Browser compatibility testing confirmed the Admin Web functions correctly on Chrome, Edge, Firefox, and Safari. The Parent App was installed and tested on physical Android devices running Android 11, 12, and 13 with varying screen sizes to verify layout responsiveness. Role isolation was validated by logging in simultaneously with SUPER_ADMIN, ADMIN, TEACHER, and PARENT accounts and confirming that each role saw only its permitted screens and could not access restricted API endpoints.
+4.5  Key Libraries and Justification
+Library selection was driven by specific technical constraints. Prisma was chosen over raw SQL for compile-time type safety and migration tracking. Bcryptjs was selected because its adaptive cost factor allows the hashing difficulty to increase with hardware improvements. Nodemailer with Brevo was required because DigitalOcean blocks standard SMTP ports on new Droplets, and Brevo routes through permitted ports with reliable transactional delivery. Ant Design reduced custom UI development time significantly by providing fully accessible, production-ready form and table components. Axios was preferred over Fetch for its request interceptor support, enabling centralized JWT injection across all API calls. expo-secure-store was a non-negotiable mobile dependency because AsyncStorage stores data as unencrypted plaintext, which is unsuitable for authentication tokens. expo-haptics was included specifically to improve the real-world usability of the Staff App — in a busy classroom with 20 students queuing at the door, a haptic pulse tells the teacher a scan succeeded without requiring them to look at the screen.
+4.6  Special Logic and System Automations
+4.6.1  Automated Attendance — node-cron
+A background job scheduled at 9:30 AM (Asia/Colombo) fires every weekday. It immediately exits if the current day is Saturday or Sunday. It then queries the special_day table; if today is a declared holiday, it exits again without creating records. For a normal school day, it fetches all active students, identifies those without any attendance entry for today, and bulk-inserts ABSENT records attributed to the system SUPER_ADMIN user to satisfy the attendance table's foreign key constraint. A second job at 8:00 PM checks if tomorrow is a special day and, if so, dispatches Expo push notifications to all registered parent devices simultaneously creating an in-app notification record.
+4.6.2  QR Code Generation and Scanning
+On student creation, the backend generates a QR code using the qrcode library, encoding a JSON payload of student ID, unique student number, and full name. The resulting PNG buffer is written to the server's local /uploads/student directory and its public URL is stored in the student record for printing. When a teacher scans this code, expo-barcode-scanner decodes the payload and the app sends the student ID to the backend, which finds the ABSENT record for today and transitions it to PRESENT with a check-in timestamp.
+4.6.3  Skills Assessment and Progress Calculation
+Student academic progress is tracked across a three-tier hierarchy: SkillCategory (e.g., Language Development) contains SubSkills (e.g., Letter Recognition), each of which receives a score of 1 (Emerging), 2 (Progressing), or 3 (Well Developed) per assessment term. Overall progress percentage is calculated dynamically: sum of all scores divided by (number of sub-skills x 3), multiplied by 100. Assessments are term-based (Terms 1-3), enabling year-on-year developmental trend comparison visible in both the Admin Web and Parent App.
+4.6.4  Payment Workflow and Meal Plan
+Payment records follow the UNPAID → PENDING → PAID state machine. When a parent uploads a receipt, the image is stored under /uploads on the server and the billing record moves to PENDING. An admin reviews the receipt image inline in the Verification Queue and manually approves or rejects it, ensuring no payment is recorded without physical evidence of transfer. The meal plan is stored as a JSON string inside the classroom record rather than a separate table, eliminating a database join when fetching student profiles. The Parent App parses this JSON and renders day-by-day meal cards with contextual icons. When an admin updates the meal plan, the backend automatically broadcasts an in-app notification to all parents of children in that classroom.

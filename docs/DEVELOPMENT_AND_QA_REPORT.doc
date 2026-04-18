@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        font-family: "Times New Roman", Times, serif;
+        line-height: 1.5;
+        color: #000;
+        margin: 45px;
+        font-size: 11pt;
+    }
+    h1 {
+        text-align: center;
+        text-transform: uppercase;
+        border-bottom: 3px double #000;
+        padding-bottom: 10px;
+        margin-bottom: 30px;
+    }
+    h2 {
+        border-bottom: 1px solid #666;
+        color: #2c3e50;
+        margin-top: 25px;
+    }
+    h3 {
+        color: #7f8c8d;
+        margin-top: 15px;
+        text-decoration: underline;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+    }
+    th, td {
+        border: 1px solid #aaa;
+        padding: 6px;
+        text-align: left;
+    }
+    th {
+        background-color: #eee;
+    }
+    .code-snippet {
+        font-family: "Courier New", Courier, monospace;
+        background-color: #f4f4f4;
+        padding: 10px;
+        border: 1px dashed #999;
+        font-size: 9pt;
+        display: block;
+        margin: 10px 0;
+    }
+    .section-break {
+        margin: 30px 0;
+        border-top: 2px solid #333;
+    }
+</style>
+<title>Technical Development & QA Report - KaviCakes</title>
+</head>
+<body>
+
+<h1>KaviCakes Technical Development & Quality Assurance Report</h1>
+
+<p><strong>Prepared for:</strong> Technical Review Board</p>
+<p><strong>Date:</strong> April 16, 2026</p>
+
+<hr>
+
+<h2>1. Technologies & Tools Overview</h2>
+<p>The KaviCakes system is built using a modern Full-Stack Architecture designed for high performance, scalability, and security.</p>
+
+<h3>Core Implementation Technologies:</h3>
+<ul>
+    <li><strong>Frontend (Client-Side):</strong> React.js (v18+) using Functional Components and Hooks.</li>
+    <li><strong>Backend (Server-Side):</strong> Node.js with Express.js framework for RESTful API management.</li>
+    <li><strong>Database:</strong> MySQL relational database managed via Prisma ORM for type-safe queries.</li>
+    <li><strong>CSS Frameworks:</strong> Tailwind CSS (for Customer Site aesthetic) and Ant Design (for Admin Panel efficiency).</li>
+    <li><strong>State Management:</strong> React Context API for Global Auth and Cart state.</li>
+</ul>
+
+<hr>
+
+<h2>2. Programming Languages & Development Tools</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Type</th>
+            <th>Tool / Language</th>
+            <th>Purpose</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Languages</strong></td>
+            <td>Javascript (ES6+), SQL, HTML5, CSS3</td>
+            <td>Core logic, database querying, and structuring.</td>
+        </tr>
+        <tr>
+            <td><strong>Environment</strong></td>
+            <td>VS Code, Node NPM, Git</td>
+            <td>Code editing, dependency management, and version control.</td>
+        </tr>
+        <tr>
+            <td><strong>Bundlers</strong></td>
+            <td>Vite.js / Webpack</td>
+            <td>Fast module bundling and HMR (Hot Module Replacement).</td>
+        </tr>
+        <tr>
+            <td><strong>Testing</strong></td>
+            <td>Postman / Insomnia</td>
+            <td>Manual API endpoint testing and payload validation.</td>
+        </tr>
+        <tr>
+            <td><strong>Design</strong></td>
+            <td>Lucide Icons, Google Fonts</td>
+            <td>UI iconography and modern typography integration.</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="section-break"></div>
+
+<h2>3. User Interface Demonstration & Data Entry Screens</h2>
+
+<h3>3.1 All Pages & Navigation</h3>
+<p>The system is split into two distinct applications based on specialized roles:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Role</th>
+            <th>Primary Pages</th>
+            <th>Data Entry Components</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Customer</strong></td>
+            <td>Home, Catalog, Product Details, Cart, Checkout, Profile, Orders, Custom Cake Designer.</td>
+            <td>Login/Register forms, Custom Order Wizard, Payment Slip Upload, Feedback Forms.</td>
+        </tr>
+        <tr>
+            <td><strong>Admin</strong></td>
+            <td>Live Dashboard, Order Manager, Inventory (Cakes/Cats), Cashbook, Notifications, Settings.</td>
+            <td>Add/Edit Cake Modal, Payment Approval Dialog, Notification Template Editor, Transaction Entry.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>3.2 Special Implementations</h3>
+
+<h4>A. Frontend Validation:</h4>
+<p>The system uses complex Regex patterns and state-based validation to ensure "Dirty Data" never reaches the server.</p>
+<div class="code-snippet">
+    // Example: Registration Validation Logic<br>
+    email: !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i.test(value)<br>
+    password: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/<br>
+    phone: Must be exactly 10-15 digits based on international standards.
+</div>
+
+<h4>B. Backend Validation:</h4>
+<p>Server-side logic re-verifies all critical business rules (Price integrity, Stock availability).</p>
+<div class="code-snippet">
+    // Example: Order Controller Validation<br>
+    if (orderType === 'URGENT' && diffDays < 2) throw new Error("Urgent orders must be 48h lead time.");<br>
+    if (loyaltyPointsRedeemed > customerPoints) return res.status(400).json({ error: "Insufficient Points" });
+</div>
+
+<h4>C. Security & Encryption:</h4>
+<ul>
+    <li><strong>Bcrypt:</strong> Password data is salt-hashed (Cost=10) before database storage; raw passwords are never saved.</li>
+    <li><strong>JWT (JSON Web Tokens):</strong> Used for stateless session management with 7-day expiration for customers and 1-day for admins.</li>
+    <li><strong>OTP (One Time Password):</strong> Email-based 6-digit verification required for account activation.</li>
+</ul>
+
+<h4>D. Error Handling:</h4>
+<p>Centralized error management ensures the app never crashes on production.</p>
+<div class="code-snippet">
+    // Global Error Boundary (Frontend) prevents "White Screen of Death"<br>
+    // Try-Catch Middleware (Backend) returns formatted JSON errors with Status Codes: 401(Auth), 403(Role), 404(Missing).
+</div>
+
+<div class="section-break"></div>
+
+<h2>4. Quality Assurance (QA) Methods Used</h2>
+<p>To ensure 99.9% reliability, the following QA techniques were strictly followed:</p>
+
+<ol>
+    <li><strong>Rigorous Validation Testing:</strong> Each input field (Email, Price, Quantity) was tested with "Negative Data" (symbols, negative numbers, extremely long strings) to ensure graceful failure.</li>
+    <li><strong>Manual Data Entry Audits:</strong> Admin records were manually entered and verified against the MySQL workbench to ensure mathematical accuracy in total calculations.</li>
+    <li><strong>Browser Compatibility:</strong> The UI was tested in <strong>Chrome, Firefox, and Safari</strong> to ensure modern CSS (Flexbox/Grid) rendered consistently.</li>
+    <li><strong>Mobile Responsiveness:</strong> Using Chrome DevTools and **physical mobile devices**, the "Mobile First" design for the customer site was verified for touch interactions.</li>
+    <li><strong>Role Separation Testing:</strong> Attempting to access <code>/admin</code> URLs with a <code>CUSTOMER</code> account to verify the "PrivateRoute" security gates.</li>
+    <li><strong>Scenario Testing:</strong> Simulating "Edge Cases" like placing a custom order exactly on the 2-day cutoff to verify timing logic.</li>
+</ol>
+
+<hr>
+
+<h2>5. Reports Generated</h2>
+<p>The system provides automated data outputs for business intelligence:</p>
+<ul>
+    <li><strong>Revenue Reports:</strong> Daily, Weekly, and Monthly income summaries on the Admin Dashboard.</li>
+    <li><strong>Daily Cashbook PDF/Audit:</strong> Summary of transactions with opening and closing balances.</li>
+    <li><strong>Inventory Stock List:</strong> Automated reports on variant counts and category distribution.</li>
+    <li><strong>Customer Feedback Logs:</strong> Aggregated ratings for quality control.</li>
+</ul>
+
+<div class="footer">
+    <p><em>KaviCakes Technical Quality Report | Generated for Academic/Project Documentation</em></p>
+</div>
+
+</body>
+</html>

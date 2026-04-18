@@ -170,7 +170,12 @@ exports.getMonthlyAnalysis = async (req, res) => {
                 }
             },
             include: {
-                customer: { select: { name: true } },
+                customer: { select: { name: true, email: true } },
+                transactions: {
+                    where: { type: 'INCOME' },
+                    orderBy: { date: 'desc' },
+                    take: 1
+                },
                 items: {
                     include: {
                         variant: {
@@ -254,6 +259,9 @@ exports.getMonthlyAnalysis = async (req, res) => {
                 paymentMethod: order.paymentMethod,
                 specialNotes: order.specialNotes,
                 address: order.address || order.delivery?.address || '',
+                paymentDate: order.transactions?.[0]?.date || null,
+                // Estimate production start based on updatedAt if status is PREPARING or READY
+                productionStartDate: ['PREPARING', 'READY', 'DELIVERED'].includes(order.status) ? order.updatedAt : null,
                 items: order.items.map(item => ({
                     id: item.id,
                     name: item.name || item.variant?.cake?.name || 'Unknown Item',

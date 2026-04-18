@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        font-family: "Times New Roman", Times, serif;
+        line-height: 1.6;
+        color: #000;
+        margin: 40px;
+        font-size: 11pt;
+    }
+    h1 {
+        text-align: center;
+        text-transform: uppercase;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        margin-bottom: 30px;
+        color: #1a2a6c;
+    }
+    h2 {
+        border-bottom: 1px solid #1a2a6c;
+        color: #1a2a6c;
+        margin-top: 30px;
+        background-color: #f8f9fa;
+        padding: 5px;
+    }
+    h3 {
+        color: #b21f1f;
+        margin-top: 20px;
+        font-style: italic;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: left;
+    }
+    th {
+        background-color: #1a2a6c;
+        color: #ffffff;
+    }
+    .flow-step {
+        margin-left: 20px;
+        padding: 10px;
+        border-left: 3px solid #1a2a6c;
+        margin-bottom: 15px;
+        background-color: #fdfdfd;
+    }
+    .actor-box {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 5px;
+        font-weight: bold;
+        color: #fff;
+    }
+    .admin { background-color: #d9534f; }
+    .customer { background-color: #5bc0de; }
+    .system { background-color: #5cb85c; }
+    .footer {
+        text-align: center;
+        font-size: 9pt;
+        color: #999;
+        margin-top: 50px;
+        border-top: 1px solid #eee;
+    }
+</style>
+<title>System Data Flow & Feature Report - KaviCakes</title>
+</head>
+<body>
+
+<h1>KaviCakes System: Comprehensive Data Flow & Feature Matrix</h1>
+
+<p><strong>Prepared for:</strong> Project Report Documentation</p>
+<p><strong>System Version:</strong> 2026.Q2</p>
+<p><strong>Scope:</strong> Backend-Frontend Interactivity, Data Persistance, and Business Logic Workflows.</p>
+
+<hr>
+
+<h2>1. System Feature Matrix</h2>
+
+<h3>A. Customer-Facing Features <span class="actor-box customer">CUSTOMER</span></h3>
+<table>
+    <thead>
+        <tr>
+            <th>Module</th>
+            <th>Feature Description</th>
+            <th>Business Rule / Logic</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Authentication</strong></td>
+            <td>Registration, OTP Email Verification, Login, and Password Reset.</td>
+            <td>Requires active email. OTP expires in 10 minutes. Password hashing via Bcrypt.</td>
+        </tr>
+        <tr>
+            <td><strong>Catalog</strong></td>
+            <td>Browse Categories, Real-time Search, and "Best Sellers" auto-calculation.</td>
+            <td>Best sellers are calculated based on non-cancelled order item volume.</td>
+        </tr>
+        <tr>
+            <td><strong>Customization</strong></td>
+            <td>Dynamic selection of Cake Size, Shape, and Flavor modifiers.</td>
+            <td>Price = (Base Category Price) + (Variant Modifiers).</td>
+        </tr>
+        <tr>
+            <td><strong>Order Placement</strong></td>
+            <td>Cart management, Delivery vs. Pickup selection, and Checkout.</td>
+            <td>Distance-based delivery fee calculation. Points capped at 30% of total.</td>
+        </tr>
+        <tr>
+            <td><strong>Order Tracking</strong></td>
+            <td>View current status, History, and Invoice downloading.</td>
+            <td>Invoices (PDF) generated automatically upon "Delivered" status.</td>
+        </tr>
+        <tr>
+            <td><strong>Payments</strong></td>
+            <td>Advance (30%) or Full payment slip uploads via Bank Transfer.</td>
+            <td>Slip image stored in "slips" folder and linked to Order ID for Admin audit.</td>
+        </tr>
+        <tr>
+            <td><strong>Loyalty Program</strong></td>
+            <td>Earn 1 point per Rs.100. Redeem points for capped discounts.</td>
+            <td>Urgent orders (delivery < 48hr) incur a 500-point priority fee.</td>
+        </tr>
+        <tr>
+            <td><strong>Feedback</strong></td>
+            <td>Post-purchase rating and comments for delivered orders.</td>
+            <td>Linked strictly to verified Order IDs to prevent spam reviews.</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>B. Admin Management Features <span class="actor-box admin">ADMIN</span></h3>
+<table>
+    <thead>
+        <tr>
+            <th>Module</th>
+            <th>Feature Description</th>
+            <th>Business Rule / Logic</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Dashboard</strong></td>
+            <td>Real-time visualization of Sales, Order Volume, and Active Users.</td>
+            <td>Aggregates data from <code>orders</code> and <code>transaction</code> tables.</td>
+        </tr>
+        <tr>
+            <td><strong>Inventory</strong></td>
+            <td>CRUD for Categories, Cakes, and specialized Variants.</td>
+            <td>Variants enforce data integrity (Size/Shape/Flavor must exist).</td>
+        </tr>
+        <tr>
+            <td><strong>Order Operations</strong></td>
+            <td>Status movement (Confirmed -> Preparing -> Ready -> Delivered).</td>
+            <td><strong>Guard:</strong> Blocker prevents "Preparing" status if payment is unverified.</td>
+        </tr>
+        <tr>
+            <td><strong>Payments</strong></td>
+            <td>Manual Bank Slip review and approval. Cash collection recording.</td>
+            <td>Approval triggers automated "Payment Confirmed" emails.</td>
+        </tr>
+        <tr>
+            <td><strong>Financials</strong></td>
+            <td>Cashbook management and Revenue reporting.</td>
+            <td>Opening and closing balances are carried forward daily.</td>
+        </tr>
+        <tr>
+            <td><strong>Notifications</strong></td>
+            <td>Email Template configuration and Marketing Campaign dispatch.</td>
+            <td>Uses throttled background processing (2.5s delay) for bulk emails.</td>
+        </tr>
+        <tr>
+            <td><strong>Field Mapping</strong></td>
+            <td>Dynamic form field generation for Bulk Order inquiries.</td>
+            <td>Allows admin to customize the "Order Inquiry" form without code changes.</td>
+        </tr>
+        <tr>
+            <td><strong>Site Settings</strong></td>
+            <td>Management of Hero banners, contact info, and business hours.</td>
+            <td>Stored in <code>sitesetting</code> table for global configuration.</td>
+        </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>2. Core Data Flow & System Journeys</h2>
+
+<h3>2.1 The Retail Order Life Cycle</h3>
+<p>The flow of data from initial interest to cake delivery:</p>
+
+<div class="flow-step">
+    <strong>Step 1: Initiation <span class="actor-box customer">CUSTOMER</span></strong><br>
+    Data flows from <code>cakeVariant</code> (Pricing) to the <code>cart</code>. Customer submits order details.
+</div>
+<div class="flow-step">
+    <strong>Step 2: Processing <span class="actor-box system">SYSTEM</span></strong><br>
+    The system calculates <code>Loyalty Points</code>, creates a record in <code>orders</code> and <code>orderitem</code> tables, and sends an "Order Placed" email via <code>Mailer</code>.
+</div>
+<div class="flow-step">
+    <strong>Step 3: Verification <span class="actor-box admin">ADMIN</span></strong><br>
+    Customer uploads a slip to <code>Supabase/Local Storage</code>. Admin reviews the image and updates <code>advanceStatus</code> to "Approved".
+</div>
+<div class="flow-step">
+    <strong>Step 4: Fulfillment <span class="actor-box admin">ADMIN</span></strong><br>
+    Order status moves to "Preparing". Upon completion, moves to "Ready" (triggers email). Finally moves to "Delivered" (triggers Invoice).
+</div>
+
+<h3>2.2 Financial Data Flow (Auditing)</h3>
+<p>Ensuring every rupee is tracked for business metrics:</p>
+
+<div class="flow-step">
+    <strong>Income Event:</strong> When a payment is verified, the system triggers a <code>prisma.transaction.create()</code> event. Amount is added to today's <code>totalIncome</code> in the <code>cashbook</code>.
+</div>
+<div class="flow-step">
+    <strong>Expense Event:</strong> Admin manually records expenses (Ingredients, Utility). Data is deducted from the current <code>closingBalance</code>.
+</div>
+<div class="flow-step">
+    <strong>Reporting:</strong> The Daily Dashboard Queries fetch the SUM of transactions grouped by type for the current <code>createdAt</code> period.
+</div>
+
+<h3>2.3 Notification Data Flow (Communications)</h3>
+<p>The automated touchpoints that drive the customer experience:</p>
+
+<div class="flow-step">
+    <strong>Template Parsing:</strong> System fetches the <code>NotificationTemplate</code> from DB. Variables like <code>{customer_name}</code> are replaced using Regex matching with real user data.
+</div>
+<div class="flow-step">
+    <strong>Automated Reminders (CRON):</strong> Every 24 hours, the <code>cronJobs.js</code> script queries for orders with <code>deliveryDate</code> exactly 48 hours away. If unpaid, it flags them for a "Payment Required" dispatch.
+</div>
+<div class="flow-step">
+    <strong>Throttled Delivery:</strong> For bulk marketing, the system queues emails and sends them one-by-one with a delay to prevent SMTP server blocking.
+</div>
+
+<hr>
+
+<h2>3. Key Data Interdependencies</h2>
+<ul>
+    <li><strong>Circular Dependency:</strong> <code>Orders</code> rely on <code>Customers</code> for loyalty points, while <code>Customers</code> rely on <code>Orders</code> to earn those points.</li>
+    <li><strong>Financial Integrity:</strong> A <code>Transaction</code> cannot exist without either a <code>Cashbook</code> ID or a reference to an <code>Order</code>/<code>Payment</code>.</li>
+    <li><strong>Product Scaling:</strong> <code>CakeVariants</code> acts as the join-table ensuring that price updates to a Size (e.g., Increase 1kg price) automatically propagate to all Cakes using that size.</li>
+</ul>
+
+<div class="footer">
+    <p><em>KaviCakes: Data Flow & Feature Matrix Report | Confidential Technical Document</em></p>
+</div>
+
+</body>
+</html>

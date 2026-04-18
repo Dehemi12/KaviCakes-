@@ -139,7 +139,7 @@ const MarketingTab = ({ templates, customers }) => {
                             <Form.Item label="Load Content from Existing Template (Optional)">
                                 <Select placeholder="Choose an existing template" onChange={handleTemplateSelect} allowClear>
                                     {templates.map(t => (
-                                        <Select.Option key={t.id} value={t.id}>{t.templateName || t.type} — {t.subject}</Select.Option>
+                                        <Select.Option key={t.id} value={t.id}>{t.name || t.type} — {t.subject}</Select.Option>
                                     ))}
                                 </Select>
                             </Form.Item>
@@ -220,12 +220,10 @@ const TemplatesTab = ({ templates, onUpdated, loading }) => {
             <Spin spinning={loading}>
                 <Row gutter={[16, 16]}>
                     {templates
-                        .filter(t => t.type !== 'READY')
-                        .filter(t => !t.subject?.includes('Your Cake is Ready!') && !t.body?.includes('Your Cake is Ready!'))
                         .map(t => (
                         <Col span={12} key={t.id}>
                             <Card 
-                                title={<Text strong>{t.templateName || t.type}</Text>}
+                                title={<Text strong>{t.name || t.type}</Text>}
                                 extra={<Button type="link" onClick={() => openEdit(t)}>Edit</Button>}
                                 style={{ height: '100%', borderRadius: 8, border: '1px solid #e8e8e8' }}
                             >
@@ -287,7 +285,7 @@ const EditTemplateModal = ({ open, template, onClose, onSuccess }) => {
     };
 
     return (
-        <Modal title={`Edit Template: ${template?.templateName || template?.type}`} open={open} onCancel={onClose} onOk={() => form.submit()} confirmLoading={saving} width={700}>
+        <Modal title={`Edit Template: ${template?.name || template?.type}`} open={open} onCancel={onClose} onOk={() => form.submit()} confirmLoading={saving} width={700}>
             <Form form={form} layout="vertical" onFinish={handleSave}>
                 <Form.Item label="Subject Line" name="subject" rules={[{ required: true }]}>
                     <Input />
@@ -358,6 +356,7 @@ const CreateTemplateModal = ({ open, onClose, onSuccess }) => {
                                     { label: '⚠️ Automatic: Generic Payment Reminder', value: 'PAYMENT_REMINDER' },
                                     { label: '✏️ Automatic: Quick Last chance to edit (2 days before)', value: 'QUICK_REMINDER' },
                                     { label: '✅ Action: When Order is Confirmed (Admin/Automated)', value: 'ORDER_CONFIRMED' },
+                                    { label: '🎂 Action: When Order is Ready for Pickup', value: 'READY' },
                                     { label: '🚚 Action: When Order is Delivered', value: 'DELIVERED' },
                                     { label: '❌ Action: When Order is Rejected/Cancelled', value: 'ORDER_REJECTED' },
                                     { label: '🚫 Action: When Payment Slip is Rejected', value: 'PAYMENT_SLIP_REJECTED' },

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        margin: 50px;
+        font-size: 11pt;
+    }
+    h1 {
+        font-size: 18pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-top: 30px;
+        margin-bottom: 20px;
+        color: #be185d;
+        text-align: center;
+        border-bottom: 3px solid #be185d;
+        padding-bottom: 10px;
+    }
+    h2 {
+        font-size: 14pt;
+        font-weight: bold;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        color: #111;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+    }
+    p {
+        margin-bottom: 15px;
+        text-align: justify;
+    }
+    ul {
+        margin-bottom: 15px;
+        padding-left: 20px;
+    }
+    li {
+        margin-bottom: 8px;
+    }
+    .highlight {
+        color: #be185d;
+        font-weight: bold;
+    }
+    .tech-box {
+        background-color: #fce7f3;
+        border-left: 5px solid #be185d;
+        padding: 15px;
+        margin: 20px 0;
+        font-size: 10pt;
+    }
+</style>
+<title>KaviCakes Reports Module Documentation</title>
+</head>
+<body>
+
+<h1>REPORTS AND BUSINESS INTELLIGENCE MODULE</h1>
+
+<h2>Module Overview</h2>
+<p>The <span class="highlight">Reports Module</span> in the KaviCakes Administrative Control Panel serves as a critical business intelligence hub. Its primary objective is to transform raw transactional data—originating from orders, payments, and the financial cashbook—into actionable visual insights. This module allows administrative staff to monitor real-time growth, identify peak sales periods, and evaluate the performance of different revenue streams including Standard, Customised, and Bulk ordering tiers.</p>
+
+<h2>Key Analytical Features</h2>
+<ul>
+    <li><strong>Comprehensive Sales Summary:</strong> A high-fidelity dashboard presenting "Total Revenue" and "Weekly Sales" benchmarks. It includes dynamic calculations to determine the "Peak Sales Period," enabling preemptive resource allocation during high-traffic months.</li>
+    <li><strong>Revenue Segmentation (Grouped Bar Chart):</strong> A multi-dimensional visualization of earned revenue categorized by order type. This chart explicitly separates income from standard catalog items, specialized customized requests, and large-scale bulk event orders, providing a clear view of which product tier is driving business growth.</li>
+    <li><strong>Operational Distribution (Donut Chart):</strong> Analyzes the proportion of Online Bank Payments versus Cash on Delivery (COD). Crucially, this section tracks "Cancelled Orders," providing feedback on conversion rates and potential logistical friction points.</li>
+    <li><strong>Customer & Product Intelligence:</strong> Identifies the system’s "Best Selling Products" based on purchase frequency. Additionally, it highlights "High-Loyalty Customers"—users who have surpassed a 2,000-point threshold—enabling targeted marketing and VIP recognition.</li>
+</ul>
+
+<h2>Technical Implementation</h2>
+<p>The module utilizes a robust data aggregation pipeline. On the backend, Node.js and Prisma ORM execute optimized database queries to compute normalized totals across overlapping date ranges. On the frontend, the data is rendered using <code>Recharts</code> for dynamic visualization. To ensure portability, the system incorporates <code>jsPDF</code> and <code>html2canvas</code>, allowing admins to generate professionally branded PDF reports instantly for archival or physical review.</p>
+
+<div class="tech-box">
+    <strong>Module Specs:</strong><br>
+    - Primary Color: KaviCakes Pink (#be185d)<br>
+    - Data Refresh: Real-time on date filter mutation<br>
+    - Export Format: Multi-page A4 PDF Documentation
+</div>
+
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        font-family: "Times New Roman", Times, serif;
+        line-height: 2.0;
+        color: #000;
+        margin: 60px;
+        font-size: 11pt;
+        text-align: justify;
+    }
+    h1 {
+        text-transform: uppercase;
+        font-size: 18pt;
+        font-weight: bold;
+        margin-top: 50px;
+        margin-bottom: 25px;
+        page-break-before: auto;
+    }
+    h2 {
+        font-size: 16pt;
+        font-weight: bold;
+        margin-top: 40px;
+        margin-bottom: 20px;
+    }
+    h3 {
+        font-size: 14pt;
+        font-weight: bold;
+        margin-top: 30px;
+        margin-bottom: 15px;
+    }
+    p {
+        margin-bottom: 20px;
+        text-indent: 30px; /* Academic indentation */
+    }
+    ul, ol {
+        margin-bottom: 20px;
+        margin-left: 40px;
+    }
+    li {
+        margin-bottom: 12px;
+    }
+    .image-placeholder {
+        width: 100%;
+        height: 350px;
+        background-color: #f5f5f5;
+        border: 2px dashed #777;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 30px 0;
+        color: #444;
+        font-style: italic;
+        font-weight: bold;
+    }
+</style>
+<title>Chapter 4: System Implementation - KaviCakes</title>
+</head>
+<body>
+
+<div style="text-align: center; margin-bottom: 60px;">
+    <h1 style="font-size: 24pt;">Chapter 4: System Implementation</h1>
+</div>
+
+<h2>4.1 Introduction</h2>
+<p>The system implementation phase represents the most critical junction in the software development lifecycle, serving as the bridge between theoretical architectural planning and the realization of a functional, operational digital platform. In the context of the KaviCakes Management System, this chapter delineates the meticulous translation of high-level wireframes, entity-relationship diagrams, and complex business logic into compiled, executable code. The overarching objective of the KaviCakes implementation was to construct a robust, highly secure, and efficiently decoupled full-stack application capable of managing the intense operational demands of a contemporary artisanal bakery. This involves processing highly variable customer configuration matrices, enforcing strict financial auditing operations, and automating critical communicative touchpoints.</p>
+
+<p>This chapter is structured to provide an exhaustive, thesis-level examination of the internal mechanisms powering the system. It briefly outlines the selected technologies before delving deeply into the architectural divisions of the project. A significant portion of this document is dedicated to a rigorous visual and functional demonstration of the User Interfaces implemented across both the Customer Web Portal and the Administrative Control Center. Following this, the chapter transitions into an extensive analysis of the "Special Logics"—the proprietary algorithms and rigid business guardrails uniquely designed for KaviCakes, encompassing complex dynamic pricing computations, financial ledger synchronizations, and chronological task automation. The chapter concludes with an overview of the Quality Assurance testing deployed to guarantee system integrity prior to operational deployment.</p>
+
+<h2>4.2 Technologies and Tools Used</h2>
+<p>The technological foundation of KaviCakes was selected to balance rapid developmental velocity with uncompromising data integrity and type safely. The decision to implement a decoupled architecture necessitated specific tools tailored to distinct layers of the application.</p>
+
+<h3>4.2.1 Programming Languages</h3>
+<p><strong>JavaScript (ES6+):</strong> JavaScript serves as the ubiquitous language across the entire application stack. Utilizing ES6+ syntax—specifically asynchronous functions (`async/await`), object destructuring, and the module system—ensures that non-blocking I/O operations are handled elegantly, preventing backend bottlenecks during concurrent customer transactions. <strong>SQL (Structured Query Language):</strong> serves as the fundamental language dictating the relational configuration and persistent storage arrays utilized within the MySQL backend. Standard <strong>HTML5 and CSS3</strong> establish the semantic layout and foundational visual instructions rendered by the client browser.</p>
+
+<h3>4.2.2 Frameworks and Libraries</h3>
+<p>The frontend architecture leverages <strong>React.js</strong> to build encapsulated, reusable, and state-driven visual components. To achieve the requisite design aesthetics, two distinct styling frameworks were deployed: <strong>Tailwind CSS</strong> was utilized on the Customer Web Portal to rapidly construct a unique, visually vibrant "boutique" aesthetic utilizing utility classes, while <strong>Ant Design (AntD)</strong> was deployed on the Admin Portal to instantly provide enterprise-grade, highly dense data matrices, drawers, and form components necessary for administrative efficiency. The server-side routing and middleware orchestration rely entirely on <strong>Express.js</strong>, providing a minimalist and highly mutable HTTP processing framework. Bridging the gap between the Express controllers and the MySQL rows, <strong>Prisma ORM</strong> was implemented to mandate absolute type-safety, programmatically generating a customizable client based upon a rigidly defined `schema.prisma` file.</p>
+
+<h3>4.2.3 Development Tools, Database & Third-Party Services</h3>
+<p>The construction environment operated primarily within <strong>Visual Studio Code (VS Code)</strong>, partnered tightly with <strong>Git</strong> for version control tracking methodologies. The frontend compilation and hot-module replacement protocols were accelerated significantly through the utilization of <strong>Vite</strong>. Relational data persistence, vital for preserving financial transaction audits strictly, relies upon a <strong>MySQL</strong> database. External communication dependencies encompass <strong>Nodemailer</strong> configured via an SMTP relay to handle the mass automated dispatching of email alerts and verification codes, while file storage logistics optionally integrate with <strong>Supabase</strong> buckets prioritizing the scalable preservation of high-resolution graphic assets independently originating from the primary application server clusters.</p>
+
+<h2>4.3 System Implementation Overview</h2>
+<p>The application observes the principles of a decoupled Client Server architecture patterned strictly over a modified Model-View-Controller (MVC) paradigm. The React applications operate entirely independently serving as the presentation layer ("View"), storing interface elements logically and preserving transient application states inside browser memory using the React Context API. The backend Node.js repository houses the "Controllers" executing designated business calculus procedures and establishing "Routes" serving as mapped API endpoints.</p>
+
+<p>Interaction occurs exclusively across the HTTP protocol transmitting standard JSON-encoded payloads. When a user executes a function on the interface, the React application packages the necessary variables, appends the active authentication perimeter tokens, and initiates an asynchronous POST or GET request directed to the server endpoints. The Express framework processes these requests sequentially spanning established middleware defenses validating identity authorizations preceding access. Approved operations subsequently instigate Prisma database queries translating relational logic alterations executing permanently upon the MySQL structural rows respectively alerting the interface dynamically upon finalized completion routines.</p>
+
+
+<h2>4.4 User Interface Demonstration</h2>
+<p>The physical manifestation of the KaviCakes operational logic resides within the graphical User Interfaces. Implementation prioritized extreme clarity, logical navigational hierarchies, and immediate visual responses mitigating user errors fundamentally. The following documentation systematically explores the extensive array of distinct pages rendering operations across the differing authorization roles.</p>
+
+<h3>4.4.1 Public/Customer Web Interfaces</h3>
+<p>The Customer Interface was engineered employing a "Mobile-First" developmental strategy leveraging the responsive utility arrays native to Tailwind CSS. The interface prioritizes generating an emotional, visually dynamic conversion funnel maximizing customer engagement.</p>
+
+<ul>
+    <li><strong>The Home Page and Dynamic Banners:</strong> The index root acts as the primary conversion entry point. The interface mounts a sprawling Hero Banner carousel fetching high-resolution promotional imagery synchronized via backend API configurations. Strategically positioned below, the system renders a computationally generated "Best Sellers" grid. This is not statically coded; the React component queries the database for historical analytical aggregates ranking item arrays exclusively sorted according to successfully completed transaction frequencies prior to rendering interface elements dynamically capturing returning customer attention immediately.</li>
+    <div class="image-placeholder">[Insert Image: Customer Home Page UI displaying Hero Banner and Categorized Grids]</div>
+
+    <li><strong>The Comprehensive Catalog & Search Interface:</strong> The primary catalog interface renders complex lists utilizing pagination structures preventing excessive memory allocation loads rendering hundreds of cake variants concurrently. It utilizes dynamic filtering states managed by React hooks; selecting a sidebar Category ID triggers a re-render stripping irrelevant items immediately. A real-time search input bar evaluates string characters as the user types invoking instantaneous list mutations displaying exclusively accurate matching nomenclature objects.</li>
+    <div class="image-placeholder">[Insert Image: Catalog Filtering Page and Search Bar Interface]</div>
+
+    <li><strong>The Product Details & Dynamic Customization Modeler:</strong> Representing the most complex customer-facing state machine UI. Upon routing toward a specific `ItemDetails` view, the user observes a multi-tiered dropdown matrix mapping arrays of specific Variant combinations—`Size`, `Shape`, and `Flavor`. The UI blocks generic purchases. As the user alters the selection parameters, a specialized React `useEffect` callback function mathematically recalculates the active price variable rendering the adjusted cost visually bounding real-time interactive confirmation states preceding final Cart context additions successfully avoiding ambiguity completely.</li>
+    <div class="image-placeholder">[Insert Image: Detailed Product View with Variant Selection Tool]</div>
+
+    <li><strong>The Shopping Cart & Checkout Interface:</strong> The Checkout interface functions procedurally presenting dense information matrices logically separated. Following cart summaries, the implementation exposes the interactive **Loyalty Points Redemption Slider**. As the user drags the input element, React immediately validates the numeric input against a hard-coded 30% absolute mathematical cap corresponding globally to the cart total updating subtotal reductions live via state. Additionally, this form integrates contextual conditional rendering; altering the delivery selector logically reveals address arrays, whereas altering the payment parameters rendering Cash On Delivery displays distinct structural warning blocks informing users strictly maintaining 30% bank transfer requirements mandatorily.</li>
+    <div class="image-placeholder">[Insert Image: Checkout Process Outputting Logic for Location and Payment Options]</div>
+
+    <li><strong>Order Success Confirmation & Timeline Tracking:</strong> Following complex secure POST requests mapping cart payloads across the backend orders endpoints, the frontend executes algorithmic navigation relocating users onto the Confirmation screen generating unique tracking UUIDs explicitly. By querying the `Track Order` view, a visually distinct chronological timeline renders displaying horizontal stepper graphics sequentially highlighting process points traversing `New > Confirmed > Preparing > Ready > Delivered` logic phases reacting responsively observing backend data values.</li>
+    <div class="image-placeholder">[Insert Image: Visual Order Tracking Timeline Interface]</div>
+
+    <li><strong>Specialized Build Interfaces (Custom & Bulk Inquiries):</strong> Standalone data-entry layouts facilitating non-standard generic array operations. The custom cake request view leverages advanced form controllers mapping complex variables accommodating extensive text detailing special dietary parameters, custom icing color HEX codes, and image file attachments translating directly into blob payloads dispatching asynchronous multipart form data securely towards administration verification cues dynamically.</li>
+    <div class="image-placeholder">[Insert Image: Custom/Bulk Order Request Special Form Design]</div>
+
+    <li><strong>Authentication Flow (Login, Registration & Verification Screens):</strong> Implementing Lucide-React iconography elevating standard user experiences seamlessly. The registration interfaces apply stringent immediate visual DOM manipulations alerting users utilizing red border highlights instantaneously upon entering logically malformed data strings (e.g., inadequate passwords lacking uppercase character limits). Navigation forcibly arrests forwarding newly created profiles onto a distinct intermediate **OTP Verification Interface**, enforcing a mandatory presentation of an exact 6-digit random numeral matrix delivered exclusively traversing user email inboxes natively validating identities comprehensively prior to standard usage initialization.</li>
+    <div class="image-placeholder">[Insert Image: Secure Registration and OTP Input UI]</div>
+</ul>
+
+<h3>4.4.2 Admin Portal Interfaces</h3>
+<p>Operating completely physically separated on distinct structural port configurations, the Administrative Portal prioritizes functional utilitarianism minimizing navigational spacing leveraging Ant Design component methodologies heavily favoring dense tabular configurations.</p>
+
+<ul>
+    <li><strong>The Comprehensive Executive Dashboard:</strong> Operating as the system command nexus. Loading this view instantiates multiple asynchronous data-fetching procedures summarizing complex historical transaction algorithms mapping real-time operational metrics across distinguished KPI (Key Performance Indicator) panel blocks indicating active processing queues, historical monthly revenues, and incoming customer influx statistics accurately rendered through integrated diagrammatic visualizations mapping trajectory arcs perfectly interpreting numerical data graphically rendering comprehension logically immediate.</li>
+    <div class="image-placeholder">[Insert Image: Admin Dashboard Overview displaying Statistical Charts]</div>
+
+    <li><strong>The Operational Order Management Matrix:</strong> Renders a highly dense dynamic data table tracking all active overarching organizational requests. Rows represent unique order variables color-coded explicitly interpreting escalating priority bounds. Action columns contain operational trigger buttons initiating state changes altering objects sequentially from unconfirmed lists pushing items towards production schedules accurately coordinating digital statuses corresponding immediately toward physical kitchen production states.</li>
+    <div class="image-placeholder">[Insert Image: Order Queue Table with Operational Buttons]</div>
+
+    <li><strong>Order Detailed Drawer Controller:</strong> Clicking specific row variables summons a sweeping off-canvas structural "Drawer" component entering gracefully from the right-side screen delineations eliminating complete page refreshes enhancing speed. This crucial view isolates exact order complexities highlighting specialized custom notes explicitly, rendering attached image blobs reflecting bank deposit slip visuals requiring explicit administrative examination prior to triggering subsequent manual approval actions alongside components implementing 'Download PDF Invoice' procedures rendering digital billing structures natively.</li>
+    <div class="image-placeholder">[Insert Image: Sliding Drawer Interface displaying extensive Order Details]</div>
+
+    <li><strong>Physical Inventory Architecture Controller:</strong> Integrating intricate administrative CRUD forms specifically the incredibly dynamic **"Add/Edit Cake Modal"**. This implementation transcends simple static strings. Adding cakes leverages reactive array fields allowing administrators to continuously append dynamic rows formulating extensive variant pricing modifier arrays linking combinations of different sizes and individual flavor categories directly attributing pricing deviations respectively executing structurally onto relational Prisma schemas successfully avoiding massive redundant duplicative data entries natively.</li>
+    <div class="image-placeholder">[Insert Image: Advanced Cake Entry Modal illustrating Dynamic Variant Data Grids]</div>
+
+    <li><strong>Financial Cashbook Ledger Formats:</strong> Resolving the accounting dichotomy inherent spanning physically handling retail shop operations and digital e-commerce platforms implicitly. The interface displays an immutable tabular chronological format detailing sequentially total system automation incomes, manual operational expenditure logs input directly through integrated transaction forms respectively deducing explicitly mapped opening financial sums culminating logically tracing absolute closing monetary calculations mathematically.</li>
+    <div class="image-placeholder">[Insert Image: Daily Cashbook and Transaction Overview Interface]</div>
+
+    <li><strong>Notification Template Routing Hub:</strong> Providing direct interface intervention capacities managing automated communicative arrays dynamically. Administration retains structural control utilizing form structures adjusting underlying HTML structural formats configuring designated email subjects explicitly containing system dispatch functions permitting executing mass email campaign actions individually targeting subset lists parsed uniquely mitigating dependence on third-party marketing tool expenditures entirely.</li>
+    <div class="image-placeholder">[Insert Image: Notification HTML Manager and Dispatch Matrix]</div>
+</ul>
+
+
+<h2>4.5 Special Logics Implemented</h2>
+<p>The operational resilience defining the KaviCakes platform heavily relies upon incorporating bespoke analytical computation paradigms and strict procedural algorithms explicitly functioning absent normal basic CRUD operations establishing profound system intelligence comprehensively protecting enterprise boundaries.</p>
+
+<h3>4.5.1 The Order Lifecycle Guardrails & Verification Logic</h3>
+<p>The administration operational pipeline executes stringent systematic barrier procedures guaranteeing critical financial milestones.</p>
+<ul>
+    <li><strong>The Advance Deposit Authorization Protocol:</strong> When initial customers execute checkout sequences pushing standard 'NEW' orders, the backend programmatic algorithms structurally block subsequent state mutations entirely. Operational logic written directly mapping the `orderController` executes explicit boolean checks evaluating whether the linked payment array properties assert 'Verified' status limits representing cleared 100% full-transfer transactions or 30% initial deposit COD compliances explicitly. Should the admin interface initiate triggers altering statuses initiating 'PREPARING' routines absent active verification protocols mathematically, the application throws hard rejection error validations structurally preventing physical material resource expenditures without guaranteed preliminary capital acquisition inherently.</li>
+    <li><strong>Chronological Urgency Modification Parameters:</strong> Executing logic governing custom design requests initiates advanced chronometric timestamp comparisons analyzing variables mapping established database delivery dates dynamically evaluating current server-side operational epochs simultaneously. Deliveries categorized numerically containing bounds less than exactly 48-hour differential timesheets execute autonomous mandatory algorithm pipelines forcing unconditional 500-point Loyalty point penalty deductions mapping directly establishing system-wide rapid-expedition premium fee architectures without manual interference functionally.</li>
+</ul>
+
+<h3>4.5.2 Variant Matrix Pricing Calculators</h3>
+<p>The platform wholly bypasses static pricing database string variables fundamentally integrating multi-variable mathematical matrix engines.</p>
+<ul>
+    <li>Cost parameters are perpetually generated implementing formulas translating generically: <code>Final Gross Price = (Base Initial Category Modifier * Dimension Target Size Differential) + Isolated Additive Variant Premium</code>. Translating functionally, if specific chocolate ingredient source costs increment globally within backend metrics, administrators singularly increase the associated Chocolate Flavor array value precisely distributing global pricing structural adjustments concurrently across every linked cake product automatically effectively saving hundreds of subsequent database manual altering man-hours universally inherently scaling flawlessly.</li>
+    <li><strong>The Bulk Threshold Computation Algorithm:</strong> Addressing wholesale clients implicitly executing specialized array intercept logic mathematically parsing item integer quantity values. Operating quantities transcending predefined structural bounds (e.g., greater than 50 count matrices) inherently disconnect standardized Variant calculators algorithmically appending distinct specialized volume-based fractional pricing matrices fundamentally lowering individual baseline expenses structurally bound verifying logic preventing erroneous generalized retail coupon exploitations functionally.</li>
+</ul>
+
+<h3>4.5.3 Financial Auditing Triggers & Loyalty Restrictions</h3>
+<ul>
+    <li><strong>The Automated Cashbook Rolling Mechanism:</strong> Binding digital systems effectively bridging physical currency flows explicitly executing systemic logic loops updating fiscal parities securely. Verified bank deposit confirmations mathematically accumulate directly applying 'Income' categorical bounds appending directly inside isolated Daily Cashbook ledger architectures functionally. Executing specifically bounded chronometric server actions generating 00:00 midnight intervals systematically forces 'Rollover' functionalities capturing final structural Closing monetary calculations converting explicitly formulating Opening balance initialization logic sequences autonomously protecting fiscal accountability drift vulnerabilities natively.</li>
+    <li><strong>Absolute Loyalty Discount Ceiling Architecture:</strong> Reward programmatic implementations dynamically apply fractional values estimating 1 active point generation per exactly 100 Sri Lankan Rupee thresholds structurally calculating Cartesian sub-totals accurately natively. Conversely, the redemption execution protocols implement absolute rigid ceiling protections functionally analyzing cart bounds prior to checkout approvals unconditionally invalidating execution procedures attempting to redeem mathematical point aggregates physically surpassing precisely a 30% total cart value reduction explicitly ensuring consistent fiscal profit margins reliably universally.</li>
+</ul>
+
+<h3>4.5.4 Autonomously Executed Cron-Job Mechanics</h3>
+<p>Mitigating dependency concerning unreliable human manual interventions entirely regarding essential timeline communications, abstract node-cron automation engines implement repeating cyclic evaluation algorithms universally firing identical structural tests looping concurrently established every precise morning cycle globally. These intelligent algorithms execute extensive database dissections scrutinizing chronometric delivery variables selectively targeting specific unfinalized bulk organizational requests exactly evaluating resting outside identical 48-hour cutoff parameters compiling dynamically unique targeted 'Last Chance Configuration Edit Warning' alert arrays executing automatic server-side notification dispatches sequentially barring eventual design mutability subsequent databases updates permanently.</p>
+
+
+<h2>4.6 Further Core System Implementations</h2>
+<p>Validations, security encryptions, and error trapping implementations define application fortitude explicitly reinforcing code pipelines robustly.</p>
+
+<h3>4.6.1 Holistic Frontend & Backend Validations</h3>
+<p>Formulating initial active defense structures, frontend input validation procedures execute immediate logical verification formulas aggressively intercepting malformed array queries actively evaluating structural regex variables assessing strictly phone digits limiting exact generic 10 parameter lengths terminating alphabetical keystroke acceptance simultaneously executing responsive warning arrays physically preventing HTTP request propagations actively saving bandwidth logically. Consecutively serving primary database protection barriers, backend controller logic duplicates verification checks validating input formats fundamentally analyzing structural Prisma model requirements confirming absolute integer configurations accurately eliminating arbitrary logic bypass scripts originating bypassing frontend clients potentially.</p>
+
+<h3>4.6.2 Cryptographic Database Authentication Standards</h3>
+<p>Guaranteeing the integrity of sensitive global identifying configurations explicitly enforcing deep symmetric structural cryptography logic continuously executing. Originating plain text user identification passwords immediately proceed through robust cryptographic hashing functions specifically utilizing mathematically complex Bcrypt node implementations specifically asserting an extreme Level 10 Processing Cost logic concatenating mathematically ambiguous byte-level randomized 'Salts' directly outputting uniquely obfuscated structural hashes replacing readable structural identities persistently preserving exact database schema architectures functionally securing completely. Succeeding tokenization processes apply identical high-security boundaries executing exclusively generating explicit signed multi-tier string array JSON Web Tokens evaluating subsequent operational authentications evaluating strict `Bearer` parameter constraints strictly preventing unauthorized execution routines logically.</p>
+
+<h3>4.6.3 Universal Unified Exception Catching Pipelines</h3>
+<p>Inherent protection variables implement consistent asynchronous promise evaluating mechanisms uniformly implementing structural `try-catch` configurations fundamentally tracking failure execution outputs routing logically toward comprehensive globally configured architectural central Express middleware error tracking frameworks universally modifying irregular code execution meltdowns suppressing native explicit stack trace arrays selectively outputting structured standardized response configurations formulating exact generic semantic numerical HTTP status response representations preventing explicit systematic white-screen client-side breaks consistently formulating robust logic stability architectures universally inherently.</p>
+
+
+<h2>4.7 Quality Assurance Methodologies</h2>
+<p>Executing targeted analytical examination tests isolating software structural inadequacies successfully mitigating deployment error risks globally assessing platform integrity accurately prior to system configuration approvals effectively finalizing developmental iterations.</p>
+
+<h3>4.7.1 Validation Isolation Testing</h3>
+<p>Thorough testing procedures evaluated structural boundary defense variables repeatedly mimicking erratic input anomalies testing negative values executing blank database field configurations validating system application behaviors explicitly outputting correct error warnings precisely rejecting unauthorized form implementations confirming valid structural barriers accurately protecting data ingestion sequences safely resolving operational constraints firmly.</p>
+
+<h3>4.7.2 Extensive Manual Navigational Audits</h3>
+<p>Iterative 'Happy Path' sequential process evaluations comprehensively mimicked complete standard user operations extensively logging exact functional processes generating profile instances formulating complex mathematical custom order matrices sequentially attaching test image binaries evaluating exact translation output representations populating accurately within secure administrative processing queues generating structurally reliable analytical dashboards asserting intended logical outputs flawlessly confirming total system feature reliability accurately.</p>
+
+<h3>4.7.3 Evaluative User Role Constraint Verification</h3>
+<p>Explicit functional evaluations asserting architectural security configurations examining structural isolation metrics strictly evaluating potential privilege escalation loopholes securely validating authorization models rigorously attempting unauthorized execution requests querying secured administrative endpoints utilizing universally generated native customer credential objects correctly outputting hard validation barrier rejection procedures forcefully routing illegitimate network traffic logically returning user arrays natively validating structural access boundaries extensively guaranteeing application compartmentalization successfully executing perfectly defending sensitive backend data resources completely natively.</p>
+
+<h2>4.8 Summary</h2>
+<p>Chapter 4 has articulated a profound, sequentially detailed investigation chronicling the transition of KaviCakes from conceptual planning diagrams into a tangible, robust digital ecosystem utilizing optimized, industry-standard modern technological frameworks. Through expansive dissections of the applied MVC architectural implementations, intensive verification mechanics, and structured role-based security algorithms backed universally via comprehensive Quality Assurance verification deployments, this section demonstrated definitively that the ultimate software product satisfies intended structural objectives safely establishing operational readiness explicitly solving the inherent administrative bakery configurations.</p>
+
+</body>
+</html>

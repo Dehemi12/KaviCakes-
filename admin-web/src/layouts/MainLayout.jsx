@@ -46,6 +46,7 @@ const MainLayout = () => {
         { key: '/customers', icon: <UserOutlined />, label: 'Customers' },
         { key: '/notifications', icon: <BellOutlined />, label: 'Notifications' },
         { key: '/cashbook', icon: <DollarOutlined />, label: 'Cashbook' },
+        { key: '/reports', icon: <AreaChartOutlined />, label: 'Reports' },
         { key: '/site-content', icon: <FileImageOutlined />, label: 'Site Content' },
         { type: 'divider' }, // Visual separator
         { key: '/settings', icon: <SettingOutlined />, label: 'Settings' },

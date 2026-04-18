@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        font-family: "Times New Roman", Times, serif;
+        line-height: 1.6;
+        color: #000;
+        margin: 40px;
+        font-size: 11pt;
+    }
+    h1 {
+        text-align: center;
+        text-transform: uppercase;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+        margin-bottom: 30px;
+    }
+    h2 {
+        border-bottom: 1px solid #ccc;
+        color: #2c3e50;
+        margin-top: 30px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    th, td {
+        border: 1px solid #000;
+        padding: 8px;
+        text-align: left;
+    }
+    th {
+        background-color: #f2f2f2;
+    }
+    .mermaid-desc {
+        background-color: #f9f9f9;
+        padding: 15px;
+        border: 1px dashed #999;
+        font-family: "Courier New", Courier, monospace;
+        font-size: 10pt;
+    }
+</style>
+<title>Corrected ER Diagram Specification - KaviCakes</title>
+</head>
+<body>
+
+<h1>Corrected Entity-Relationship (ER) Specification</h1>
+
+<p><strong>Project:</strong> KaviCakes Management System</p>
+<p><strong>Document:</strong> Database Architectural Specification</p>
+
+<hr>
+
+<h2>1. Refined Entity List & Attributes</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Entity</th>
+            <th>Primary Attributes</th>
+            <th>Relationship Context</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>customer</strong></td>
+            <td>id, name, email, phone, loyaltyPoints</td>
+            <td>Parent to Order, Cart, Notification, Feedback.</td>
+        </tr>
+        <tr>
+            <td><strong>orders</strong></td>
+            <td>id, status, total, paymentStatus, deliveryDate</td>
+            <td>Linked to Customer (N:1), OrderItem (1:N), Payment (1:1).</td>
+        </tr>
+        <tr>
+            <td><strong>orderitem</strong></td>
+            <td>id, quantity, unitPrice</td>
+            <td>Bridge between <code>orders</code> and <code>cakevariant</code>.</td>
+        </tr>
+        <tr>
+            <td><strong>cakevariant</strong></td>
+            <td>id, price, sizeId, shapeId, flavorId</td>
+            <td>Specific SKU of a cake containing size/shape/flavor.</td>
+        </tr>
+        <tr>
+            <td><strong>cake</strong></td>
+            <td>id, name, description, categoryId</td>
+            <td>Main product item (Parent of variants).</td>
+        </tr>
+        <tr>
+            <td><strong>payment</strong></td>
+            <td>id, proofImage, status, verifiedAt</td>
+            <td>Tracks financial clearance for an Order (1:1).</td>
+        </tr>
+        <tr>
+            <td><strong>transaction</strong></td>
+            <td>id, type, amount, date, cashbookId</td>
+            <td>Logs physical cash flow movement (Linked to Order/Payment).</td>
+        </tr>
+        <tr>
+            <td><strong>cashbook</strong></td>
+            <td>id, date, openingBalance, closingBalance</td>
+            <td>Aggregates daily accounting (Linked to Transaction).</td>
+        </tr>
+    </tbody>
+</table>
+
+<hr>
+
+<h2>2. Corrected Cardinality Rules</h2>
+<p>To fix the errors in the original diagram, apply the following rules:</p>
+<ul>
+    <li><strong>Order Unification:</strong> Only ONE box for <code>orders</code>. branch out to <code>OrderItem</code>, <code>Payment</code>, <code>Invoice</code>, and <code>Delivery</code>.</li>
+    <li><strong>Variant Selection:</strong> <code>OrderItem</code> must link to <code>CakeVariant</code> (N:1), not directly to <code>Cake</code>.</li>
+    <li><strong>Cart Flow:</strong> <code>Customer</code> (1:1) -> <code>Cart</code> (1:N) -> <code>CartItem</code> (N:1) -> <code>CakeVariant</code>.</li>
+    <li><strong>Feedback:</strong> <code>Order</code> (1:1) -> <code>Feedback</code>. This ensures one review per purchase.</li>
+</ul>
+
+<hr>
+
+<h2>3. Technical Merchant Diagram (Mermaid Definition)</h2>
+<p>Use the following text to generate a high-precision digital diagram:</p>
+
+<div class="mermaid-desc">
+erDiagram<br>
+    CUSTOMER ||--o{ ORDERS : places<br>
+    CUSTOMER ||--o| CART : has<br>
+    CART ||--o{ CARTITEM : contains<br>
+    CARTITEM }|--|| CAKEVARIANT : selects<br>
+    ORDERS ||--o{ ORDERITEM : "composed of"<br>
+    ORDERITEM }|--|| CAKEVARIANT : references<br>
+    CAKEVARIANT }|--|| CAKE : "is variant of"<br>
+    CAKE }|--|| CAKECATEGORY : "belongs to"<br>
+    ORDERS ||--o| PAYMENT : "paid by"<br>
+    ORDERS ||--o| DELIVERY : "shipped via"<br>
+    ORDERS ||--o| INVOICE : "billed via"<br>
+    ORDERS ||--o| FEEDBACK : "rated via"<br>
+    PAYMENT ||--o{ TRANSACTION : generates<br>
+    TRANSACTION }|--|| CASHBOOK : "logs into"<br>
+    CUSTOMER ||--o{ NOTIFICATION : receives
+</div>
+
+<hr>
+
+<p><em>End of Specification Report</em></p>
+
+</body>
+</html>

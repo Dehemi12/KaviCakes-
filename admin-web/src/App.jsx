@@ -20,6 +20,7 @@ import ResetPassword from './pages/ResetPassword';
 import Production from './pages/Production';
 import SiteContent from './pages/SiteContent';
 import OrderConfirmation from './pages/OrderConfirmation';
+import Reports from './pages/Reports';
 
 const PrivateRoute = () => {
   const { user, loading } = useAuth();
@@ -61,6 +62,7 @@ const App = () => {
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/production" element={<Production />} />
           <Route path="/site-content" element={<SiteContent />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Dashboard />} /> {/* Added catch-all route */}
         </Route>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        margin: 50px;
+        font-size: 11pt;
+    }
+    h1 {
+        font-size: 18pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-top: 30px;
+        margin-bottom: 20px;
+        color: #000;
+        text-align: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+    }
+    h2 {
+        font-size: 15pt;
+        font-weight: bold;
+        margin-top: 35px;
+        margin-bottom: 15px;
+        color: #1a2a6c;
+    }
+    h3 {
+        font-size: 13pt;
+        font-weight: bold;
+        margin-top: 25px;
+        margin-bottom: 10px;
+        color: #333;
+    }
+    p {
+        margin-bottom: 15px;
+    }
+    ul, ol {
+        margin-bottom: 15px;
+        margin-left: 20px;
+    }
+    li {
+        margin-bottom: 10px;
+    }
+    .flow-box {
+        background-color: #f9f9f9;
+        border-left: 4px solid #1a2a6c;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .actor {
+        font-weight: bold;
+        color: #1a2a6c;
+    }
+</style>
+<title>System User Interfaces and Interaction Flow Report</title>
+</head>
+<body>
+
+<h1>System User Interfaces and Interaction Flow Report</h1>
+
+<p>This document provides a comprehensive overview of the KaviCakes Management System from the perspective of the users. It clearly defines the specific capabilities assigned to the Customer and the Administrator. Furthermore, it details the digital interactions between the two roles and outlines the exact step-by-step lifecycle of a cake order from the moment it is placed to the moment it is delivered.</p>
+
+<h2>1. What Can the Customer Do? (Customer Web Portal)</h2>
+<p>The Customer Web Portal is designed to be visually appealing, offering a frictionless ordering experience while strictly enforcing business rules in the background. A user logged into the system as a `CUSTOMER` has the following capabilities:</p>
+
+<h3>1.1 Secure Account Management</h3>
+<ul>
+    <li><strong>Register and Verify:</strong> Customers can create an account by providing basic details. They must verify their email address by entering a 6-digit OTP (One-Time Password) before the system allows them to log in.</li>
+    <li><strong>Profile Updates:</strong> Customers can update their personal information, save default delivery addresses, and view their currently accumulated Loyalty Points balance.</li>
+</ul>
+
+<h3>1.2 Browse and Search the Catalog</h3>
+<ul>
+    <li><strong>View Promotions:</strong> Customers land on a home screen displaying large hero banners and an algorithm-sorted "Best Sellers" section based on popular demand.</li>
+    <li><strong>Filter and Search:</strong> They can filter cakes by specific categories (e.g., Birthday, Wedding) and use a live search bar to type and instantly find a specific cake by name.</li>
+</ul>
+
+<h3>1.3 Dynamic Cake Customization</h3>
+<ul>
+    <li><strong>Select Variants:</strong> Customers cannot just click "Buy." They must select their required Cake Size, Shape, and Flavor. The system immediately calculates and updates the price on the screen based on their specific combination.</li>
+    <li><strong>Check Availability:</strong> If a specific size or flavor is out of stock, the customer will see it disabled and cannot add it to their cart.</li>
+</ul>
+
+<h3>1.4 Smart Checkout and Payments</h3>
+<ul>
+    <li><strong>Redeem Loyalty Points:</strong> During checkout, customers can use a slider to apply their earned Loyalty Points for a discount. The system automatically stops them from discounting more than 30% of the total cart value.</li>
+    <li><strong>Choose Payment Method:</strong> Customers can choose "Online Payment" (requiring full immediate payment) or "Cash on Delivery" (COD).</li>
+    <li><strong>Upload Bank Slips:</strong> If COD is selected, the system asks the customer to upload a photo of the bank transfer slip proving they have paid the mandatory 30% advance deposit.</li>
+</ul>
+
+<h3>1.5 Specialized Ordering and Tracking</h3>
+<ul>
+    <li><strong>Submit Custom/Bulk Inquiries:</strong> Customers can fill out specialized forms for completely custom cake designs or large-scale corporate bulk orders, attaching reference images and writing specific dietary or event notes.</li>
+    <li><strong>Track Live Orders:</strong> Customers can access a timeline tracker that shows exactly what stage their order is in (e.g., Confirmed, Preparing, Ready).</li>
+</ul>
+
+---
+
+<h2>2. What Can the Admin Do? (Admin Control Center)</h2>
+<p>The Admin dashboard is built for high-density data management. It hides promotional graphics in favor of tables, charts, and verification queues. A user logged in as an `ADMIN` has full structural control over the business operations.</p>
+
+<h3>2.1 Business Analytics and Oversight</h3>
+<ul>
+    <li><strong>View Live KPIs:</strong> Automatically view today's active orders, the total pending advance payments, and graphical charts showing revenue trends over the month.</li>
+</ul>
+
+<h3>2.2 Total Inventory Control</h3>
+<ul>
+    <li><strong>Manage Base Categories and Cakes:</strong> The admin can add new categories, create new cakes, and upload their respective images.</li>
+    <li><strong>Configure Variant Pricing:</strong> Using dynamic forms, the admin can add an unlimited combination of sizes and flavors for a single cake, explicitly setting exactly how much each specific variant costs.</li>
+</ul>
+
+<h3>2.3 Order Verification and Management</h3>
+<ul>
+    <li><strong>Verify Payment Slips:</strong> Admins can open a side panel for any new order to visually inspect the bank slip image uploaded by the customer. They can then manually click an "Approve" or "Reject" button.</li>
+    <li><strong>Mutate Order Status:</strong> Admins dictate the lifecycle of an order. They manually move orders from the 'NEW' list to 'CONFIRMED', then to 'PREPARING', 'READY', and finally 'DELIVERED'.</li>
+    <li><strong>Generate Invoices:</strong> Admins can click a single button to generate a clean, professional PDF billing invoice for any order in the database.</li>
+</ul>
+
+<h3>2.4 Financial Auditing</h3>
+<ul>
+    <li><strong>Automated Cashbook:</strong> Admins can view the daily cash ledger. The system automatically records the day's total online system income and calculates the exact daily Closing Balance.</li>
+    <li><strong>Log Manual Cash Expenses:</strong> The admin can manually type in physical shop expenses (like buying flour or paying a delivery driver in cash). The system subtracts this from the daily total automatically.</li>
+</ul>
+
+<h3>2.5 Automated Communication Control</h3>
+<ul>
+    <li><strong>Edit Email Templates:</strong> Admins can edit the HTML text of the automated emails (like the "Order Ready" email) that the system sends out.</li>
+    <li><strong>Trigger Manual Notifications:</strong> Admins can select specific customers and send out immediate promotional or warning emails directly from the dashboard.</li>
+</ul>
+
+---
+
+<h2>3. Interactions Between Admin and Customer</h2>
+<p>The system is specifically designed so that the Customer and Admin do not need to call or text each other constantly. The platform handles interactions asynchronously.</p>
+
+<div class="flow-box">
+    <strong>Action: Payment Verification Loop</strong><br>
+    <span class="actor">Customer:</span> Uploads a photo of their bank deposit slip and clicks submit.<br>
+    <span class="actor">System:</span> Changes the order status to `PENDING_VERIFICATION` immediately.<br>
+    <span class="actor">Admin:</span> Sees the new order highlighted in the queue, opens the slip image, and clicks "Approve".<br>
+    <span class="actor">System:</span> Secures the order, allowing it to move to the kitchen.
+</div>
+
+<div class="flow-box">
+    <strong>Action: Real-Time Status Synchronization</strong><br>
+    <span class="actor">Admin:</span> The baker finishes the cake. The admin logs in and clicks the "Mark as Ready" button.<br>
+    <span class="actor">System:</span> Automatically sends an email ("Your Cake is Ready for Pickup!") to the customer's inbox.<br>
+    <span class="actor">Customer:</span> Checks the "Track Order" page on their phone and instantly sees the graphic timeline light up on the "READY" stage.
+</div>
+
+<div class="flow-box">
+    <strong>Action: Automated Urgency Warnings</strong><br>
+    <span class="actor">Customer:</span> Places a highly custom order.<br>
+    <span class="actor">System (Node-Cron):</span> Detects that the delivery date is less than 48 hours away. It automatically emails a "Final Warning" to the customer stating that no more design changes can be made.<br>
+    <span class="actor">Admin:</span> Sees an "Urgent" flag applied to the order on the dashboard, prioritizing it in the kitchen.
+</div>
+
+---
+
+<h2>4. The End-to-End Order Flow (Clear Step-by-Step)</h2>
+<p>The following sequence represents the strictest, most complete lifecycle of a standard KaviCakes order, illustrating exactly how the backend business rules guard the process across both user interfaces.</p>
+
+<h3>Phase 1: Catalog Selection [Customer Side]</h3>
+<ol>
+    <li>The customer logs securely into the Web Portal.</li>
+    <li>The customer browses the catalog, clicks on a specific cake, and selects a 2kg size with a Chocolate flavor variant.</li>
+    <li>The Customer Web Portal live-calculates the final price and the customer clicks "Add to Cart".</li>
+</ol>
+
+<h3>Phase 2: Checkout and Payment Gate [Customer Side]</h3>
+<ol>
+    <li>The customer enters their delivery address and requests a specific delivery date in the future.</li>
+    <li>They choose to use 300 Loyalty Points, reducing their bill slightly (the system ensures the discount does not exceed 30% of the cart value).</li>
+    <li>They select "Cash on Delivery". The system displays a warning that a 30% advance is required.</li>
+    <li>The customer uploads a photo of their bank transfer receipt and clicks "Confirm Order".</li>
+</ol>
+
+<h3>Phase 3: Administrative Acknowledgment [Admin Side]</h3>
+<ol>
+    <li>The order appears in the Admin Dashboard Order Table under the <strong>NEW</strong> status category.</li>
+    <li>The Admin clicks the order to open the side drawer. They analyze the specific flavor variants and the requested delivery date.</li>
+    <li>The Admin clicks "Acknowledge Order", moving the status to <strong>CONFIRMED</strong>. The customer receives an automated "Order Confirmed" email.</li>
+</ol>
+
+<h3>Phase 4: The Preparation Guardrail [System & Admin Side]</h3>
+<ol>
+    <li>The Admin attempts to click the "Begin Preparing" button to send the order to the kitchen.</li>
+    <li><strong>System Guardrail:</strong> The backend blocks the action because the 30% advance payment has not yet been manually verified.</li>
+    <li>The Admin opens the payment tab on the drawer, looks at the customer's uploaded bank slip image, matches the amount, and clicks "Verify Advance Payment".</li>
+    <li>With the payment officially verified in the database, the Admin clicks "Begin Preparing". The system successfully moves the order to the <strong>PREPARING</strong> state.</li>
+</ol>
+
+<h3>Phase 5: Finalization and Notification [Admin to Customer]</h3>
+<ol>
+    <li>The physical cake is finished by the kitchen staff.</li>
+    <li>The Admin clicks "Mark as Ready".</li>
+    <li>The System automatically triggers Nodemailer to send a "Ready for Delivery/Pickup" email perfectly formatted to the Customer.</li>
+    <li>The Customer logs into their portal to view the Timeline Tracker and sees their item is finalized.</li>
+</ol>
+
+<h3>Phase 6: Delivery and Financial Closure [Admin Side]</h3>
+<ol>
+    <li>The cake is physically handed over to the customer and the balance cash is collected over the counter.</li>
+    <li>The Admin clicks "Mark as Delivered" in the dashboard and enters the balance collected as "In-Person Cash".</li>
+    <li><strong>System Closure:</strong> The order status shifts permanently to <strong>DELIVERED</strong>. A final PDF Invoice is automatically emailed to the customer. At midnight, the total fully paid amount is securely transferred into the Daily Cashbook ledger as 'Income'.</li>
+</ol>
+
+</body>
+</html>

@@ -227,7 +227,9 @@ const AddCakeModal = ({ open, onClose, onSuccess, cakeToEdit = null }) => {
             fetchMasterData(); // Refresh lists
             setIsMiniModalOpen(false);
         } catch (error) {
-            message.error('Failed to create item');
+            console.error('Master Data Create Error:', error);
+            const msg = error.response?.data?.error || 'Failed to create item';
+            message.error(msg);
         }
     };
 

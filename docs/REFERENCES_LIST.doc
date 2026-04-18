@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+    body {
+        font-family: 'Times New Roman', Times, serif;
+        line-height: 1.6;
+        color: #000;
+        margin: 1in;
+        font-size: 11pt;
+    }
+    h1 {
+        font-size: 16pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-top: 20px;
+        margin-bottom: 30px;
+        text-align: center;
+        border-bottom: 2px solid #000;
+        padding-bottom: 10px;
+    }
+    .ref-item {
+        margin-bottom: 20px;
+        padding-left: 0.5in;
+        text-indent: -0.5in;
+        text-align: justify;
+    }
+    .category {
+        font-weight: bold;
+        text-decoration: underline;
+        margin-top: 30px;
+        margin-bottom: 15px;
+        font-size: 12pt;
+    }
+</style>
+<title>References - KaviCakes Management System</title>
+</head>
+<body>
+
+<h1>REFERENCES</h1>
+
+<div class="category">Core Technologies and Frameworks</div>
+
+<div class="ref-item">
+    Facebook Open Source (2025). <i>React - A JavaScript library for building user interfaces</i>. [Online] Available at: https://react.dev/ [Accessed 17 April 2026].
+</div>
+
+<div class="ref-item">
+    Joyent, Inc. (2025). <i>Node.js Documentation & Guides</i>. [Online] Available at: https://nodejs.org/en/docs/ [Accessed 17 April 2026].
+</div>
+
+<div class="ref-item">
+    Prisma Data, Inc. (2025). <i>Prisma ORM - Next-generation Node.js and TypeScript ORM</i>. [Online] Available at: https://www.prisma.io/docs [Accessed 17 April 2026].
+</div>
+
+<div class="ref-item">
+    Oracle Corporation (2025). <i>MySQL 8.4 Reference Manual</i>. [Online] Available at: https://dev.mysql.com/doc/refman/8.4/en/ [Accessed 17 April 2026].
+</div>
+
+<div class="category">Frontend Design and Libraries</div>
+
+<div class="ref-item">
+    Ant Design Team (2025). <i>Ant Design - An enterprise-class UI design language and React UI library</i>. [Online] Available at: https://ant.design/docs/react/introduce [Accessed 17 April 2026].
+</div>
+
+<div class="ref-item">
+    Recharts.org (2025). <i>Recharts - A composable charting library built on React components</i>. [Online] Available at: https://recharts.org/en-US/guide [Accessed 17 April 2026].
+</div>
+
+<div class="ref-item">
+    Parall.ax (2025). <i>jsPDF - Client-side JavaScript PDF generation for everyone</i>. [Online] Available at: https://rawgit.com/MrRio/jsPDF/master/docs/index.html [Accessed 17 April 2026].
+</div>
+
+<div class="category">Software Architecture and Design Patterns</div>
+
+<div class="ref-item">
+    Martin, R.C. (2008). <i>Clean Code: A Handbook of Agile Software Craftsmanship</i>. 1st ed. Upper Saddle River, NJ: Prentice Hall.
+</div>
+
+<div class="ref-item">
+    Crockford, D. (2008). <i>JavaScript: The Good Parts</i>. 1st ed. Sebastopol, CA: O'Reilly Media.
+</div>
+
+<div class="ref-item">
+    Norman, D. (2013). <i>The Design of Everyday Things</i>. Revised ed. New York, NY: Basic Books.
+</div>
+
+<div class="category">Web Standards and Best Practices</div>
+
+<div class="ref-item">
+    World Wide Web Consortium (W3C) (2025). <i>Web Content Accessibility Guidelines (WCAG) 2.2</i>. [Online] Available at: https://www.w3.org/TR/WCAG22/ [Accessed 17 April 2026].
+</div>
+
+<div class="ref-item">
+    Vercel, Inc. (2025). <i>Core Web Vitals - Measuring User Experience for Google Search</i>. [Online] Available at: https://vercel.com/docs/analytics/core-web-vitals [Accessed 17 April 2026].
+</div>
+
+<div class="ref-item">
+    Google Developers (2025). <i>Best Practices for Search Engine Optimization (SEO)</i>. [Online] Available at: https://developers.google.com/search/docs/fundamentals/seo-starter-guide [Accessed 17 April 2026].
+</div>
+
+</body>
+</html>

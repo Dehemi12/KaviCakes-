@@ -78,17 +78,24 @@ const Home = () => {
     }, []);
 
     const [bestSellers, setBestSellers] = React.useState([]);
+    const [loadingBestSellers, setLoadingBestSellers] = React.useState(true);
 
     React.useEffect(() => {
         const fetchBestSellers = async () => {
+            setLoadingBestSellers(true);
             try {
                 // Fetch live best sellers calculated by backend
-                const res = await api.get('/public/cakes/best-sellers?limit=3');
+                const res = await api.get('/public/cakes/best-sellers?limit=4');
                 if (res.data) {
-                    setBestSellers(res.data);
+                    setBestSellers(res.data.map(item => ({
+                        ...item,
+                        image: item.image || item.imageUrl // Support both field names
+                    })));
                 }
             } catch (err) {
                 console.error("Failed to fetch best sellers", err);
+            } finally {
+                setLoadingBestSellers(false);
             }
         };
         fetchBestSellers();
@@ -338,33 +345,46 @@ const Home = () => {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {bestSellers.length > 0 ? bestSellers.map((item) => (
-                            <div key={item.id} className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex items-center space-x-4">
-                                <div className="w-32 h-32 flex-shrink-0 rounded-xl overflow-hidden">
-                                    <img src={item.image || 'https://placehold.co/128x128?text=Best+Seller'} alt={item.name} className="w-full h-full object-cover" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                        {loadingBestSellers ? (
+                            [1, 2, 3, 4].map(i => (
+                                <div key={i} className="animate-pulse bg-white p-4 rounded-2xl shadow-sm flex items-center space-x-4 h-40">
+                                    <div className="w-24 h-24 sm:w-32 sm:h-32 bg-gray-200 rounded-xl"></div>
+                                    <div className="flex-1 space-y-3">
+                                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                                    </div>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="text-lg font-bold text-gray-900 truncate">{item.name}</h3>
-                                    <div className="flex items-center mt-1 mb-2">
-                                        <div className="flex text-yellow-400">
-                                            {[...Array(5)].map((_, i) => (
-                                                <Star key={i} className={`h-4 w-4 ${i < 5 ? 'fill-current' : 'text-gray-300'}`} />
-                                            ))}
+                            ))
+                        ) : bestSellers.length > 0 ? (
+                            bestSellers.map((item) => (
+                                <div key={item.id} className="bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex sm:flex-row flex-col items-center sm:space-x-4 space-y-4 sm:space-y-0 text-center sm:text-left h-full">
+                                    <div className="w-full sm:w-24 sm:h-24 h-40 lg:w-32 lg:h-32 flex-shrink-0 rounded-xl overflow-hidden aspect-square">
+                                        <img src={item.image || item.imageUrl || 'https://placehold.co/128x128?text=Best+Seller'} alt={item.name} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="flex-1 min-w-0 flex flex-col justify-between h-full">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900 line-clamp-2">{item.name}</h3>
+                                            <div className="flex items-center justify-center sm:justify-start mt-1 mb-2">
+                                                <div className="flex text-yellow-400">
+                                                    {[...Array(5)].map((_, i) => (
+                                                        <Star key={i} className={`h-4 w-4 fill-current`} />
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <span className="text-xs text-gray-400 ml-2">(Popular)</span>
-                                    </div>
-                                    <div className="flex items-center justify-between w-full">
-                                        <span className="text-lg font-bold text-pink-600">Rs. {item.price}</span>
-                                        <Link to={`/cakes/${item.id}`} className="p-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 shadow-md">
-                                            <ArrowRight className="h-4 w-4" />
-                                        </Link>
+                                        <div className="flex items-center justify-between w-full mt-2">
+                                            <span className="text-lg font-bold text-pink-600 truncate mr-2">Rs. {item.price}</span>
+                                            <Link to={`/cakes/${item.id}`} className="p-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 shadow-md shrink-0">
+                                                <ArrowRight className="h-4 w-4" />
+                                            </Link>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )) : (
-                            <div className="col-span-3 text-center text-gray-500 py-10">
-                                <p>Loading best sellers...</p>
+                            ))
+                        ) : (
+                            <div className="col-span-1 md:col-span-2 lg:col-span-4 text-center text-gray-500 py-10">
+                                <p>Our best sellers are coming soon! Check back later.</p>
                             </div>
                         )}
                     </div>
@@ -447,7 +467,6 @@ const Home = () => {
                 </div>
             </section>
 
-            {/* Newsletter is deliberately removed or should I remove it? The plan says "Remove Community section". The newsletter section title is "Join our Sweet Community". So I should remove lines 274-288. In this replacement I already removed it. Wait. My replacement ends at 288 (the section closing tag). But the original file has lines up to 289 where the newsletter section is. I should ensure I am removing the Newsletter section. */}
         </div>
     );
 };
