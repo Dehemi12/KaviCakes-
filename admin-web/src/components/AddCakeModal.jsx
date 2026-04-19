@@ -465,19 +465,28 @@ const AddCakeModal = ({ open, onClose, onSuccess, cakeToEdit = null }) => {
                 width={400}
             >
                 <div style={{ marginBottom: 15 }}>
-                    <Text>Name/Label</Text>
+                    <Text strong>Label</Text>
                     <Input
                         placeholder={`e.g. ${miniModalType === 'size' ? '2kg' : miniModalType === 'shape' ? 'Star' : 'Strawberry'}`}
                         value={newItemLabel}
                         onChange={(e) => setNewItemLabel(e.target.value)}
+                        style={{ marginTop: 5 }}
                     />
                 </div>
                 <div>
-                    <Text>{miniModalType === 'category' ? 'Base Price (Default)' : 'Extra Price (Default)'}</Text>
+                    <Text strong>
+                        {miniModalType === 'category' ? 'Base Price' : 
+                         miniModalType === 'size' ? 'Multiplier' : 
+                         'Extra Price'}
+                    </Text>
                     <InputNumber
-                        style={{ width: '100%' }}
+                        style={{ width: '100%', marginTop: 5 }}
                         value={newItemPrice}
                         onChange={setNewItemPrice}
+                        min={0}
+                        step={miniModalType === 'size' ? 0.1 : 10}
+                        prefix={miniModalType === 'size' ? "x" : "Rs."}
+                        placeholder={miniModalType === 'size' ? "1.5" : "500"}
                     />
                 </div>
             </Modal>

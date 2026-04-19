@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Minus, Plus, Heart, ShoppingBag, ArrowLeft, CheckCircle, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -10,6 +11,7 @@ const ProductDetailsPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { addToCart } = useCart();
+    const { user } = useAuth();
 
     // Mock product data (replace with API fetch later)
     const [product, setProduct] = useState(null);
@@ -28,11 +30,18 @@ const ProductDetailsPage = () => {
     const [showCartPopup, setShowCartPopup] = useState(false);
 
     useEffect(() => {
-        if (product) {
-            const savedWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-            setIsWishlisted(savedWishlist.some(item => String(item.id) === String(product.id)));
-        }
-    }, [product]);
+        const checkWishlist = async () => {
+            if (product && user) {
+                try {
+                    const response = await api.get(`/wishlist/status/${product.id}`);
+                    setIsWishlisted(response.data.isWishlisted);
+                } catch (error) {
+                    console.error("Failed to check wishlist status", error);
+                }
+            }
+        };
+        checkWishlist();
+    }, [product, user]);
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -305,20 +314,27 @@ const ProductDetailsPage = () => {
                                         <ShoppingBag className="h-5 w-5 mr-2" /> Add to Cart
                                     </button>
                                     <button
-                                        onClick={() => {
-                                            const savedWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-                                            if (isWishlisted) {
-                                                const newWishlist = savedWishlist.filter(item => String(item.id) !== String(product.id));
-                                                localStorage.setItem('wishlist', JSON.stringify(newWishlist));
-                                                setIsWishlisted(false);
+                                        onClick={async () => {
+                                            if (!user) {
+                                                toast.error("Please login to manage your wishlist");
+                                                navigate('/login');
+                                                return;
+                                            }
+
+                                            try {
+                                                if (isWishlisted) {
+                                                    await api.delete(`/wishlist/${product.id}`);
+                                                    setIsWishlisted(false);
+                                                    toast.success("Removed from Wishlist");
+                                                } else {
+                                                    await api.post('/wishlist/add', { cakeId: product.id });
+                                                    setIsWishlisted(true);
+                                                    toast.success("Added to Wishlist");
+                                                }
                                                 window.dispatchEvent(new Event('wishlist-updated'));
-                                                toast.success("Removed from Wishlist");
-                                            } else {
-                                                savedWishlist.push({ id: product.id, name: product.name, image: product.image, price: currentPrice || product.basePrice });
-                                                localStorage.setItem('wishlist', JSON.stringify(savedWishlist));
-                                                setIsWishlisted(true);
-                                                window.dispatchEvent(new Event('wishlist-updated'));
-                                                toast.success("Added to Wishlist");
+                                            } catch (error) {
+                                                console.error("Wishlist operation failed", error);
+                                                toast.error("Something went wrong");
                                             }
                                         }}
                                         className={`px-4 py-3.5 rounded-xl border font-bold transition-colors flex items-center justify-center min-w-[60px] ${isWishlisted ? 'bg-pink-50 border-pink-200 text-pink-600' : 'border-pink-200 text-pink-600 hover:bg-pink-50'}`}

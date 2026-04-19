@@ -25,7 +25,7 @@ const Reports = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [reportData, setReportData] = useState(null);
-    const [dates, setDates] = useState([dayjs().startOf('year'), dayjs()]);
+    const [selectedDate, setSelectedDate] = useState(dayjs());
     const reportRef = useRef();
 
     // Theme Colors
@@ -45,8 +45,8 @@ const Reports = () => {
         fetchReport();
     }, []);
 
-    const fetchReport = async (range) => {
-        const [start, end] = range || dates;
+    const fetchReport = async (dateObj) => {
+        const date = dateObj || selectedDate;
         setLoading(true);
         setError(null);
         try {
@@ -55,8 +55,8 @@ const Reports = () => {
             
             const res = await axios.get(`http://localhost:5000/api/reports/sales-revenue`, {
                 params: {
-                    startDate: start.format('YYYY-MM-DD'),
-                    endDate: end.format('YYYY-MM-DD')
+                    startDate: date.format('YYYY-MM-DD'),
+                    endDate: date.format('YYYY-MM-DD')
                 },
                 ...config
             });
@@ -71,7 +71,7 @@ const Reports = () => {
 
     const handleDateChange = (val) => {
         if (val) {
-            setDates(val);
+            setSelectedDate(val);
             fetchReport(val);
         }
     };
@@ -125,7 +125,13 @@ const Reports = () => {
                     <Text type="secondary">Generate and download official PDF reports</Text>
                 </Space>
                 <Space>
-                    <RangePicker value={dates} onChange={handleDateChange} picker="month" />
+                    <DatePicker 
+                        value={selectedDate} 
+                        onChange={handleDateChange} 
+                        picker="month" 
+                        size="large"
+                        style={{ borderRadius: '8px' }}
+                    />
                     <Button 
                         type="primary" 
                         icon={<DownloadOutlined />} 
@@ -166,7 +172,7 @@ const Reports = () => {
                                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: colors.primary }}></div>
                                 <Text strong style={{ fontSize: '18px', color: '#333' }}>KaviCakes</Text>
                             </div>
-                            <Text strong style={{ color: '#555' }}>Period {dayjs(dates[1]).format('YYYY')}</Text>
+                            <Text strong style={{ color: '#555' }}>Period: {selectedDate.format('MMMM YYYY')}</Text>
                         </div>
 
                         <Divider style={{ borderColor: colors.primary, borderWidth: '2px', margin: '0 0 60px 0' }} />
@@ -189,27 +195,27 @@ const Reports = () => {
 
                         {/* Summary Box */}
                         <div style={{ background: colors.primary, borderRadius: '12px', padding: '35px', display: 'flex', justifyContent: 'space-between', marginBottom: '60px' }}>
-                            <div style={{ flex: 1, borderRight: '1px solid rgba(255,255,255,0.3)', padding: '0 20px' }}>
+                            <div style={{ flex: 1, borderRight: '1px solid rgba(255,255,255,0.3)', padding: '0 15px' }}>
                                 <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>Total revenue:</Text>
-                                <div style={{ color: '#fff', fontSize: '24px', fontWeight: 800, marginTop: '5px' }}>
+                                <div style={{ color: '#fff', fontSize: '20px', fontWeight: 800, marginTop: '5px' }}>
                                     Rs.{reportData.summary.totalRevenue.toLocaleString()}
                                 </div>
                             </div>
-                            <div style={{ flex: 1, borderRight: '1px solid rgba(255,255,255,0.3)', padding: '0 20px' }}>
-                                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>Week sales</Text>
-                                <div style={{ color: '#fff', fontSize: '24px', fontWeight: 800, marginTop: '5px' }}>
-                                    Rs.{reportData.summary.weeklyRevenue.toLocaleString()}
+                            <div style={{ flex: 1, borderRight: '1px solid rgba(255,255,255,0.3)', padding: '0 15px' }}>
+                                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>Finalized Sales:</Text>
+                                <div style={{ color: '#fff', fontSize: '20px', fontWeight: 800, marginTop: '5px' }}>
+                                    Rs.{reportData.summary.collectedRevenue ? reportData.summary.collectedRevenue.toLocaleString() : '0'}
                                 </div>
                             </div>
-                            <div style={{ flex: 1, borderRight: '1px solid rgba(255,255,255,0.3)', padding: '0 20px' }}>
-                                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>total orders</Text>
-                                <div style={{ color: '#fff', fontSize: '24px', fontWeight: 800, marginTop: '5px' }}>
+                            <div style={{ flex: 1, borderRight: '1px solid rgba(255,255,255,0.3)', padding: '0 15px' }}>
+                                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>Orders Count:</Text>
+                                <div style={{ color: '#fff', fontSize: '20px', fontWeight: 800, marginTop: '5px' }}>
                                     {reportData.summary.totalOrders}
                                 </div>
                             </div>
-                            <div style={{ flex: 1, padding: '0 20px' }}>
-                                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>Peak sales period:</Text>
-                                <div style={{ color: '#fff', fontSize: '24px', fontWeight: 800, marginTop: '5px', textTransform: 'lowercase' }}>
+                            <div style={{ flex: 1, padding: '0 15px' }}>
+                                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}>Annual Peak:</Text>
+                                <div style={{ color: '#fff', fontSize: '20px', fontWeight: 800, marginTop: '5px', textTransform: 'lowercase' }}>
                                     {reportData.summary.peakMonth}
                                 </div>
                             </div>

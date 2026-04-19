@@ -40,7 +40,11 @@ function App() {
               <Route path="categories" element={<CategoriesPage />} />
               <Route path="cakes/:id" element={<ProductDetailsPage />} />
               <Route path="cart" element={<CartPage />} />
-              <Route path="wishlist" element={<WishlistPage />} />
+              <Route path="wishlist" element={
+                <ProtectedRoute>
+                  <WishlistPage />
+                </ProtectedRoute>
+              } />
               <Route path="checkout" element={
                 <ProtectedRoute>
                   <CheckoutPage />

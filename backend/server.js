@@ -17,6 +17,7 @@ const scheduleRoutes = require('./src/routes/scheduleRoutes');
 const publicCakeRoutes = require('./src/routes/publicCakeRoutes');
 const bulkRoutes = require('./src/routes/bulkRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
+const wishlistRoutes = require('./src/routes/wishlistRoutes');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -43,6 +44,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/upload', require('./src/routes/uploadRoutes'));
 app.use('/api/content', require('./src/routes/contentRoutes'));
 app.use('/api/form-fields', require('./src/routes/formFieldRoutes'));
+app.use('/api/wishlist', wishlistRoutes);
 
 // Initialize Scheduled Background Jobs
 const { initCronJobs } = require('./src/utils/cronJobs');

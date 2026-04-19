@@ -7,8 +7,8 @@ exports.getSalesRevenueReport = async (req, res) => {
         const { startDate, endDate } = req.query;
         
         // Default to last 30 days if not provided
-        const end = endDate ? dayjs(endDate).endOf('day').toDate() : dayjs().endOf('day').toDate();
-        const start = startDate ? dayjs(startDate).startOf('day').toDate() : dayjs(end).subtract(30, 'day').startOf('day').toDate();
+        const end = endDate ? dayjs(endDate).endOf('month').endOf('day').toDate() : dayjs().endOf('day').toDate();
+        const start = startDate ? dayjs(startDate).startOf('month').startOf('day').toDate() : dayjs(end).subtract(30, 'day').startOf('day').toDate();
 
         // 1. Basic Stats (Revenue, Orders, Profit)
         const orders = await prisma.orders.findMany({
@@ -99,9 +99,25 @@ exports.getSalesRevenueReport = async (req, res) => {
 
         const revenueTrendsByMonth = Object.values(groupedTrends);
 
-        // 5. Peak Month
-        const peakMonth = revenueTrendsByMonth.length > 0 
-            ? revenueTrendsByMonth.reduce((a, b) => a.total > b.total ? a : b).month 
+        // 5. Peak Month (Calculated for the WHOLE YEAR of the selected period)
+        const yearStart = dayjs(start).startOf('year').toDate();
+        const yearEnd = dayjs(start).endOf('year').toDate();
+        const yearlyOrders = await prisma.orders.findMany({
+            where: {
+                createdAt: { gte: yearStart, lte: yearEnd },
+                status: { not: 'CANCELLED' }
+            }
+        });
+
+        const yearlyTrends = {};
+        yearlyOrders.forEach(o => {
+            const m = dayjs(o.createdAt).format('MMMM');
+            if (!yearlyTrends[m]) yearlyTrends[m] = 0;
+            yearlyTrends[m] += Number(o.total);
+        });
+
+        const peakMonth = Object.keys(yearlyTrends).length > 0 
+            ? Object.entries(yearlyTrends).reduce((a, b) => b[1] > a[1] ? b : a)[0]
             : 'N/A';
 
         // 6. Best Selling Products
@@ -153,6 +169,7 @@ exports.getSalesRevenueReport = async (req, res) => {
             dateRange: { start, end },
             summary: {
                 totalRevenue: revenueAgg,
+                collectedRevenue: orders.filter(o => o.status === 'DELIVERED' && o.paymentStatus === 'PAID').reduce((a, c) => a + Number(c.total), 0),
                 dailyRevenue,
                 weeklyRevenue,
                 monthlyRevenue,

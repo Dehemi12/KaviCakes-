@@ -28,7 +28,7 @@ model bulkorder {
   organization String?
   quantity     Int?
   notes        String? @db.Text
-  order orders  @relation(fields: [orderId], references: [id], map: "BulkOrder_orderId_fkey")
+  order        orders  @relation(fields: [orderId], references: [id], map: "BulkOrder_orderId_fkey")
 }
 
 model bulkpricing {
@@ -51,8 +51,9 @@ model cake {
   categoryId   Int
   createdAt    DateTime      @default(now())
   updatedAt    DateTime
-  category cakecategory  @relation(fields: [categoryId], references: [id], map: "Cake_categoryId_fkey")
-  variants cakevariant[]
+  category     cakecategory  @relation(fields: [categoryId], references: [id], map: "Cake_categoryId_fkey")
+  variants     cakevariant[]
+  wishlist     wishlist[]
 
   @@index([categoryId], map: "Cake_categoryId_fkey")
 }
@@ -66,23 +67,23 @@ model cakecategory {
 }
 
 model cakeflavor {
-  id          Int           @id @default(autoincrement())
-  label       String        @unique(map: "CakeFlavor_label_key")
-  price       Decimal       @default(0.000000000000000000000000000000)
+  id       Int           @id @default(autoincrement())
+  label    String        @unique(map: "CakeFlavor_label_key")
+  price    Decimal       @default(0.000000000000000000000000000000)
   variants cakevariant[]
 }
 
 model cakeshape {
-  id          Int           @id @default(autoincrement())
-  label       String        @unique(map: "CakeShape_label_key")
-  price       Decimal       @default(0.000000000000000000000000000000)
+  id       Int           @id @default(autoincrement())
+  label    String        @unique(map: "CakeShape_label_key")
+  price    Decimal       @default(0.000000000000000000000000000000)
   variants cakevariant[]
 }
 
 model cakesize {
-  id          Int           @id @default(autoincrement())
-  label       String        @unique(map: "CakeSize_label_key")
-  price       Decimal       @default(0.000000000000000000000000000000)
+  id       Int           @id @default(autoincrement())
+  label    String        @unique(map: "CakeSize_label_key")
+  price    Decimal       @default(0.000000000000000000000000000000)
   variants cakevariant[]
 }
 
@@ -97,11 +98,11 @@ model cakevariant {
   updatedAt   DateTime
   isAvailable Boolean     @default(true)
   cake        cake        @relation(fields: [cakeId], references: [id], onDelete: Cascade, map: "CakeVariant_cakeId_fkey")
-  flavor cakeflavor  @relation(fields: [flavorId], references: [id], map: "CakeVariant_flavorId_fkey")
-  shape cakeshape   @relation(fields: [shapeId], references: [id], map: "CakeVariant_shapeId_fkey")
-  size cakesize    @relation(fields: [sizeId], references: [id], map: "CakeVariant_sizeId_fkey")
+  flavor      cakeflavor  @relation(fields: [flavorId], references: [id], map: "CakeVariant_flavorId_fkey")
+  shape       cakeshape   @relation(fields: [shapeId], references: [id], map: "CakeVariant_shapeId_fkey")
+  size        cakesize    @relation(fields: [sizeId], references: [id], map: "CakeVariant_sizeId_fkey")
   cartitem    cartitem[]
-  items orderitem[]
+  items       orderitem[]
 
   @@unique([cakeId, sizeId, flavorId, shapeId], map: "CakeVariant_cakeId_sizeId_flavorId_shapeId_key")
   @@index([flavorId], map: "CakeVariant_flavorId_fkey")
@@ -122,12 +123,12 @@ model cart {
 }
 
 model cartitem {
-  id          Int         @id @default(autoincrement())
-  cartId      Int
-  variantId   Int
-  quantity    Int
-  cart        cart        @relation(fields: [cartId], references: [id], map: "CartItem_cartId_fkey")
-  variant cakevariant @relation(fields: [variantId], references: [id], map: "CartItem_variantId_fkey")
+  id        Int         @id @default(autoincrement())
+  cartId    Int
+  variantId Int
+  quantity  Int
+  cart      cart        @relation(fields: [cartId], references: [id], map: "CartItem_cartId_fkey")
+  variant   cakevariant @relation(fields: [variantId], references: [id], map: "CartItem_variantId_fkey")
 
   @@index([cartId], map: "CartItem_cartId_fkey")
   @@index([variantId], map: "CartItem_variantId_fkey")
@@ -140,7 +141,7 @@ model cashbook {
   closingBalance Decimal?      @db.Decimal(10, 2)
   totalIncome    Decimal       @default(0.00) @db.Decimal(10, 2)
   totalExpense   Decimal       @default(0.00) @db.Decimal(10, 2)
-  transactions transaction[]
+  transactions   transaction[]
 }
 
 model customer {
@@ -162,7 +163,8 @@ model customer {
   feedback           feedback[]
   loyaltytransaction loyaltytransaction[]
   notification       notification[]
-  order orders[]
+  order              orders[]
+  wishlist           wishlist[]
 }
 
 model customorder {
@@ -174,7 +176,7 @@ model customorder {
   quantity            Int?
   specialInstructions String?  @db.Text
   calculatedPrice     Decimal?
-  order orders   @relation(fields: [orderId], references: [id], map: "CustomOrder_orderId_fkey")
+  order               orders   @relation(fields: [orderId], references: [id], map: "CustomOrder_orderId_fkey")
 }
 
 model delivery {
@@ -188,7 +190,7 @@ model delivery {
   distanceKm              Decimal? @db.Decimal(6, 2)
   deliveryFee             Decimal? @default(0.000000000000000000000000000000)
   approximateDeliveryTime String?
-  order orders   @relation(fields: [orderId], references: [id], map: "Delivery_orderId_fkey")
+  order                   orders   @relation(fields: [orderId], references: [id], map: "Delivery_orderId_fkey")
 }
 
 model emaillog {
@@ -225,7 +227,7 @@ model feedback {
   reply      String?   @db.Text
   replyAt    DateTime?
   customer   customer  @relation(fields: [customerId], references: [id], map: "Feedback_customerId_fkey")
-  order orders    @relation(fields: [orderId], references: [id], map: "Feedback_orderId_fkey")
+  order      orders    @relation(fields: [orderId], references: [id], map: "Feedback_orderId_fkey")
 
   @@index([customerId], map: "Feedback_customerId_fkey")
 }
@@ -254,7 +256,7 @@ model invoice {
   orderId       Int      @unique(map: "Invoice_orderId_key")
   invoiceNumber String?
   issuedAt      DateTime @default(now())
-  order orders   @relation(fields: [orderId], references: [id], map: "Invoice_orderId_fkey")
+  order         orders   @relation(fields: [orderId], references: [id], map: "Invoice_orderId_fkey")
 }
 
 model itemrating {
@@ -312,8 +314,8 @@ model orderitem {
   description   String?
   customDetails Json?
   itemrating    itemrating?
-  order orders       @relation(fields: [orderId], references: [id], map: "OrderItem_orderId_fkey")
-  variant cakevariant? @relation(fields: [variantId], references: [id], map: "OrderItem_variantId_fkey")
+  order         orders       @relation(fields: [orderId], references: [id], map: "OrderItem_orderId_fkey")
+  variant       cakevariant? @relation(fields: [variantId], references: [id], map: "OrderItem_variantId_fkey")
 
   @@index([orderId], map: "OrderItem_orderId_fkey")
   @@index([variantId], map: "OrderItem_variantId_fkey")
@@ -338,15 +340,15 @@ model orders {
   isEdited        Boolean       @default(false)
   createdAt       DateTime      @default(now())
   updatedAt       DateTime
-  bulkOrder bulkorder?
-  customOrder customorder?
+  bulkOrder       bulkorder?
+  customOrder     customorder?
   delivery        delivery?
   feedback        feedback?
   invoice         invoice?
-  items orderitem[]
+  items           orderitem[]
   customer        customer      @relation(fields: [customerId], references: [id], map: "Orders_customerId_fkey")
   payment         payment?
-  transactions transaction[]
+  transactions    transaction[]
 
   @@index([customerId], map: "Orders_customerId_fkey")
 }
@@ -358,8 +360,8 @@ model payment {
   paymentStatus String?
   proofImage    String?
   verifiedAt    DateTime?
-  order orders        @relation(fields: [orderId], references: [id], map: "Payment_orderId_fkey")
-  transactions transaction[]
+  order         orders        @relation(fields: [orderId], references: [id], map: "Payment_orderId_fkey")
+  transactions  transaction[]
 }
 
 model sitesetting {
@@ -384,11 +386,24 @@ model transaction {
   orderId     Int?
   paymentId   Int?
   paymentMode String?   @default("Cash")
-  cashbook cashbook? @relation(fields: [cashBookId], references: [id], map: "Transaction_cashBookId_fkey")
-  order orders?   @relation(fields: [orderId], references: [id], map: "Transaction_orderId_fkey")
+  cashbook    cashbook? @relation(fields: [cashBookId], references: [id], map: "Transaction_cashBookId_fkey")
+  order       orders?   @relation(fields: [orderId], references: [id], map: "Transaction_orderId_fkey")
   payment     payment?  @relation(fields: [paymentId], references: [id], map: "Transaction_paymentId_fkey")
 
   @@index([cashBookId], map: "Transaction_cashBookId_fkey")
   @@index([orderId], map: "Transaction_orderId_fkey")
   @@index([paymentId], map: "Transaction_paymentId_fkey")
+}
+
+model wishlist {
+  id         Int      @id @default(autoincrement())
+  customerId String
+  cakeId     Int
+  createdAt  DateTime @default(now())
+  customer   customer @relation(fields: [customerId], references: [id], onDelete: Cascade, map: "Wishlist_customerId_fkey")
+  cake       cake     @relation(fields: [cakeId], references: [id], onDelete: Cascade, map: "Wishlist_cakeId_fkey")
+
+  @@unique([customerId, cakeId], map: "Wishlist_customerId_cakeId_key")
+  @@index([customerId], map: "Wishlist_customerId_fkey")
+  @@index([cakeId], map: "Wishlist_cakeId_fkey")
 }

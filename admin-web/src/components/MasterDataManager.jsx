@@ -190,29 +190,38 @@ const MasterDataManager = () => {
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     {modalType === 'category' ? (
                         <>
-                            <Form.Item name="name" label="Category Name" rules={[{ required: true }]}>
+                            <Form.Item name="name" label="Label" rules={[{ required: true }]}>
                                 <Input placeholder="e.g. Wedding Cakes" />
                             </Form.Item>
-                            <Form.Item name="basePrice" label="Base Price (Starting Price)" rules={[{ required: true }]}>
+                            <Form.Item name="basePrice" label="Base Price" rules={[{ required: true }]}>
+                                <InputNumber style={{ width: '100%' }} min={0} prefix="Rs." />
+                            </Form.Item>
+                        </>
+                    ) : modalType === 'flavor' ? (
+                        <>
+                            <Form.Item name="label" label="Label" rules={[{ required: true }]}>
+                                <Input placeholder="e.g. Chocolate Ganache" />
+                            </Form.Item>
+                            <Form.Item name="price" label="Extra Price" rules={[{ required: true }]}>
                                 <InputNumber style={{ width: '100%' }} min={0} prefix="Rs." />
                             </Form.Item>
                         </>
                     ) : (
                         <>
                             <Form.Item name="label" label="Label" rules={[{ required: true }]}>
-                                <Input placeholder={modalType === 'size' ? 'e.g. 1.5kg' : 'e.g. Chocolate Ganache'} />
+                                <Input placeholder="e.g. 1.5kg" />
                             </Form.Item>
                             <Form.Item 
                                 name="price" 
-                                label={modalType === 'size' ? "Size Multiplier / Weight (e.g. 1 or 1.5 or 2)" : "Extra Price (Modifier)"} 
+                                label="Multiplier" 
                                 rules={[{ required: true }]}
-                                help={modalType === 'size' ? "This will multiply the category's base price (e.g. Base 1500 * Size 1.5 = 2250)" : ""}
+                                help="This scales the Category Base Price (e.g. 1.5 = 150% of Base)"
                             >
                                 <InputNumber 
                                     style={{ width: '100%' }} 
                                     min={0} 
                                     step={0.1}
-                                    prefix={modalType === 'size' ? "x" : "Rs."} 
+                                    prefix="x" 
                                 />
                             </Form.Item>
                         </>

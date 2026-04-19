@@ -320,14 +320,14 @@ const Cakes = () => {
                 >
                     <Form.Item
                         name="name"
-                        label="Category Name"
-                        rules={[{ required: true, message: 'Please enter category name' }]}
+                        label="Label"
+                        rules={[{ required: true, message: 'Please enter label' }]}
                     >
                         <Input placeholder="e.g. Birthday Cakes" />
                     </Form.Item>
                     <Form.Item
                         name="basePrice"
-                        label="Base Price (Starting Price)"
+                        label="Base Price"
                         rules={[{ required: true, message: 'Please enter base price' }]}
                     >
                         <InputNumber

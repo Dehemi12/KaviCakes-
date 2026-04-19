@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<?mso-application progid="Word.Document"?>
+<w:wordDocument xmlns:w="http://schemas.microsoft.com/office/word/2003/wordml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:sl="http://schemas.microsoft.com/schemaLibrary/2003/core" xmlns:aml="http://schemas.microsoft.com/aml/2001/core" xmlns:wx="http://schemas.microsoft.com/office/word/2003/auxHint" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:dt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882" w:macrosPresent="no" w:embeddedObjPresent="no" w:ocxPresent="no" xml:space="preserve">
+	<w:ignoreSubtree w:val="http://schemas.microsoft.com/office/word/2003/wordml"/>
+	<w:body>
+		<wx:sect>
+			<w:p>
+				<w:pPr>
+					<w:pStyle w:val="Heading1"/>
+					<w:jc w:val="center"/>
+				</w:pPr>
+				<w:r>
+					<w:t>KaviCakes: Pricing Logic Specification</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:pPr>
+					<w:jc w:val="center"/>
+				</w:pPr>
+				<w:r>
+					<w:t>System Implementation Report - Chapter 4</w:t>
+				</w:r>
+			</w:p>
+			
+			<w:p><w:r><w:t></w:t></w:r></w:p>
+			
+			<w:p>
+				<w:pPr>
+					<w:pStyle w:val="Heading2"/>
+				</w:pPr>
+				<w:r>
+					<w:t>1. Overview</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>This document defines the computational logic used to determine product pricing across different order types. The system employs a combination of additive premiums and geometric multipliers to ensure pricing consistency and scalability.</w:t>
+				</w:r>
+			</w:p>
+
+			<w:p>
+				<w:pPr>
+					<w:pStyle w:val="Heading2"/>
+				</w:pPr>
+				<w:r>
+					<w:t>2. Admin Configuration &amp; Data Entry</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>The pricing engine is directly controlled by the Administrator through the Admin Panel. Each input field in the management forms maps to a specific variable in the calculation logic:</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:b/><w:t>- Category "Base Price": </w:t>
+				</w:r>
+				<w:r>
+					<w:t>Entered during category creation. Represents the baseline cost (e.g., Kids = 2000).</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:b/><w:t>- Size "Price" Field: </w:t>
+				</w:r>
+				<w:r>
+					<w:t>Treated as a Multiplier. Setting a size price of 1.5 increases the base cost by 50% for that weight.</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:b/><w:t>- Flavor "Price" Field: </w:t>
+				</w:r>
+				<w:r>
+					<w:t>Treated as a Surcharge. Flat amount added to the subtotal for premium ingredients.</w:t>
+				</w:r>
+			</w:p>
+
+			<w:p>
+				<w:pPr>
+					<w:pStyle w:val="Heading2"/>
+				</w:pPr>
+				<w:r>
+					<w:t>3. Custom Order Pricing (Dynamic Multiplier Model)</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>For customized individual orders, the system implements a Geometric Multiplier Model. The unit price is derived programmatically using the following algorithm:</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:pPr>
+					<w:jc w:val="center"/>
+				</w:pPr>
+				<w:r>
+					<w:b/>
+					<w:t>Total = (Category Base Price * Size Multiplier) + Flavor Premium</w:t>
+				</w:r>
+			</w:p>
+			
+			<w:p>
+				<w:pPr>
+					<w:pStyle w:val="Heading2"/>
+				</w:pPr>
+				<w:r>
+					<w:t>4. Bulk Order Pricing (Volume Discount Model)</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>The Bulk Order Threshold is defined as the unit quantity required to transition from a retail pricing tier to a wholesale pricing tier.</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>- Active Threshold: 100 Units</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>- Discount Rate: 10% (Applied automatically when Quantity > 100)</w:t>
+				</w:r>
+			</w:p>
+
+			<w:p>
+				<w:pPr>
+					<w:pStyle w:val="Heading2"/>
+				</w:pPr>
+				<w:r>
+					<w:t>5. Backend Price Verification (Security)</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>To maintain financial integrity, the system utilizes a Double-Entry Verification pattern. The backend ignores client-side totals and re-calculates the amount using fresh data from the database before completing the transaction.</w:t>
+				</w:r>
+			</w:p>
+
+			<w:p>
+				<w:pPr>
+					<w:pStyle w:val="Heading2"/>
+				</w:pPr>
+				<w:r>
+					<w:t>6. Algorithm Pseudo-code</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>ALGORITHM CalculateOrderTotal(items, orderType)</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>  INITIALIZE finalTotal = 0</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>  FOR EACH item IN items DO</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>    IF item.isCustom THEN</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>      lineTotal = (Base * Multiplier) + Premium</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>    ELSE IF item.isBulk AND qty > 100 THEN</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>      lineTotal = Subtotal * 0.90</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>    END IF</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>  END FOR</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>  RETURN finalTotal</w:t>
+				</w:r>
+			</w:p>
+			<w:p>
+				<w:r>
+					<w:t>END ALGORITHM</w:t>
+				</w:r>
+			</w:p>
+			
+		</wx:sect>
+	</w:body>
+</w:wordDocument>

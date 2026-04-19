@@ -43,6 +43,21 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Add interceptor to handle expired tokens
+    useEffect(() => {
+        const interceptor = api.interceptors.response.use(
+            (response) => response,
+            (error) => {
+                if (error.response?.status === 401) {
+                    logout();
+                    window.location.href = '/login';
+                }
+                return Promise.reject(error);
+            }
+        );
+        return () => api.interceptors.response.eject(interceptor);
+    }, []);
+
     const logout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
@@ -51,7 +66,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, logout, loading, api }}>
             {children}
         </AuthContext.Provider>
     );

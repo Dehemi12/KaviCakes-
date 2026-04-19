@@ -11,7 +11,7 @@ const ReceivePaymentModal = ({ open, order, onClose, onSuccess, defaultMarkAsDel
     useEffect(() => {
         if (open && order) {
             form.setFieldsValue({
-                amountReceived: Number(order.defaultAmount !== undefined ? order.defaultAmount : (order.balanceAmount || 0)),
+                amountReceived: Math.round(Number(order.defaultAmount !== undefined ? order.defaultAmount : (order.balanceAmount || 0))),
                 paymentMethod: 'Cash',
                 markAsDelivered: defaultMarkAsDelivered
             });

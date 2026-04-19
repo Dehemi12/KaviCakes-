@@ -15,6 +15,7 @@ const Navbar = () => {
     const location = useLocation();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [categories, setCategories] = useState([]);
+    const [wishlistCount, setWishlistCount] = useState(0);
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -30,6 +31,28 @@ const Navbar = () => {
         };
         fetchCategories();
     }, []);
+
+    useEffect(() => {
+        const fetchWishlistCount = async () => {
+            if (user) {
+                try {
+                    const res = await api.get('/wishlist');
+                    setWishlistCount(res.data.length);
+                } catch (err) {
+                    console.error("Failed to fetch wishlist count", err);
+                }
+            } else {
+                setWishlistCount(0);
+            }
+        };
+
+        fetchWishlistCount();
+
+        // Listen for wishlist updates
+        const handleWishlistUpdate = () => fetchWishlistCount();
+        window.addEventListener('wishlist-updated', handleWishlistUpdate);
+        return () => window.removeEventListener('wishlist-updated', handleWishlistUpdate);
+    }, [user]);
 
     // navItems replaced by static structure in render for better control
 
@@ -63,7 +86,14 @@ const Navbar = () => {
                     {/* Right Actions */}
                     <div className="flex items-center space-x-6">
                         <Link to="/wishlist" className="text-gray-500 hover:text-pink-600 transition-colors relative group flex flex-col items-center">
-                            <Heart className="h-6 w-6" />
+                            <div className="relative">
+                                <Heart className="h-6 w-6" />
+                                {wishlistCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border-2 border-white">
+                                        {wishlistCount}
+                                    </span>
+                                )}
+                            </div>
                             <span className="hidden lg:block text-[10px] font-medium mt-0.5 group-hover:text-pink-600">Wishlist</span>
                         </Link>
 
